@@ -4,6 +4,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthProvider } from "./src/context/AuthContext";
+import { DreamProvider } from "./src/context/DreamContext";
 import AppNavigator from "./src/navigation/AppNavigator";
 
 // The app is Hebrew-only for now, so force RTL layout app-wide.
@@ -17,10 +18,12 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <NavigationContainer>
-          <AppNavigator />
-          <StatusBar style="light" />
-        </NavigationContainer>
+        <DreamProvider>
+          <NavigationContainer>
+            <AppNavigator />
+            <StatusBar style="light" />
+          </NavigationContainer>
+        </DreamProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

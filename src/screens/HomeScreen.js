@@ -3,20 +3,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import DreamCard from "../components/DreamCard";
 import { useAuth } from "../context/AuthContext";
+import { useDreams } from "../context/DreamContext";
 
-const MOCK_DREAMS = [
-  { id: "1", title: "רחפן DJI חדש", type: "money", current: 1500, target: 5000 },
-  {
-    id: "2",
-    title: "שליטה בתוכנת DaVinci Resolve",
-    type: "knowledge",
-    current: 20,
-    target: 100,
-  },
-];
-
-export default function HomeScreen() {
+export default function HomeScreen({ navigation }) {
   const { user, logout } = useAuth();
+  const { dreams } = useDreams();
   const insets = useSafeAreaInsets();
 
   return (
@@ -32,7 +23,7 @@ export default function HomeScreen() {
       </View>
 
       <FlatList
-        data={MOCK_DREAMS}
+        data={dreams}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <DreamCard {...item} />}
         contentContainerStyle={styles.listContent}
@@ -45,7 +36,7 @@ export default function HomeScreen() {
           { bottom: insets.bottom + 24 },
           I18nManager.isRTL ? { left: 24 } : { right: 24 },
         ]}
-        onPress={() => alert("חלום חדש")}
+        onPress={() => navigation.navigate("AddDream")}
         activeOpacity={0.85}
       >
         <Text style={styles.fabIcon}>+</Text>

@@ -1,9 +1,6 @@
 import { I18nManager, StyleSheet, Text, View } from "react-native";
 
-const TYPE_THEME = {
-  money: { color: "#39FF88" },
-  knowledge: { color: "#3EC8FF" },
-};
+import { getCategory } from "../utils/dreamCategories";
 
 function formatAmount(value, type) {
   const formatted = value.toLocaleString("he-IL");
@@ -11,12 +8,21 @@ function formatAmount(value, type) {
 }
 
 export default function DreamCard({ title, type, current, target }) {
-  const theme = TYPE_THEME[type] ?? TYPE_THEME.money;
+  const category = getCategory(type);
   const percentage = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
 
   return (
-    <View style={[styles.card, { shadowColor: theme.color }]}>
-      <Text style={styles.title}>{title}</Text>
+    <View style={[styles.card, { shadowColor: category.color }]}>
+      <View style={styles.headerRow}>
+        <Text style={styles.title} numberOfLines={1}>
+          {title}
+        </Text>
+        <View style={[styles.categoryBadge, { borderColor: category.color }]}>
+          <Text style={[styles.categoryBadgeText, { color: category.color }]}>
+            {category.label}
+          </Text>
+        </View>
+      </View>
 
       <View style={styles.progressTrack}>
         <View
@@ -24,8 +30,8 @@ export default function DreamCard({ title, type, current, target }) {
             styles.progressFill,
             {
               width: `${percentage}%`,
-              backgroundColor: theme.color,
-              shadowColor: theme.color,
+              backgroundColor: category.color,
+              shadowColor: category.color,
             },
           ]}
         />
@@ -35,7 +41,7 @@ export default function DreamCard({ title, type, current, target }) {
         <Text style={styles.amount}>
           {formatAmount(current, type)} מתוך {formatAmount(target, type)}
         </Text>
-        <Text style={[styles.percentage, { color: theme.color }]}>{percentage}%</Text>
+        <Text style={[styles.percentage, { color: category.color }]}>{percentage}%</Text>
       </View>
     </View>
   );
@@ -54,12 +60,29 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 8,
   },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 14,
+  },
   title: {
+    flex: 1,
     color: "#FFFFFF",
     fontSize: 17,
     fontWeight: "700",
     textAlign: "right",
-    marginBottom: 14,
+    marginEnd: 10,
+  },
+  categoryBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderWidth: 1,
+  },
+  categoryBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
   },
   progressTrack: {
     height: 10,
