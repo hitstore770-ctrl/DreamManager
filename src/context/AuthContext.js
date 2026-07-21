@@ -14,8 +14,8 @@ export function AuthProvider({ children }) {
     setTimeout(() => {
       setUser({
         uid: "mock-user-id",
-        displayName: "Dreamer",
-        email: "dreamer@example.com",
+        displayName: "יוסף",
+        email: "yosef@example.com",
         photoURL: null,
       });
       setIsAuthenticating(false);

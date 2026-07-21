@@ -13,22 +13,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useDreams } from "../context/DreamContext";
 import { getCategory } from "../utils/dreamCategories";
+import { formatAmount, formatDateTime } from "../utils/format";
+import { exportDreamToPDF } from "../utils/pdfExport";
 import { COLORS } from "../utils/theme";
-
-function formatAmount(value, type) {
-  const formatted = value.toLocaleString("he-IL");
-  return type === "money" ? `₪${formatted}` : formatted;
-}
-
-function formatNoteDate(isoString) {
-  return new Date(isoString).toLocaleDateString("he-IL", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export default function DreamDetailScreen({ route, navigation }) {
   const { id } = route.params;
@@ -75,6 +62,14 @@ export default function DreamDetailScreen({ route, navigation }) {
     setNoteText("");
   };
 
+  const handleExport = async () => {
+    try {
+      await exportDreamToPDF(dream);
+    } catch (error) {
+      alert("אירעה שגיאה בייצוא הקובץ");
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -90,6 +85,10 @@ export default function DreamDetailScreen({ route, navigation }) {
             <Text style={styles.backText}>חזרה</Text>
           </TouchableOpacity>
         </View>
+
+        <TouchableOpacity style={styles.exportButton} onPress={handleExport} activeOpacity={0.85}>
+          <Text style={styles.exportButtonText}>🖨️ ייצא למחברת A5</Text>
+        </TouchableOpacity>
 
         <View style={styles.card}>
           <View style={styles.titleRow}>
@@ -208,7 +207,7 @@ export default function DreamDetailScreen({ route, navigation }) {
             dream.notes.map((note) => (
               <View key={note.id} style={styles.noteItem}>
                 <Text style={styles.noteText}>{note.text}</Text>
-                <Text style={styles.noteDate}>{formatNoteDate(note.date)}</Text>
+                <Text style={styles.noteDate}>{formatDateTime(note.date)}</Text>
               </View>
             ))
           )}
@@ -264,6 +263,25 @@ const styles = StyleSheet.create({
   backText: {
     color: COLORS.textSecondary,
     fontSize: 15,
+  },
+  exportButton: {
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: COLORS.glass,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: "center",
+    marginBottom: 16,
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  exportButtonText: {
+    color: COLORS.accent,
+    fontSize: 15,
+    fontWeight: "700",
   },
   card: {
     padding: 20,

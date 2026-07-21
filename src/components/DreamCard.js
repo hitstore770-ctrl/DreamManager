@@ -1,12 +1,8 @@
 import { I18nManager, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { getCategory } from "../utils/dreamCategories";
+import { formatAmount } from "../utils/format";
 import { COLORS } from "../utils/theme";
-
-function formatAmount(value, type) {
-  const formatted = value.toLocaleString("he-IL");
-  return type === "money" ? `₪${formatted}` : formatted;
-}
 
 export default function DreamCard({ title, type, current, target, onPress }) {
   const category = getCategory(type);
