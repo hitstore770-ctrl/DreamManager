@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useDreams } from "../context/DreamContext";
 import { DREAM_CATEGORIES } from "../utils/dreamCategories";
-import { COLORS } from "../utils/theme";
+import { COLORS, FONTS } from "../utils/theme";
 
 export default function AddDreamScreen({ navigation }) {
   const { addDream } = useDreams();
@@ -144,11 +144,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: COLORS.textPrimary,
     fontSize: 22,
-    fontWeight: "700",
+    fontFamily: FONTS.bold,
   },
   cancelText: {
     color: COLORS.textSecondary,
     fontSize: 15,
+    fontFamily: FONTS.regular,
   },
   field: {
     marginBottom: 24,
@@ -156,7 +157,7 @@ const styles = StyleSheet.create({
   label: {
     color: COLORS.textSecondary,
     fontSize: 14,
-    fontWeight: "600",
+    fontFamily: FONTS.medium,
     marginBottom: 10,
     textAlign: "right",
   },
@@ -169,6 +170,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     color: COLORS.textPrimary,
     fontSize: 16,
+    fontFamily: FONTS.regular,
   },
   categoryGrid: {
     flexDirection: "row",
@@ -188,7 +190,7 @@ const styles = StyleSheet.create({
   categoryButtonText: {
     color: COLORS.textPrimary,
     fontSize: 15,
-    fontWeight: "600",
+    fontFamily: FONTS.medium,
   },
   submitButton: {
     marginTop: 12,
@@ -206,6 +208,6 @@ const styles = StyleSheet.create({
   submitButtonText: {
     color: "#FFFFFF",
     fontSize: 17,
-    fontWeight: "700",
+    fontFamily: FONTS.bold,
   },
 });

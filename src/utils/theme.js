@@ -9,3 +9,9 @@ export const COLORS = {
   shadow: "#000000",
   accent: "#4F6BFF",
 };
+
+export const FONTS = {
+  regular: "Rubik_400Regular",
+  medium: "Rubik_500Medium",
+  bold: "Rubik_700Bold",
+};

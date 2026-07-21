@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import DreamCard from "../components/DreamCard";
 import { useAuth } from "../context/AuthContext";
 import { useDreams } from "../context/DreamContext";
-import { COLORS } from "../utils/theme";
+import { COLORS, FONTS } from "../utils/theme";
 
 export default function HomeScreen({ navigation }) {
   const { user, logout } = useAuth();
@@ -22,6 +22,14 @@ export default function HomeScreen({ navigation }) {
           <Text style={styles.logoutButtonText}>התנתקות</Text>
         </TouchableOpacity>
       </View>
+
+      <TouchableOpacity
+        style={styles.arcadeButton}
+        onPress={() => navigation.navigate("Arcade")}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.arcadeButtonText}>🕹️ ארקייד: {user?.coins ?? 0} מטבעות</Text>
+      </TouchableOpacity>
 
       <FlatList
         data={dreams}
@@ -66,12 +74,13 @@ const styles = StyleSheet.create({
   greeting: {
     color: COLORS.textPrimary,
     fontSize: 20,
-    fontWeight: "700",
+    fontFamily: FONTS.bold,
     textAlign: "right",
   },
   subGreeting: {
     color: COLORS.textSecondary,
     fontSize: 13,
+    fontFamily: FONTS.regular,
     textAlign: "right",
     marginTop: 4,
   },
@@ -91,7 +100,27 @@ const styles = StyleSheet.create({
   logoutButtonText: {
     color: COLORS.textPrimary,
     fontSize: 13,
-    fontWeight: "600",
+    fontFamily: FONTS.medium,
+  },
+  arcadeButton: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: COLORS.glass,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: "center",
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  arcadeButtonText: {
+    color: COLORS.accent,
+    fontSize: 15,
+    fontFamily: FONTS.bold,
   },
   listContent: {
     paddingHorizontal: 20,
@@ -114,7 +143,7 @@ const styles = StyleSheet.create({
   fabIcon: {
     color: "#FFFFFF",
     fontSize: 30,
-    fontWeight: "400",
+    fontFamily: FONTS.regular,
     marginTop: -2,
   },
 });

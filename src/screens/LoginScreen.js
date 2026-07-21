@@ -1,7 +1,7 @@
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { useAuth } from "../context/AuthContext";
-import { COLORS } from "../utils/theme";
+import { COLORS, FONTS } from "../utils/theme";
 
 export default function LoginScreen() {
   const { signInWithGoogle, isAuthenticating } = useAuth();
@@ -62,12 +62,13 @@ const styles = StyleSheet.create({
   title: {
     color: COLORS.textPrimary,
     fontSize: 30,
-    fontWeight: "700",
+    fontFamily: FONTS.bold,
     letterSpacing: 0.5,
   },
   subtitle: {
     color: COLORS.textSecondary,
     fontSize: 14,
+    fontFamily: FONTS.regular,
     textAlign: "center",
     marginTop: 10,
     marginBottom: 32,
@@ -104,11 +105,11 @@ const styles = StyleSheet.create({
   googleBadgeText: {
     color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: "700",
+    fontFamily: FONTS.bold,
   },
   googleButtonText: {
     color: COLORS.textPrimary,
     fontSize: 16,
-    fontWeight: "600",
+    fontFamily: FONTS.medium,
   },
 });

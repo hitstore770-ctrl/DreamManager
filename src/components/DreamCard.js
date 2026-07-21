@@ -2,7 +2,7 @@ import { I18nManager, StyleSheet, Text, TouchableOpacity, View } from "react-nat
 
 import { getCategory } from "../utils/dreamCategories";
 import { formatAmount } from "../utils/format";
-import { COLORS } from "../utils/theme";
+import { COLORS, FONTS } from "../utils/theme";
 
 export default function DreamCard({ title, type, current, target, onPress }) {
   const category = getCategory(type);
@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: COLORS.textPrimary,
     fontSize: 17,
-    fontWeight: "700",
+    fontFamily: FONTS.bold,
     textAlign: "right",
     marginEnd: 10,
   },
@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
   },
   categoryBadgeText: {
     fontSize: 11,
-    fontWeight: "700",
+    fontFamily: FONTS.bold,
   },
   progressTrack: {
     height: 10,
@@ -106,9 +106,10 @@ const styles = StyleSheet.create({
   amount: {
     color: COLORS.textSecondary,
     fontSize: 13,
+    fontFamily: FONTS.regular,
   },
   percentage: {
     fontSize: 14,
-    fontWeight: "700",
+    fontFamily: FONTS.bold,
   },
 });

@@ -15,7 +15,7 @@ import { useDreams } from "../context/DreamContext";
 import { getCategory } from "../utils/dreamCategories";
 import { formatAmount, formatDateTime } from "../utils/format";
 import { exportDreamToPDF } from "../utils/pdfExport";
-import { COLORS } from "../utils/theme";
+import { COLORS, FONTS } from "../utils/theme";
 
 export default function DreamDetailScreen({ route, navigation }) {
   const { id } = route.params;
@@ -246,6 +246,7 @@ const styles = StyleSheet.create({
   notFoundText: {
     color: COLORS.textSecondary,
     fontSize: 16,
+    fontFamily: FONTS.regular,
     textAlign: "center",
     marginTop: 100,
   },
@@ -258,11 +259,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: COLORS.textPrimary,
     fontSize: 22,
-    fontWeight: "700",
+    fontFamily: FONTS.bold,
   },
   backText: {
     color: COLORS.textSecondary,
     fontSize: 15,
+    fontFamily: FONTS.regular,
   },
   exportButton: {
     paddingVertical: 12,
@@ -281,7 +283,7 @@ const styles = StyleSheet.create({
   exportButtonText: {
     color: COLORS.accent,
     fontSize: 15,
-    fontWeight: "700",
+    fontFamily: FONTS.bold,
   },
   card: {
     padding: 20,
@@ -305,7 +307,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: COLORS.textPrimary,
     fontSize: 19,
-    fontWeight: "700",
+    fontFamily: FONTS.bold,
     textAlign: "right",
     marginEnd: 10,
   },
@@ -318,7 +320,7 @@ const styles = StyleSheet.create({
   },
   categoryBadgeText: {
     fontSize: 11,
-    fontWeight: "700",
+    fontFamily: FONTS.bold,
   },
   progressTrack: {
     height: 10,
@@ -334,7 +336,7 @@ const styles = StyleSheet.create({
   },
   percentageText: {
     fontSize: 13,
-    fontWeight: "700",
+    fontFamily: FONTS.bold,
     textAlign: "right",
     marginTop: 8,
   },
@@ -353,11 +355,12 @@ const styles = StyleSheet.create({
   breakdownLabel: {
     color: COLORS.textSecondary,
     fontSize: 14,
+    fontFamily: FONTS.regular,
   },
   breakdownValue: {
     color: COLORS.textPrimary,
     fontSize: 14,
-    fontWeight: "600",
+    fontFamily: FONTS.medium,
   },
   remainingRow: {
     marginBottom: 0,
@@ -365,15 +368,16 @@ const styles = StyleSheet.create({
   remainingLabel: {
     color: COLORS.textSecondary,
     fontSize: 14,
+    fontFamily: FONTS.regular,
   },
   remainingValue: {
     fontSize: 18,
-    fontWeight: "800",
+    fontFamily: FONTS.bold,
   },
   updateTitle: {
     color: COLORS.textPrimary,
     fontSize: 16,
-    fontWeight: "700",
+    fontFamily: FONTS.bold,
     textAlign: "right",
     marginBottom: 14,
   },
@@ -386,6 +390,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     color: COLORS.textPrimary,
     fontSize: 16,
+    fontFamily: FONTS.regular,
     marginBottom: 14,
   },
   updateButton: {
@@ -397,11 +402,12 @@ const styles = StyleSheet.create({
   updateButtonText: {
     color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: "700",
+    fontFamily: FONTS.bold,
   },
   emptyText: {
     color: COLORS.textMuted,
     fontSize: 13,
+    fontFamily: FONTS.regular,
     textAlign: "center",
     marginBottom: 14,
   },
@@ -421,6 +427,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: COLORS.textPrimary,
     fontSize: 15,
+    fontFamily: FONTS.regular,
     textAlign: "right",
   },
   taskTextCompleted: {
@@ -442,6 +449,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     color: COLORS.textPrimary,
     fontSize: 14,
+    fontFamily: FONTS.regular,
     marginEnd: 10,
   },
   addButton: {
@@ -454,7 +462,7 @@ const styles = StyleSheet.create({
   addButtonText: {
     color: "#FFFFFF",
     fontSize: 20,
-    fontWeight: "700",
+    fontFamily: FONTS.bold,
     marginTop: -2,
   },
   noteItem: {
@@ -468,12 +476,14 @@ const styles = StyleSheet.create({
   noteText: {
     color: COLORS.textPrimary,
     fontSize: 14,
+    fontFamily: FONTS.regular,
     textAlign: "right",
     lineHeight: 20,
   },
   noteDate: {
     color: COLORS.textMuted,
     fontSize: 11,
+    fontFamily: FONTS.regular,
     textAlign: "right",
     marginTop: 6,
   },

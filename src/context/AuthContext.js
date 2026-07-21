@@ -17,6 +17,7 @@ export function AuthProvider({ children }) {
         displayName: "יוסף",
         email: "yosef@example.com",
         photoURL: null,
+        coins: 0,
       });
       setIsAuthenticating(false);
     }, 1000);
@@ -26,8 +27,20 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const addCoins = (amount) => {
+    setUser((prev) => (prev ? { ...prev, coins: prev.coins + amount } : prev));
+  };
+
+  const spendCoins = (amount) => {
+    if (!user || user.coins < amount) {
+      return false;
+    }
+    setUser((prev) => ({ ...prev, coins: prev.coins - amount }));
+    return true;
+  };
+
   const value = useMemo(
-    () => ({ user, isAuthenticating, signInWithGoogle, logout }),
+    () => ({ user, isAuthenticating, signInWithGoogle, logout, addCoins, spendCoins }),
     [user, isAuthenticating]
   );
 

@@ -1,5 +1,7 @@
 import { createContext, useContext, useMemo, useState } from "react";
 
+import { useAuth } from "./AuthContext";
+
 const DreamContext = createContext(undefined);
 
 const INITIAL_DREAMS = [
@@ -24,6 +26,7 @@ const INITIAL_DREAMS = [
 ];
 
 export function DreamProvider({ children }) {
+  const { addCoins } = useAuth();
   const [dreams, setDreams] = useState(INITIAL_DREAMS);
 
   const addDream = ({ title, type, target }) => {
@@ -47,6 +50,7 @@ export function DreamProvider({ children }) {
           : dream
       )
     );
+    addCoins(20);
   };
 
   const addTask = (dreamId, text) => {
@@ -59,18 +63,26 @@ export function DreamProvider({ children }) {
   };
 
   const toggleTask = (dreamId, taskId) => {
+    const dream = dreams.find((item) => item.id === dreamId);
+    const task = dream?.tasks.find((item) => item.id === taskId);
+    const willBeCompleted = task ? !task.isCompleted : false;
+
     setDreams((prev) =>
-      prev.map((dream) =>
-        dream.id === dreamId
+      prev.map((d) =>
+        d.id === dreamId
           ? {
-              ...dream,
-              tasks: dream.tasks.map((task) =>
-                task.id === taskId ? { ...task, isCompleted: !task.isCompleted } : task
+              ...d,
+              tasks: d.tasks.map((t) =>
+                t.id === taskId ? { ...t, isCompleted: !t.isCompleted } : t
               ),
             }
-          : dream
+          : d
       )
     );
+
+    if (willBeCompleted) {
+      addCoins(10);
+    }
   };
 
   const addNote = (dreamId, text) => {
@@ -84,7 +96,7 @@ export function DreamProvider({ children }) {
 
   const value = useMemo(
     () => ({ dreams, addDream, updateDreamProgress, addTask, toggleTask, addNote }),
-    [dreams]
+    [dreams, addCoins]
   );
 
   return <DreamContext.Provider value={value}>{children}</DreamContext.Provider>;
