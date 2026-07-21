@@ -27,7 +27,20 @@ export function DreamProvider({ children }) {
     setDreams((prev) => [newDream, ...prev]);
   };
 
-  const value = useMemo(() => ({ dreams, addDream }), [dreams]);
+  const updateDreamProgress = (id, addedValue) => {
+    setDreams((prev) =>
+      prev.map((dream) =>
+        dream.id === id
+          ? { ...dream, current: Math.min(dream.target, dream.current + addedValue) }
+          : dream
+      )
+    );
+  };
+
+  const value = useMemo(
+    () => ({ dreams, addDream, updateDreamProgress }),
+    [dreams]
+  );
 
   return <DreamContext.Provider value={value}>{children}</DreamContext.Provider>;
 }

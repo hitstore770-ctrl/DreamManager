@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import DreamCard from "../components/DreamCard";
 import { useAuth } from "../context/AuthContext";
 import { useDreams } from "../context/DreamContext";
+import { COLORS } from "../utils/theme";
 
 export default function HomeScreen({ navigation }) {
   const { user, logout } = useAuth();
@@ -25,7 +26,12 @@ export default function HomeScreen({ navigation }) {
       <FlatList
         data={dreams}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <DreamCard {...item} />}
+        renderItem={({ item }) => (
+          <DreamCard
+            {...item}
+            onPress={() => navigation.navigate("DreamDetail", { id: item.id })}
+          />
+        )}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       />
@@ -48,7 +54,7 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0B1026",
+    backgroundColor: COLORS.background,
   },
   header: {
     flexDirection: "row",
@@ -58,13 +64,13 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   greeting: {
-    color: "#FFFFFF",
+    color: COLORS.textPrimary,
     fontSize: 20,
     fontWeight: "700",
     textAlign: "right",
   },
   subGreeting: {
-    color: "rgba(255, 255, 255, 0.55)",
+    color: COLORS.textSecondary,
     fontSize: 13,
     textAlign: "right",
     marginTop: 4,
@@ -73,17 +79,17 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    backgroundColor: COLORS.glass,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.18)",
-    shadowColor: "#5B8CFF",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 6,
+    borderColor: COLORS.border,
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   logoutButtonText: {
-    color: "#FFFFFF",
+    color: COLORS.textPrimary,
     fontSize: 13,
     fontWeight: "600",
   },
@@ -96,16 +102,14 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: "rgba(255, 255, 255, 0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.3)",
+    backgroundColor: COLORS.accent,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#5B8CFF",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.7,
-    shadowRadius: 16,
-    elevation: 12,
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    elevation: 8,
   },
   fabIcon: {
     color: "#FFFFFF",

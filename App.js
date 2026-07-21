@@ -21,7 +21,7 @@ export default function App() {
         <DreamProvider>
           <NavigationContainer>
             <AppNavigator />
-            <StatusBar style="light" />
+            <StatusBar style="dark" />
           </NavigationContainer>
         </DreamProvider>
       </AuthProvider>

@@ -1,8 +1,8 @@
 export const DREAM_CATEGORIES = [
-  { key: "money", label: "כסף", color: "#39FF88" },
-  { key: "km", label: "קילומטרים", color: "#FF9F1C" },
-  { key: "weight", label: "משקל", color: "#B983FF" },
-  { key: "knowledge", label: "ידע", color: "#3EC8FF" },
+  { key: "money", label: "כסף", color: "#1E9E58" },
+  { key: "km", label: "קילומטרים", color: "#E07C1D" },
+  { key: "weight", label: "משקל", color: "#7C3AED" },
+  { key: "knowledge", label: "ידע", color: "#2563EB" },
 ];
 
 export function getCategory(key) {

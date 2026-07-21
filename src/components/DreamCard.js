@@ -1,18 +1,19 @@
-import { I18nManager, StyleSheet, Text, View } from "react-native";
+import { I18nManager, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { getCategory } from "../utils/dreamCategories";
+import { COLORS } from "../utils/theme";
 
 function formatAmount(value, type) {
   const formatted = value.toLocaleString("he-IL");
   return type === "money" ? `₪${formatted}` : formatted;
 }
 
-export default function DreamCard({ title, type, current, target }) {
+export default function DreamCard({ title, type, current, target, onPress }) {
   const category = getCategory(type);
   const percentage = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
 
   return (
-    <View style={[styles.card, { shadowColor: category.color }]}>
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
       <View style={styles.headerRow}>
         <Text style={styles.title} numberOfLines={1}>
           {title}
@@ -31,7 +32,6 @@ export default function DreamCard({ title, type, current, target }) {
             {
               width: `${percentage}%`,
               backgroundColor: category.color,
-              shadowColor: category.color,
             },
           ]}
         />
@@ -43,7 +43,7 @@ export default function DreamCard({ title, type, current, target }) {
         </Text>
         <Text style={[styles.percentage, { color: category.color }]}>{percentage}%</Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -51,14 +51,15 @@ const styles = StyleSheet.create({
   card: {
     padding: 20,
     borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    backgroundColor: COLORS.glass,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.18)",
+    borderColor: COLORS.border,
     marginBottom: 16,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 3,
   },
   headerRow: {
     flexDirection: "row",
@@ -67,7 +68,7 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
-    color: "#FFFFFF",
+    color: COLORS.textPrimary,
     fontSize: 17,
     fontWeight: "700",
     textAlign: "right",
@@ -77,7 +78,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    backgroundColor: "rgba(17, 24, 39, 0.03)",
     borderWidth: 1,
   },
   categoryBadgeText: {
@@ -87,9 +88,9 @@ const styles = StyleSheet.create({
   progressTrack: {
     height: 10,
     borderRadius: 999,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    backgroundColor: "rgba(17, 24, 39, 0.06)",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.15)",
+    borderColor: COLORS.border,
     overflow: "hidden",
     position: "relative",
   },
@@ -98,10 +99,6 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     borderRadius: 999,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 6,
-    elevation: 4,
     ...(I18nManager.isRTL ? { right: 0 } : { left: 0 }),
   },
   footerRow: {
@@ -111,7 +108,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   amount: {
-    color: "rgba(255, 255, 255, 0.65)",
+    color: COLORS.textSecondary,
     fontSize: 13,
   },
   percentage: {

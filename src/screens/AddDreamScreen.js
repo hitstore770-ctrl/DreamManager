@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useDreams } from "../context/DreamContext";
 import { DREAM_CATEGORIES } from "../utils/dreamCategories";
+import { COLORS } from "../utils/theme";
 
 export default function AddDreamScreen({ navigation }) {
   const { addDream } = useDreams();
@@ -65,7 +66,7 @@ export default function AddDreamScreen({ navigation }) {
             value={title}
             onChangeText={setTitle}
             placeholder="לדוגמה: רחפן DJI חדש"
-            placeholderTextColor="rgba(255, 255, 255, 0.35)"
+            placeholderTextColor={COLORS.textMuted}
             textAlign="right"
           />
         </View>
@@ -82,10 +83,12 @@ export default function AddDreamScreen({ navigation }) {
                     styles.categoryButton,
                     selected && {
                       borderColor: category.color,
+                      backgroundColor: "rgba(17, 24, 39, 0.03)",
                       shadowColor: category.color,
-                      shadowOpacity: 0.8,
-                      shadowRadius: 12,
-                      elevation: 8,
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.25,
+                      shadowRadius: 10,
+                      elevation: 4,
                     },
                   ]}
                   onPress={() => setCategoryKey(category.key)}
@@ -109,7 +112,7 @@ export default function AddDreamScreen({ navigation }) {
             value={targetValue}
             onChangeText={setTargetValue}
             placeholder="לדוגמה: 5000"
-            placeholderTextColor="rgba(255, 255, 255, 0.35)"
+            placeholderTextColor={COLORS.textMuted}
             keyboardType="numeric"
             textAlign="right"
           />
@@ -126,7 +129,7 @@ export default function AddDreamScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0B1026",
+    backgroundColor: COLORS.background,
   },
   content: {
     paddingHorizontal: 20,
@@ -139,32 +142,32 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   headerTitle: {
-    color: "#FFFFFF",
+    color: COLORS.textPrimary,
     fontSize: 22,
     fontWeight: "700",
   },
   cancelText: {
-    color: "rgba(255, 255, 255, 0.55)",
+    color: COLORS.textSecondary,
     fontSize: 15,
   },
   field: {
     marginBottom: 24,
   },
   label: {
-    color: "rgba(255, 255, 255, 0.75)",
+    color: COLORS.textSecondary,
     fontSize: 14,
     fontWeight: "600",
     marginBottom: 10,
     textAlign: "right",
   },
   input: {
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    backgroundColor: COLORS.glass,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.18)",
+    borderColor: COLORS.border,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    color: "#FFFFFF",
+    color: COLORS.textPrimary,
     fontSize: 16,
   },
   categoryGrid: {
@@ -176,14 +179,14 @@ const styles = StyleSheet.create({
     width: "48%",
     paddingVertical: 16,
     borderRadius: 14,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    backgroundColor: COLORS.glass,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.18)",
+    borderColor: COLORS.border,
     alignItems: "center",
     marginBottom: 12,
   },
   categoryButtonText: {
-    color: "#FFFFFF",
+    color: COLORS.textPrimary,
     fontSize: 15,
     fontWeight: "600",
   },
@@ -191,16 +194,14 @@ const styles = StyleSheet.create({
     marginTop: 12,
     height: 56,
     borderRadius: 16,
-    backgroundColor: "rgba(91, 140, 255, 0.18)",
-    borderWidth: 1,
-    borderColor: "rgba(91, 140, 255, 0.5)",
+    backgroundColor: COLORS.accent,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#5B8CFF",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.7,
-    shadowRadius: 18,
-    elevation: 12,
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 14,
+    elevation: 6,
   },
   submitButtonText: {
     color: "#FFFFFF",
