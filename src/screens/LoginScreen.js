@@ -8,9 +8,9 @@ export default function LoginScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.card}>
-        <Text style={styles.title}>DreamManager</Text>
+        <Text style={styles.title}>מנהל החלומות</Text>
         <Text style={styles.subtitle}>
-          Track your goals, finances, and progress in one place.
+          עקבו אחר המטרות, הכספים וההתקדמות שלכם - במקום אחד.
         </Text>
 
         <TouchableOpacity
@@ -26,7 +26,7 @@ export default function LoginScreen() {
               <View style={styles.googleBadge}>
                 <Text style={styles.googleBadgeText}>G</Text>
               </View>
-              <Text style={styles.googleButtonText}>Sign in with Google</Text>
+              <Text style={styles.googleButtonText}>התחבר באמצעות גוגל</Text>
             </>
           )}
         </TouchableOpacity>
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#4285F4",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
+    marginEnd: 12,
   },
   googleBadgeText: {
     color: "#FFFFFF",
