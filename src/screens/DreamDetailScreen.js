@@ -20,11 +20,23 @@ function formatAmount(value, type) {
   return type === "money" ? `₪${formatted}` : formatted;
 }
 
+function formatNoteDate(isoString) {
+  return new Date(isoString).toLocaleDateString("he-IL", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default function DreamDetailScreen({ route, navigation }) {
   const { id } = route.params;
-  const { dreams, updateDreamProgress } = useDreams();
+  const { dreams, updateDreamProgress, addTask, toggleTask, addNote } = useDreams();
   const insets = useSafeAreaInsets();
   const [addedValue, setAddedValue] = useState("");
+  const [taskText, setTaskText] = useState("");
+  const [noteText, setNoteText] = useState("");
 
   const dream = dreams.find((item) => item.id === id);
 
@@ -49,6 +61,18 @@ export default function DreamDetailScreen({ route, navigation }) {
     }
     updateDreamProgress(dream.id, value);
     setAddedValue("");
+  };
+
+  const handleAddTask = () => {
+    if (!taskText.trim()) return;
+    addTask(dream.id, taskText.trim());
+    setTaskText("");
+  };
+
+  const handleAddNote = () => {
+    if (!noteText.trim()) return;
+    addNote(dream.id, noteText.trim());
+    setNoteText("");
   };
 
   return (
@@ -124,6 +148,86 @@ export default function DreamDetailScreen({ route, navigation }) {
             activeOpacity={0.85}
           >
             <Text style={styles.updateButtonText}>הוסף התקדמות</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.updateTitle}>משימות</Text>
+
+          {dream.tasks.length === 0 ? (
+            <Text style={styles.emptyText}>אין משימות עדיין</Text>
+          ) : (
+            dream.tasks.map((task) => (
+              <TouchableOpacity
+                key={task.id}
+                style={styles.taskRow}
+                onPress={() => toggleTask(dream.id, task.id)}
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[
+                    styles.checkbox,
+                    { borderColor: category.color },
+                    task.isCompleted && { backgroundColor: category.color },
+                  ]}
+                />
+                <Text style={[styles.taskText, task.isCompleted && styles.taskTextCompleted]}>
+                  {task.text}
+                </Text>
+              </TouchableOpacity>
+            ))
+          )}
+
+          <View style={styles.addRow}>
+            <TextInput
+              style={styles.addInput}
+              value={taskText}
+              onChangeText={setTaskText}
+              placeholder="הוסף משימה חדשה"
+              placeholderTextColor={COLORS.textMuted}
+              textAlign="right"
+              onSubmitEditing={handleAddTask}
+              returnKeyType="done"
+            />
+            <TouchableOpacity
+              style={[styles.addButton, { backgroundColor: category.color }]}
+              onPress={handleAddTask}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.addButtonText}>+</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.updateTitle}>פתקים</Text>
+
+          {dream.notes.length === 0 ? (
+            <Text style={styles.emptyText}>אין פתקים עדיין</Text>
+          ) : (
+            dream.notes.map((note) => (
+              <View key={note.id} style={styles.noteItem}>
+                <Text style={styles.noteText}>{note.text}</Text>
+                <Text style={styles.noteDate}>{formatNoteDate(note.date)}</Text>
+              </View>
+            ))
+          )}
+
+          <TextInput
+            style={[styles.input, styles.noteInput]}
+            value={noteText}
+            onChangeText={setNoteText}
+            placeholder="כתוב פתק חדש..."
+            placeholderTextColor={COLORS.textMuted}
+            textAlign="right"
+            multiline
+          />
+          <TouchableOpacity
+            style={[styles.updateButton, { backgroundColor: category.color }]}
+            onPress={handleAddNote}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.updateButtonText}>הוסף פתק</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -276,5 +380,87 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "700",
+  },
+  emptyText: {
+    color: COLORS.textMuted,
+    fontSize: 13,
+    textAlign: "center",
+    marginBottom: 14,
+  },
+  taskRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    marginEnd: 12,
+  },
+  taskText: {
+    flex: 1,
+    color: COLORS.textPrimary,
+    fontSize: 15,
+    textAlign: "right",
+  },
+  taskTextCompleted: {
+    color: COLORS.textMuted,
+    textDecorationLine: "line-through",
+  },
+  addRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+  },
+  addInput: {
+    flex: 1,
+    backgroundColor: "rgba(17, 24, 39, 0.03)",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    color: COLORS.textPrimary,
+    fontSize: 14,
+    marginEnd: 10,
+  },
+  addButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  addButtonText: {
+    color: "#FFFFFF",
+    fontSize: 20,
+    fontWeight: "700",
+    marginTop: -2,
+  },
+  noteItem: {
+    backgroundColor: "rgba(17, 24, 39, 0.03)",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+  },
+  noteText: {
+    color: COLORS.textPrimary,
+    fontSize: 14,
+    textAlign: "right",
+    lineHeight: 20,
+  },
+  noteDate: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    textAlign: "right",
+    marginTop: 6,
+  },
+  noteInput: {
+    minHeight: 70,
+    textAlignVertical: "top",
   },
 });

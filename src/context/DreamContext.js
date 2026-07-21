@@ -3,13 +3,23 @@ import { createContext, useContext, useMemo, useState } from "react";
 const DreamContext = createContext(undefined);
 
 const INITIAL_DREAMS = [
-  { id: "1", title: "רחפן DJI חדש", type: "money", current: 1500, target: 5000 },
+  {
+    id: "1",
+    title: "רחפן DJI חדש",
+    type: "money",
+    current: 1500,
+    target: 5000,
+    tasks: [],
+    notes: [],
+  },
   {
     id: "2",
     title: "שליטה בתוכנת DaVinci Resolve",
     type: "knowledge",
     current: 20,
     target: 100,
+    tasks: [],
+    notes: [],
   },
 ];
 
@@ -23,6 +33,8 @@ export function DreamProvider({ children }) {
       type,
       current: 0,
       target,
+      tasks: [],
+      notes: [],
     };
     setDreams((prev) => [newDream, ...prev]);
   };
@@ -37,8 +49,41 @@ export function DreamProvider({ children }) {
     );
   };
 
+  const addTask = (dreamId, text) => {
+    const newTask = { id: Date.now().toString(), text, isCompleted: false };
+    setDreams((prev) =>
+      prev.map((dream) =>
+        dream.id === dreamId ? { ...dream, tasks: [...dream.tasks, newTask] } : dream
+      )
+    );
+  };
+
+  const toggleTask = (dreamId, taskId) => {
+    setDreams((prev) =>
+      prev.map((dream) =>
+        dream.id === dreamId
+          ? {
+              ...dream,
+              tasks: dream.tasks.map((task) =>
+                task.id === taskId ? { ...task, isCompleted: !task.isCompleted } : task
+              ),
+            }
+          : dream
+      )
+    );
+  };
+
+  const addNote = (dreamId, text) => {
+    const newNote = { id: Date.now().toString(), text, date: new Date().toISOString() };
+    setDreams((prev) =>
+      prev.map((dream) =>
+        dream.id === dreamId ? { ...dream, notes: [...dream.notes, newNote] } : dream
+      )
+    );
+  };
+
   const value = useMemo(
-    () => ({ dreams, addDream, updateDreamProgress }),
+    () => ({ dreams, addDream, updateDreamProgress, addTask, toggleTask, addNote }),
     [dreams]
   );
 
