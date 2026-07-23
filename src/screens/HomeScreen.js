@@ -1,4 +1,12 @@
-import { FlatList, I18nManager, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  I18nManager,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import DreamCard from "../components/DreamCard";
@@ -8,7 +16,7 @@ import { COLORS, FONTS } from "../utils/theme";
 
 export default function HomeScreen({ navigation }) {
   const { user, logout } = useAuth();
-  const { dreams } = useDreams();
+  const { dreams, isLoading, error } = useDreams();
   const insets = useSafeAreaInsets();
 
   return (
@@ -48,18 +56,31 @@ export default function HomeScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={dreams}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <DreamCard
-            {...item}
-            onPress={() => navigation.navigate("DreamDetail", { id: item.id })}
-          />
-        )}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
+      {error && (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>{error}</Text>
+        </View>
+      )}
+
+      {isLoading ? (
+        <View style={styles.loadingBox}>
+          <ActivityIndicator color={COLORS.accent} />
+          <Text style={styles.loadingText}>טוען את החלומות שלך מהענן...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={dreams}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <DreamCard
+              {...item}
+              onPress={() => navigation.navigate("DreamDetail", { id: item.id })}
+            />
+          )}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
 
       <TouchableOpacity
         style={[
@@ -163,6 +184,33 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 20,
     paddingBottom: 120,
+  },
+  loadingBox: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingBottom: 80,
+  },
+  loadingText: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    fontFamily: FONTS.regular,
+    marginTop: 14,
+  },
+  errorBanner: {
+    marginHorizontal: 20,
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: "rgba(224, 124, 29, 0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(224, 124, 29, 0.3)",
+  },
+  errorBannerText: {
+    color: "#B45309",
+    fontSize: 12,
+    fontFamily: FONTS.regular,
+    textAlign: "right",
   },
   fab: {
     position: "absolute",

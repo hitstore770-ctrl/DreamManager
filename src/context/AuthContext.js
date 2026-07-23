@@ -1,50 +1,78 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 
-import { STORAGE_KEYS } from "../utils/storageKeys";
+import { db, isFirebaseConfigured } from "../config/firebaseConfig";
+import { withTimeout } from "../utils/network";
 
 const AuthContext = createContext(undefined);
 
-async function loadPersistedCoins() {
+const MOCK_USER = {
+  uid: "mock-user-id",
+  displayName: "יוסף",
+  email: "yosef@example.com",
+  photoURL: null,
+};
+
+// Read the user's saved coin balance from users/{uid}, seeding the doc on
+// first sign-in. Falls back to 0 if Firestore is unreachable/unconfigured.
+async function loadCoinsFromCloud(uid) {
+  if (!isFirebaseConfigured) return 0;
   try {
-    const stored = await AsyncStorage.getItem(STORAGE_KEYS.coins);
-    return stored != null ? Number(stored) || 0 : 0;
+    const userRef = doc(db, "users", uid);
+    const snapshot = await withTimeout(getDoc(userRef));
+    if (snapshot.exists() && typeof snapshot.data().coins === "number") {
+      return snapshot.data().coins;
+    }
+    await setDoc(userRef, { coins: 0, email: MOCK_USER.email }, { merge: true });
+    return 0;
   } catch {
     return 0;
+  }
+}
+
+async function persistCoins(uid, coins) {
+  if (!isFirebaseConfigured) return;
+  try {
+    await setDoc(doc(db, "users", uid), { coins }, { merge: true });
+  } catch {
+    // Best-effort: local state stays authoritative if the write fails.
   }
 }
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  // Guards the persist effect so we don't write coins:0 to the cloud before
+  // the user's real balance has been fetched.
+  const coinsHydrated = useRef(false);
 
-  // Persist the coin balance whenever it changes so it survives app restarts.
-  // (Coins live on the user object; the effect only runs while signed in.)
+  // Mirror the coin balance up to Firestore whenever it changes.
   useEffect(() => {
-    if (user) {
-      AsyncStorage.setItem(STORAGE_KEYS.coins, String(user.coins)).catch(() => {});
+    if (user && coinsHydrated.current) {
+      persistCoins(user.uid, user.coins);
     }
   }, [user?.coins]);
 
   // TODO: Replace with real Firebase Google Sign-In once GCP OAuth
   // credentials are configured. For now this simulates a network round
-  // trip and signs in a mock user, seeding the coin balance from storage.
+  // trip, signs the user in immediately, then restores their coins from
+  // Firestore in the background (so login never blocks on the cloud).
   const signInWithGoogle = () => {
     setIsAuthenticating(true);
-    setTimeout(async () => {
-      const coins = await loadPersistedCoins();
-      setUser({
-        uid: "mock-user-id",
-        displayName: "יוסף",
-        email: "yosef@example.com",
-        photoURL: null,
-        coins,
-      });
+    setTimeout(() => {
+      coinsHydrated.current = false;
+      setUser({ ...MOCK_USER, coins: 0 });
       setIsAuthenticating(false);
+
+      loadCoinsFromCloud(MOCK_USER.uid).then((coins) => {
+        setUser((prev) => (prev ? { ...prev, coins } : prev));
+        coinsHydrated.current = true;
+      });
     }, 1000);
   };
 
   const logout = () => {
+    coinsHydrated.current = false;
     setUser(null);
   };
 
