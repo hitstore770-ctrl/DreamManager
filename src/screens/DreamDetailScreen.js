@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -10,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as ImagePicker from "expo-image-picker";
 
 import { useDreams } from "../context/DreamContext";
 import { getCategory } from "../utils/dreamCategories";
@@ -19,7 +21,8 @@ import { COLORS, FONTS } from "../utils/theme";
 
 export default function DreamDetailScreen({ route, navigation }) {
   const { id } = route.params;
-  const { dreams, updateDreamProgress, addTask, toggleTask, addNote } = useDreams();
+  const { dreams, updateDreamProgress, addTask, toggleTask, addNote, setDreamImage } =
+    useDreams();
   const insets = useSafeAreaInsets();
   const [addedValue, setAddedValue] = useState("");
   const [taskText, setTaskText] = useState("");
@@ -70,6 +73,25 @@ export default function DreamDetailScreen({ route, navigation }) {
     }
   };
 
+  const handlePickImage = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      alert("נדרשת הרשאה לגלריה כדי לבחור תמונת השראה");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      setDreamImage(dream.id, result.assets[0].uri);
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -85,6 +107,27 @@ export default function DreamDetailScreen({ route, navigation }) {
             <Text style={styles.backText}>חזרה</Text>
           </TouchableOpacity>
         </View>
+
+        {dream.imageUri ? (
+          <View style={styles.visionBoard}>
+            <Image source={{ uri: dream.imageUri }} style={styles.visionImage} />
+            <TouchableOpacity
+              style={styles.visionEditButton}
+              onPress={handlePickImage}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.visionEditIcon}>✏️</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.visionAddButton}
+            onPress={handlePickImage}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.visionAddButtonText}>הוסף תמונת השראה 📷</Text>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity style={styles.exportButton} onPress={handleExport} activeOpacity={0.85}>
           <Text style={styles.exportButtonText}>🖨️ ייצא למחברת A5</Text>
@@ -284,6 +327,54 @@ const styles = StyleSheet.create({
     color: COLORS.accent,
     fontSize: 15,
     fontFamily: FONTS.bold,
+  },
+  visionAddButton: {
+    paddingVertical: 22,
+    borderRadius: 20,
+    backgroundColor: COLORS.glass,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderStyle: "dashed",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  visionAddButtonText: {
+    color: COLORS.textSecondary,
+    fontSize: 15,
+    fontFamily: FONTS.medium,
+  },
+  visionBoard: {
+    marginBottom: 16,
+    borderRadius: 20,
+    position: "relative",
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 5,
+  },
+  visionImage: {
+    width: "100%",
+    height: 200,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  visionEditButton: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255, 255, 255, 0.85)",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  visionEditIcon: {
+    fontSize: 16,
   },
   card: {
     padding: 20,

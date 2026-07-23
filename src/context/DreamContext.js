@@ -1,6 +1,10 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, View } from "react-native";
 
 import { useAuth } from "./AuthContext";
+import { STORAGE_KEYS } from "../utils/storageKeys";
+import { COLORS } from "../utils/theme";
 
 const DreamContext = createContext(undefined);
 
@@ -11,6 +15,7 @@ const INITIAL_DREAMS = [
     type: "money",
     current: 1500,
     target: 5000,
+    imageUri: null,
     tasks: [],
     notes: [],
   },
@@ -20,6 +25,7 @@ const INITIAL_DREAMS = [
     type: "knowledge",
     current: 20,
     target: 100,
+    imageUri: null,
     tasks: [],
     notes: [],
   },
@@ -27,7 +33,34 @@ const INITIAL_DREAMS = [
 
 export function DreamProvider({ children }) {
   const { addCoins } = useAuth();
-  const [dreams, setDreams] = useState(INITIAL_DREAMS);
+  const [dreams, setDreams] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  // Guards the save effect so we never overwrite storage before hydration.
+  const hasHydrated = useRef(false);
+
+  // Hydrate from storage on mount, falling back to the mock dreams only when
+  // storage holds nothing usable.
+  useEffect(() => {
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem(STORAGE_KEYS.dreams);
+        const parsed = stored ? JSON.parse(stored) : null;
+        setDreams(Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_DREAMS);
+      } catch {
+        setDreams(INITIAL_DREAMS);
+      } finally {
+        hasHydrated.current = true;
+        setIsLoading(false);
+      }
+    })();
+  }, []);
+
+  // Persist on every change once hydrated.
+  useEffect(() => {
+    if (hasHydrated.current) {
+      AsyncStorage.setItem(STORAGE_KEYS.dreams, JSON.stringify(dreams)).catch(() => {});
+    }
+  }, [dreams]);
 
   const addDream = ({ title, type, target }) => {
     const newDream = {
@@ -36,6 +69,7 @@ export function DreamProvider({ children }) {
       type,
       current: 0,
       target,
+      imageUri: null,
       tasks: [],
       notes: [],
     };
@@ -94,10 +128,39 @@ export function DreamProvider({ children }) {
     );
   };
 
+  const setDreamImage = (dreamId, uri) => {
+    setDreams((prev) =>
+      prev.map((dream) => (dream.id === dreamId ? { ...dream, imageUri: uri } : dream))
+    );
+  };
+
   const value = useMemo(
-    () => ({ dreams, addDream, updateDreamProgress, addTask, toggleTask, addNote }),
+    () => ({
+      dreams,
+      addDream,
+      updateDreamProgress,
+      addTask,
+      toggleTask,
+      addNote,
+      setDreamImage,
+    }),
     [dreams, addCoins]
   );
+
+  if (isLoading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: COLORS.background,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <ActivityIndicator color={COLORS.accent} />
+      </View>
+    );
+  }
 
   return <DreamContext.Provider value={value}>{children}</DreamContext.Provider>;
 }
