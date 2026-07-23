@@ -1,3 +1,5 @@
+import * as Clipboard from "expo-clipboard";
+import { useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -56,6 +58,31 @@ export function ToolResult({ label, value, highlight = false }) {
 
 export function ToolResultCard({ children }) {
   return <View style={styles.resultCard}>{children}</View>;
+}
+
+export function ToolCopyButton({ text, label = "העתק", color = COLORS.accent, style }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    if (!text) return;
+    try {
+      await Clipboard.setStringAsync(String(text));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      alert("שגיאה בהעתקה");
+    }
+  };
+
+  return (
+    <TouchableOpacity
+      style={[styles.button, { backgroundColor: color }, style]}
+      onPress={copy}
+      activeOpacity={0.85}
+    >
+      <Text style={styles.buttonText}>{copied ? "הועתק! ✓" : `${label} 📋`}</Text>
+    </TouchableOpacity>
+  );
 }
 
 // Reusable bottom-sheet modal shared by every tools hub screen.

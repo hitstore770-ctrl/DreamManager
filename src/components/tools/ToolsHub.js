@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { COLORS, FONTS } from "../../utils/theme";
@@ -10,7 +17,12 @@ import { ToolSheet } from "./ToolKit";
 // AdvancedToolsScreen render this with their own `tools` array.
 export default function ToolsHub({ title, tools, navigation, headerButton }) {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const [activeTool, setActiveTool] = useState(null);
+
+  // Narrow cover screens (e.g. Galaxy Z Flip) get a single-column list;
+  // everything wider keeps the 2-column grid.
+  const isNarrow = width < 400;
 
   const ActiveComponent = activeTool?.Component;
 
@@ -38,12 +50,18 @@ export default function ToolsHub({ title, tools, navigation, headerButton }) {
           {tools.map((tool) => (
             <TouchableOpacity
               key={tool.key}
-              style={styles.toolCard}
+              style={[
+                isNarrow ? styles.toolCardNarrow : styles.toolCardWide,
+              ]}
               onPress={() => setActiveTool(tool)}
               activeOpacity={0.85}
             >
-              <Text style={styles.toolEmoji}>{tool.emoji}</Text>
-              <Text style={styles.toolLabel}>{tool.label}</Text>
+              <Text style={isNarrow ? styles.toolEmojiNarrow : styles.toolEmoji}>
+                {tool.emoji}
+              </Text>
+              <Text style={[styles.toolLabel, isNarrow && styles.toolLabelNarrow]}>
+                {tool.label}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -107,7 +125,7 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     justifyContent: "space-between",
   },
-  toolCard: {
+  toolCardWide: {
     width: "48%",
     aspectRatio: 1,
     borderRadius: 20,
@@ -124,14 +142,40 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 3,
   },
+  toolCardNarrow: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 18,
+    backgroundColor: COLORS.glass,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    marginBottom: 12,
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 3,
+  },
   toolEmoji: {
     fontSize: 40,
     marginBottom: 12,
+  },
+  toolEmojiNarrow: {
+    fontSize: 28,
+    marginEnd: 14,
   },
   toolLabel: {
     color: COLORS.textPrimary,
     fontSize: 14,
     fontFamily: FONTS.medium,
     textAlign: "center",
+  },
+  toolLabelNarrow: {
+    fontSize: 16,
+    textAlign: "right",
+    flex: 1,
   },
 });

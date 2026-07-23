@@ -19,6 +19,21 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "האפליקציה משתמשת במצלמה כדי לסרוק מסמכים וברקודים."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "האפליקציה ניגשת לגלריה כדי לצרף תמונות השראה וקבלות.",
+          "cameraPermission": "האפליקציה משתמשת במצלמה כדי לסרוק מסמכים."
+        }
+      ]
+    ]
   }
 }
