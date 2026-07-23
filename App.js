@@ -15,6 +15,7 @@ import {
 import PinLock from "./src/components/PinLock";
 import { AuthProvider } from "./src/context/AuthContext";
 import { DreamProvider } from "./src/context/DreamContext";
+import { NotesProvider } from "./src/context/NotesContext";
 import { SettingsProvider, useSettings } from "./src/context/SettingsContext";
 import AppNavigator from "./src/navigation/AppNavigator";
 
@@ -72,7 +73,9 @@ export default function App() {
         <SettingsProvider>
           <AuthProvider>
             <DreamProvider>
-              <Shell />
+              <NotesProvider>
+                <Shell />
+              </NotesProvider>
             </DreamProvider>
           </AuthProvider>
         </SettingsProvider>

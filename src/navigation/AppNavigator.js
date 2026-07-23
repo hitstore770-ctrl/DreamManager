@@ -8,6 +8,8 @@ import ArcadeScreen from "../screens/ArcadeScreen";
 import DashboardScreen from "../screens/DashboardScreen";
 import DreamDetailScreen from "../screens/DreamDetailScreen";
 import LoginScreen from "../screens/LoginScreen";
+import NoteEditorScreen from "../screens/NoteEditorScreen";
+import NotesHubScreen from "../screens/NotesHubScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import ToolScreen from "../screens/ToolScreen";
 import DrawerContent from "./DrawerContent";
@@ -31,6 +33,7 @@ function MainDrawer() {
       }}
     >
       <Drawer.Screen name="Dashboard" component={DashboardScreen} />
+      <Drawer.Screen name="Notes" component={NotesHubScreen} />
       {TOOLS.map((tool) => (
         <Drawer.Screen
           key={tool.key}
@@ -53,6 +56,7 @@ export default function AppNavigator() {
       {user ? (
         <>
           <RootStack.Screen name="Main" component={MainDrawer} />
+          <RootStack.Screen name="NoteEditor" component={NoteEditorScreen} />
           <RootStack.Screen name="DreamDetail" component={DreamDetailScreen} />
           <RootStack.Screen
             name="AddDream"

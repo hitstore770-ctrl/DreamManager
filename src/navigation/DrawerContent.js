@@ -58,6 +58,7 @@ export default function DrawerContent(props) {
 
         <View style={styles.body}>
           <Item name="Dashboard" emoji="🏠" label="לוח בקרה" active={activeRoute === "Dashboard"} />
+          <Item name="Notes" emoji="📝" label="פנקס חכם" active={activeRoute === "Notes"} />
 
           {orderedCategories(workspace).map((catKey) => {
             const cat = catInfo(catKey);
