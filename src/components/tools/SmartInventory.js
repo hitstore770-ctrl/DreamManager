@@ -6,6 +6,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 
@@ -295,7 +296,9 @@ export default function SmartInventory() {
 
       {/* Custom-price sale modal */}
       <Modal visible={!!sellItem} transparent animationType="fade" onRequestClose={() => setSellItem(null)}>
+        <TouchableWithoutFeedback onPress={() => setSellItem(null)}>
         <View style={styles.modalWrap}>
+          <TouchableWithoutFeedback onPress={() => {}}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>מכירת "{sellItem?.name}"</Text>
             <Text style={styles.modalLabel}>מחיר מכירה בפועל</Text>
@@ -317,7 +320,9 @@ export default function SmartInventory() {
               </TouchableOpacity>
             </View>
           </View>
+          </TouchableWithoutFeedback>
         </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </View>
   );

@@ -6,6 +6,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   Vibration,
   View,
 } from "react-native";
@@ -166,7 +167,9 @@ export default function ExpressPOS() {
 
       {/* Custom qty modal */}
       <Modal visible={!!qtyItem} transparent animationType="fade" onRequestClose={() => setQtyItem(null)}>
-        <View style={styles.modalWrap}>
+        <TouchableWithoutFeedback onPress={() => setQtyItem(null)}>
+          <View style={styles.modalWrap}>
+            <TouchableWithoutFeedback onPress={() => {}}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>כמות עבור "{qtyItem?.name}"</Text>
             <TextInput
@@ -188,7 +191,9 @@ export default function ExpressPOS() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </View>
   );

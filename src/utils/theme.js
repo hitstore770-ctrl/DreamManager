@@ -1,41 +1,117 @@
-// Neo-brutalist theme — flat cream desk, solid blocks of White / Navy /
-// Mustard, thick black outlines and a hard (blur-less) offset shadow so every
-// surface reads like a bold printed sticker. A clean bold sans-serif (Heebo)
-// carries the Hebrew type.
+// Modern, sleek design system — a soft iOS / Material surface language.
+// Light-grey canvas, white cards, a deep-blue brand and a swappable accent,
+// gentle drop shadows (low opacity, soft blur), generous rounded corners and
+// the clean Heebo Hebrew sans-serif.
+//
+// The legacy neo-brutalist export names (BRUTAL_SHADOW, BRUTAL_BORDER, …) are
+// kept as *soft* aliases so every existing tool restyles automatically without
+// touching its code.
+
+// ---------------------------------------------------------------------------
+// Accent palette — user-pickable in Settings. First entry is the default.
+// ---------------------------------------------------------------------------
+export const ACCENTS = [
+  { key: "blue", label: "כחול", color: "#2E6BE6" },
+  { key: "violet", label: "סגול", color: "#7C5CFC" },
+  { key: "teal", label: "טורקיז", color: "#12B5A5" },
+  { key: "coral", label: "אלמוג", color: "#F5643A" },
+  { key: "pink", label: "ורוד", color: "#EC4899" },
+  { key: "green", label: "ירוק", color: "#16A34A" },
+];
+
+export function accentColor(key) {
+  return (ACCENTS.find((a) => a.key === key) || ACCENTS[0]).color;
+}
+
+// ---------------------------------------------------------------------------
+// makeTheme(scheme, accentKey) → a full palette object for the active mode.
+// Consumed by SettingsContext and every new shell screen via useSettings().
+// ---------------------------------------------------------------------------
+export function makeTheme(scheme = "light", accentKey = "blue") {
+  const accent = accentColor(accentKey);
+  const dark = scheme === "dark";
+
+  if (dark) {
+    return {
+      scheme: "dark",
+      accent,
+      background: "#0E1116", // near-black canvas
+      surface: "#171B22", // card
+      surfaceAlt: "#1F242D", // slightly raised / input
+      surfaceMuted: "#22272F",
+      brand: "#3B6FD4", // deep blue
+      textPrimary: "#F2F4F7",
+      textSecondary: "#AEB6C2",
+      textMuted: "#6B7480",
+      border: "#262C36",
+      hairline: "#20252E",
+      danger: "#F26060",
+      warning: "#F5B33C",
+      success: "#3FBE77",
+      onAccent: "#FFFFFF",
+      overlay: "rgba(0,0,0,0.6)",
+    };
+  }
+
+  return {
+    scheme: "light",
+    accent,
+    background: "#F2F4F7", // light grey canvas
+    surface: "#FFFFFF", // white card
+    surfaceAlt: "#F7F9FC", // subtle raised / input fill
+    surfaceMuted: "#EEF1F6",
+    brand: "#17315C", // deep navy blue
+    textPrimary: "#101828",
+    textSecondary: "#475467",
+    textMuted: "#98A2B3",
+    border: "#E4E8EF",
+    hairline: "#EDF0F5",
+    danger: "#E14848",
+    warning: "#E5A400",
+    success: "#12965A",
+    onAccent: "#FFFFFF",
+    overlay: "rgba(16,24,40,0.45)",
+  };
+}
+
+// Static default palette (light) — kept for modules that import COLORS at the
+// top level. Keys mirror the legacy names so nothing breaks.
+const T = makeTheme("light", "blue");
 
 export const COLORS = {
-  background: "#FDF8F0", // light cream / beige
-  card: "#FFFFFF", // solid white surface
-  textPrimary: "#1A1A1A", // near-black ink
-  textSecondary: "#3A3A3A",
-  textMuted: "#8A8A8A",
-  border: "#1A1A1A", // thick black outline
-  shadow: "#1A1A1A", // hard black drop shadow
-  accent: "#1B3A6B", // navy blue (primary action)
-  navy: "#1B3A6B",
-  mustard: "#F4B400", // mustard yellow (highlight)
+  background: T.background,
+  card: T.surface,
+  surface: T.surface,
+  surfaceAlt: T.surfaceAlt,
+  textPrimary: T.textPrimary,
+  textSecondary: T.textSecondary,
+  textMuted: T.textMuted,
+  border: T.hairline,
+  shadow: "#101828",
+  accent: T.accent, // primary action → the vivid accent
+  navy: T.brand, // deep blue brand
+  brand: T.brand,
+  mustard: T.warning, // legacy "mustard" now maps to the amber warning tone
+  warning: T.warning,
   white: "#FFFFFF",
-  danger: "#E23B3B",
-  success: "#1E9E58",
+  danger: T.danger,
+  success: T.success,
 
-  // Legacy aliases kept so older components restyle automatically: anything
-  // that used the old translucent "glass" now sits on a solid white block.
+  // Legacy translucent aliases → solid white surface.
   glass: "#FFFFFF",
   glassSolid: "#FFFFFF",
 };
 
-// Bold flat blocks cycled across tiles/cards. All keep dark text readable.
+// Soft pastel tints cycled across tool tiles / sticky notes.
 export const NOTE_COLORS = [
-  "#FFFFFF", // white
-  "#F4B400", // mustard
-  "#BFE3FF", // sky
-  "#C7F0D2", // mint
-  "#FFC9D6", // pink
-  "#E4D4FF", // lilac
+  "#EAF1FF", // sky
+  "#E7FBF3", // mint
+  "#FFF3E0", // cream
+  "#FDE8EF", // blush
+  "#EFEAFE", // lilac
+  "#E9F7FF", // ice
 ];
 
-// Deterministic block color from a seed (id/index) so a card keeps the same
-// look across renders instead of flickering.
 function hashSeed(seed) {
   const str = String(seed);
   let hash = 0;
@@ -49,47 +125,69 @@ export function getNoteColor(seed) {
   return NOTE_COLORS[hashSeed(seed) % NOTE_COLORS.length];
 }
 
-// Neo-brutalism keeps everything squared-up — no tilt.
+// Modern cards sit flat — no tilt.
 export function getNoteTilt() {
   return "0deg";
 }
 
-// The signature hard drop shadow: solid black, offset 4px to the
-// bottom-right, zero blur. Pair with BRUTAL_BORDER for the full effect.
-export const BRUTAL_SHADOW = {
-  shadowColor: COLORS.shadow,
-  shadowOffset: { width: 4, height: 4 },
-  shadowOpacity: 1,
-  shadowRadius: 0,
-  elevation: 6,
+// ---------------------------------------------------------------------------
+// Elevation — soft, blurred, low-opacity shadows (replaces the hard brutal
+// offset shadow). Legacy names preserved.
+// ---------------------------------------------------------------------------
+export const SHADOW = {
+  shadowColor: "#101828",
+  shadowOffset: { width: 0, height: 6 },
+  shadowOpacity: 0.1,
+  shadowRadius: 16,
+  elevation: 4,
 };
 
-// A softer variant (2px) for smaller controls like inputs/chips.
-export const BRUTAL_SHADOW_SM = {
-  shadowColor: COLORS.shadow,
-  shadowOffset: { width: 2, height: 2 },
-  shadowOpacity: 1,
-  shadowRadius: 0,
-  elevation: 3,
+export const SHADOW_SM = {
+  shadowColor: "#101828",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.08,
+  shadowRadius: 8,
+  elevation: 2,
 };
 
-// Standard thick outline for every card/button/input.
+export const SHADOW_LG = {
+  shadowColor: "#101828",
+  shadowOffset: { width: 0, height: 12 },
+  shadowOpacity: 0.14,
+  shadowRadius: 28,
+  elevation: 10,
+};
+
+// Legacy aliases → soft shadows so existing tools pick up the new elevation.
+export const BRUTAL_SHADOW = SHADOW;
+export const BRUTAL_SHADOW_SM = SHADOW_SM;
+export const PAPER_SHADOW = SHADOW;
+
+// A hairline border (was a 2px black outline). Kept subtle so cards read as
+// soft surfaces, not boxed blocks.
 export const BRUTAL_BORDER = {
-  borderWidth: 2,
-  borderColor: COLORS.border,
+  borderWidth: 1,
+  borderColor: T.hairline,
 };
+export const HAIRLINE = BRUTAL_BORDER;
 
-// Legacy alias — components that referenced the old "paper" shadow now get the
-// hard neo-brutalist shadow automatically.
-export const PAPER_SHADOW = BRUTAL_SHADOW;
+// Generous rounded corners.
+export const RADIUS = 16;
+export const RADIUS_SM = 12;
+export const RADIUS_LG = 22;
 
-// Squared-off but not fully sharp corners.
-export const RADIUS = 10;
+// Spacing scale for consistent, generous padding.
+export const SPACING = { xs: 6, sm: 10, md: 16, lg: 22, xl: 30 };
 
-// Heebo — a clean, modern, bold Hebrew sans-serif. Three real weights so the
-// type hierarchy is carried by weight, not just size.
 export const FONTS = {
   regular: "Heebo_400Regular",
   medium: "Heebo_500Medium",
   bold: "Heebo_700Bold",
+};
+
+// Font-scale multipliers for the accessibility setting.
+export const FONT_SCALES = {
+  small: 0.9,
+  medium: 1,
+  large: 1.15,
 };
