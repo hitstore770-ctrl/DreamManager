@@ -33,6 +33,18 @@
           "photosPermission": "האפליקציה ניגשת לגלריה כדי לצרף תמונות השראה וקבלות.",
           "cameraPermission": "האפליקציה משתמשת במצלמה כדי לסרוק מסמכים."
         }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "האפליקציה משתמשת במיקרופון כדי להקליט הערות קוליות."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "האפליקציה משתמשת במיקום כדי לשמור תזכורות מבוססות מיקום."
+        }
       ]
     ]
   }

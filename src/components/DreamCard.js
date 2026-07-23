@@ -2,14 +2,20 @@ import { I18nManager, StyleSheet, Text, TouchableOpacity, View } from "react-nat
 
 import { getCategory } from "../utils/dreamCategories";
 import { formatAmount } from "../utils/format";
-import { COLORS, FONTS } from "../utils/theme";
+import { COLORS, FONTS, PAPER_SHADOW, getNoteColor, getNoteTilt } from "../utils/theme";
 
-export default function DreamCard({ title, type, current, target, onPress }) {
+export default function DreamCard({ id, title, type, current, target, onPress }) {
   const category = getCategory(type);
   const percentage = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
+  const noteColor = getNoteColor(id ?? title);
+  const tilt = getNoteTilt(id ?? title);
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity
+      style={[styles.card, { backgroundColor: noteColor, transform: [{ rotate: tilt }] }]}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
       <View style={styles.headerRow}>
         <Text style={styles.title} numberOfLines={1}>
           {title}
@@ -46,16 +52,10 @@ export default function DreamCard({ title, type, current, target, onPress }) {
 const styles = StyleSheet.create({
   card: {
     padding: 20,
-    borderRadius: 20,
-    backgroundColor: COLORS.glass,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    marginBottom: 16,
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    elevation: 3,
+    borderRadius: 6,
+    marginBottom: 18,
+    marginHorizontal: 4,
+    ...PAPER_SHADOW,
   },
   headerRow: {
     flexDirection: "row",

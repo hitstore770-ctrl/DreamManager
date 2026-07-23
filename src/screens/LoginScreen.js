@@ -9,6 +9,7 @@ export default function LoginScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.card}>
+        <Text style={styles.logo}>🗒️</Text>
         <Text style={styles.title}>מנהל החלומות</Text>
         <Text style={styles.subtitle}>
           עקבו אחר המטרות, הכספים וההתקדמות שלכם - במקום אחד.
@@ -58,6 +59,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 20,
     elevation: 6,
+  },
+  logo: {
+    fontSize: 48,
+    marginBottom: 8,
   },
   title: {
     color: COLORS.textPrimary,

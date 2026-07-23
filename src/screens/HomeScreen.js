@@ -45,7 +45,7 @@ export default function HomeScreen({ navigation }) {
           onPress={() => navigation.navigate("Tools")}
           activeOpacity={0.85}
         >
-          <Text style={styles.actionButtonText}>🛠️ ארגז כלים</Text>
+          <Text style={styles.actionButtonText}>🧰 ארגז כלים</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.actionButton}

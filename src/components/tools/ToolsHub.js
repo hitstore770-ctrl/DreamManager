@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { COLORS, FONTS } from "../../utils/theme";
+import { COLORS, FONTS, PAPER_SHADOW, getNoteColor, getNoteTilt } from "../../utils/theme";
 import { ToolSheet } from "./ToolKit";
 
 // A full tools hub: header, an optional action button, a glass grid of
@@ -52,6 +52,10 @@ export default function ToolsHub({ title, tools, navigation, headerButton }) {
               key={tool.key}
               style={[
                 isNarrow ? styles.toolCardNarrow : styles.toolCardWide,
+                {
+                  backgroundColor: getNoteColor(tool.key),
+                  transform: [{ rotate: getNoteTilt(tool.key) }],
+                },
               ]}
               onPress={() => setActiveTool(tool)}
               activeOpacity={0.85}
@@ -126,38 +130,25 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   toolCardWide: {
-    width: "48%",
+    width: "47%",
     aspectRatio: 1,
-    borderRadius: 20,
-    backgroundColor: COLORS.glass,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    borderRadius: 6,
     alignItems: "center",
     justifyContent: "center",
     padding: 16,
-    marginBottom: 16,
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    elevation: 3,
+    marginBottom: 18,
+    marginHorizontal: 4,
+    ...PAPER_SHADOW,
   },
   toolCardNarrow: {
     width: "100%",
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 18,
-    backgroundColor: COLORS.glass,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    borderRadius: 6,
     paddingVertical: 16,
     paddingHorizontal: 18,
-    marginBottom: 12,
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    elevation: 3,
+    marginBottom: 14,
+    ...PAPER_SHADOW,
   },
   toolEmoji: {
     fontSize: 40,
