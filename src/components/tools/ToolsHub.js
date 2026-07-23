@@ -9,7 +9,15 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { COLORS, FONTS, PAPER_SHADOW, getNoteColor, getNoteTilt } from "../../utils/theme";
+import {
+  BRUTAL_BORDER,
+  BRUTAL_SHADOW,
+  BRUTAL_SHADOW_SM,
+  COLORS,
+  FONTS,
+  RADIUS,
+  getNoteColor,
+} from "../../utils/theme";
 import { ToolSheet } from "./ToolKit";
 
 // A full tools hub: header, an optional action button, a glass grid of
@@ -52,10 +60,7 @@ export default function ToolsHub({ title, tools, navigation, headerButton }) {
               key={tool.key}
               style={[
                 isNarrow ? styles.toolCardNarrow : styles.toolCardWide,
-                {
-                  backgroundColor: getNoteColor(tool.key),
-                  transform: [{ rotate: getNoteTilt(tool.key) }],
-                },
+                { backgroundColor: getNoteColor(tool.key) },
               ]}
               onPress={() => setActiveTool(tool)}
               activeOpacity={0.85}
@@ -109,15 +114,12 @@ const styles = StyleSheet.create({
   },
   headerButton: {
     paddingVertical: 14,
-    borderRadius: 16,
-    backgroundColor: COLORS.accent,
+    borderRadius: RADIUS,
+    backgroundColor: COLORS.navy,
     alignItems: "center",
     marginBottom: 20,
-    shadowColor: COLORS.accent,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 14,
-    elevation: 6,
+    ...BRUTAL_BORDER,
+    ...BRUTAL_SHADOW,
   },
   headerButtonText: {
     color: "#FFFFFF",
@@ -132,23 +134,25 @@ const styles = StyleSheet.create({
   toolCardWide: {
     width: "47%",
     aspectRatio: 1,
-    borderRadius: 6,
+    borderRadius: RADIUS,
     alignItems: "center",
     justifyContent: "center",
     padding: 16,
     marginBottom: 18,
     marginHorizontal: 4,
-    ...PAPER_SHADOW,
+    ...BRUTAL_BORDER,
+    ...BRUTAL_SHADOW,
   },
   toolCardNarrow: {
     width: "100%",
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 6,
+    borderRadius: RADIUS,
     paddingVertical: 16,
     paddingHorizontal: 18,
     marginBottom: 14,
-    ...PAPER_SHADOW,
+    ...BRUTAL_BORDER,
+    ...BRUTAL_SHADOW_SM,
   },
   toolEmoji: {
     fontSize: 40,

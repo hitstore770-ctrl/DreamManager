@@ -1,7 +1,7 @@
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { useAuth } from "../context/AuthContext";
-import { COLORS, FONTS } from "../utils/theme";
+import { BRUTAL_BORDER, BRUTAL_SHADOW, BRUTAL_SHADOW_SM, COLORS, FONTS, RADIUS } from "../utils/theme";
 
 export default function LoginScreen() {
   const { signInWithGoogle, isAuthenticating } = useAuth();
@@ -9,17 +9,19 @@ export default function LoginScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.card}>
-        <Text style={styles.logo}>🗒️</Text>
-        <Text style={styles.title}>מנהל החלומות</Text>
+        <View style={styles.logoBox}>
+          <Text style={styles.logo}>💪</Text>
+        </View>
+        <Text style={styles.title}>יאללה לעבודה</Text>
         <Text style={styles.subtitle}>
-          עקבו אחר המטרות, הכספים וההתקדמות שלכם - במקום אחד.
+          הפרויקטים, הכספים והזמן שלך - הכל במקום אחד. בוא נראה כסף.
         </Text>
 
         <TouchableOpacity
           style={[styles.googleButton, isAuthenticating && styles.googleButtonDisabled]}
           onPress={signInWithGoogle}
           disabled={isAuthenticating}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
         >
           {isAuthenticating ? (
             <ActivityIndicator color={COLORS.textPrimary} />
@@ -49,26 +51,30 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 360,
     padding: 28,
-    borderRadius: 24,
-    backgroundColor: COLORS.glass,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    borderRadius: RADIUS,
+    backgroundColor: COLORS.card,
     alignItems: "center",
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 6,
+    ...BRUTAL_BORDER,
+    ...BRUTAL_SHADOW,
+  },
+  logoBox: {
+    width: 72,
+    height: 72,
+    borderRadius: RADIUS,
+    backgroundColor: COLORS.mustard,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 18,
+    ...BRUTAL_BORDER,
+    ...BRUTAL_SHADOW_SM,
   },
   logo: {
-    fontSize: 48,
-    marginBottom: 8,
+    fontSize: 38,
   },
   title: {
     color: COLORS.textPrimary,
-    fontSize: 30,
+    fontSize: 32,
     fontFamily: FONTS.bold,
-    letterSpacing: 0.5,
   },
   subtitle: {
     color: COLORS.textSecondary,
@@ -77,32 +83,27 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 10,
     marginBottom: 32,
-    lineHeight: 20,
+    lineHeight: 21,
   },
   googleButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     width: "100%",
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    height: 54,
+    borderRadius: RADIUS,
+    backgroundColor: COLORS.white,
+    ...BRUTAL_BORDER,
+    ...BRUTAL_SHADOW_SM,
   },
   googleButtonDisabled: {
     opacity: 0.75,
   },
   googleBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "#4285F4",
+    width: 26,
+    height: 26,
+    borderRadius: 6,
+    backgroundColor: COLORS.navy,
     alignItems: "center",
     justifyContent: "center",
     marginEnd: 12,
@@ -115,6 +116,6 @@ const styles = StyleSheet.create({
   googleButtonText: {
     color: COLORS.textPrimary,
     fontSize: 16,
-    fontFamily: FONTS.medium,
+    fontFamily: FONTS.bold,
   },
 });

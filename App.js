@@ -2,7 +2,12 @@ import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, I18nManager, View } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { useFonts, GveretLevin_400Regular } from "@expo-google-fonts/gveret-levin";
+import {
+  useFonts,
+  Heebo_400Regular,
+  Heebo_500Medium,
+  Heebo_700Bold,
+} from "@expo-google-fonts/heebo";
 
 import { AuthProvider } from "./src/context/AuthContext";
 import { DreamProvider } from "./src/context/DreamContext";
@@ -18,7 +23,9 @@ if (!I18nManager.isRTL) {
 
 export default function App() {
   const [fontsLoaded] = useFonts({
-    GveretLevin_400Regular,
+    Heebo_400Regular,
+    Heebo_500Medium,
+    Heebo_700Bold,
   });
 
   if (!fontsLoaded) {

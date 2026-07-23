@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import DreamCard from "../components/DreamCard";
 import { useAuth } from "../context/AuthContext";
 import { useDreams } from "../context/DreamContext";
-import { COLORS, FONTS } from "../utils/theme";
+import { BRUTAL_BORDER, BRUTAL_SHADOW, BRUTAL_SHADOW_SM, COLORS, FONTS, RADIUS } from "../utils/theme";
 
 export default function HomeScreen({ navigation }) {
   const { user, logout } = useAuth();
@@ -23,8 +23,8 @@ export default function HomeScreen({ navigation }) {
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <View>
-          <Text style={styles.greeting}>שלום, {user?.displayName ?? "חולם"}</Text>
-          <Text style={styles.subGreeting}>אלו החלומות שלך</Text>
+          <Text style={styles.greeting}>שלום, {user?.displayName ?? "אלוף"}</Text>
+          <Text style={styles.subGreeting}>יאללה לעבודה - הפרויקטים שלי</Text>
         </View>
         <TouchableOpacity style={styles.logoutButton} onPress={logout} activeOpacity={0.8}>
           <Text style={styles.logoutButtonText}>התנתקות</Text>
@@ -36,7 +36,7 @@ export default function HomeScreen({ navigation }) {
         onPress={() => navigation.navigate("Arcade")}
         activeOpacity={0.85}
       >
-        <Text style={styles.actionButtonText}>🕹️ ארקייד: {user?.coins ?? 0} מטבעות</Text>
+        <Text style={styles.arcadeButtonText}>🎯 ארקייד: {user?.coins ?? 0} מטבעות</Text>
       </TouchableOpacity>
 
       <View style={styles.actionRow}>
@@ -48,11 +48,11 @@ export default function HomeScreen({ navigation }) {
           <Text style={styles.actionButtonText}>🧰 ארגז כלים</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.actionButton}
+          style={[styles.actionButton, styles.actionButtonAlt]}
           onPress={() => navigation.navigate("AdvancedTools")}
           activeOpacity={0.85}
         >
-          <Text style={styles.actionButtonText}>🚀 כלים מתקדמים</Text>
+          <Text style={styles.actionButtonTextAlt}>🚀 כלים מתקדמים</Text>
         </TouchableOpacity>
       </View>
 
@@ -65,7 +65,7 @@ export default function HomeScreen({ navigation }) {
       {isLoading ? (
         <View style={styles.loadingBox}>
           <ActivityIndicator color={COLORS.accent} />
-          <Text style={styles.loadingText}>טוען את החלומות שלך מהענן...</Text>
+          <Text style={styles.loadingText}>טוען את הפרויקטים שלך מהענן...</Text>
         </View>
       ) : (
         <FlatList
@@ -79,6 +79,9 @@ export default function HomeScreen({ navigation }) {
           )}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>אין פרויקטים עדיין. הוסף אחד עם ה־+</Text>
+          }
         />
       )}
 
@@ -111,79 +114,84 @@ const styles = StyleSheet.create({
   },
   greeting: {
     color: COLORS.textPrimary,
-    fontSize: 20,
+    fontSize: 22,
     fontFamily: FONTS.bold,
     textAlign: "right",
   },
   subGreeting: {
     color: COLORS.textSecondary,
     fontSize: 13,
-    fontFamily: FONTS.regular,
+    fontFamily: FONTS.medium,
     textAlign: "right",
     marginTop: 4,
   },
   logoutButton: {
     paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: COLORS.glass,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    paddingHorizontal: 14,
+    borderRadius: RADIUS,
+    backgroundColor: COLORS.white,
+    ...BRUTAL_BORDER,
+    ...BRUTAL_SHADOW_SM,
   },
   logoutButtonText: {
     color: COLORS.textPrimary,
     fontSize: 13,
-    fontFamily: FONTS.medium,
+    fontFamily: FONTS.bold,
   },
   arcadeButton: {
     marginHorizontal: 20,
-    marginBottom: 12,
-    paddingVertical: 12,
-    borderRadius: 14,
-    backgroundColor: COLORS.glass,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    marginBottom: 14,
+    paddingVertical: 14,
+    borderRadius: RADIUS,
+    backgroundColor: COLORS.mustard,
     alignItems: "center",
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    ...BRUTAL_BORDER,
+    ...BRUTAL_SHADOW,
+  },
+  arcadeButtonText: {
+    color: COLORS.textPrimary,
+    fontSize: 15,
+    fontFamily: FONTS.bold,
   },
   actionRow: {
     flexDirection: "row",
     gap: 12,
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 18,
   },
   actionButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 8,
-    borderRadius: 14,
-    backgroundColor: COLORS.glass,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    borderRadius: RADIUS,
+    backgroundColor: COLORS.white,
     alignItems: "center",
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    ...BRUTAL_BORDER,
+    ...BRUTAL_SHADOW_SM,
+  },
+  actionButtonAlt: {
+    backgroundColor: COLORS.navy,
   },
   actionButtonText: {
-    color: COLORS.accent,
+    color: COLORS.textPrimary,
+    fontSize: 14,
+    fontFamily: FONTS.bold,
+  },
+  actionButtonTextAlt: {
+    color: "#FFFFFF",
     fontSize: 14,
     fontFamily: FONTS.bold,
   },
   listContent: {
     paddingHorizontal: 20,
     paddingBottom: 120,
+  },
+  emptyText: {
+    color: COLORS.textMuted,
+    fontSize: 14,
+    fontFamily: FONTS.regular,
+    textAlign: "center",
+    marginTop: 40,
   },
   loadingBox: {
     flex: 1,
@@ -201,35 +209,31 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 12,
     padding: 12,
-    borderRadius: 12,
-    backgroundColor: "rgba(224, 124, 29, 0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(224, 124, 29, 0.3)",
+    borderRadius: RADIUS,
+    backgroundColor: "#FFE8D6",
+    ...BRUTAL_BORDER,
   },
   errorBannerText: {
-    color: "#B45309",
+    color: "#8A3B00",
     fontSize: 12,
-    fontFamily: FONTS.regular,
+    fontFamily: FONTS.medium,
     textAlign: "right",
   },
   fab: {
     position: "absolute",
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: COLORS.accent,
+    width: 62,
+    height: 62,
+    borderRadius: RADIUS,
+    backgroundColor: COLORS.navy,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: COLORS.accent,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 14,
-    elevation: 8,
+    ...BRUTAL_BORDER,
+    ...BRUTAL_SHADOW,
   },
   fabIcon: {
     color: "#FFFFFF",
-    fontSize: 30,
-    fontFamily: FONTS.regular,
-    marginTop: -2,
+    fontSize: 32,
+    fontFamily: FONTS.bold,
+    marginTop: -4,
   },
 });

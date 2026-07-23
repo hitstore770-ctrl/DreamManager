@@ -3,4 +3,6 @@
 export const STORAGE_KEYS = {
   receipts: "@dreammanager/receipts",
   shifts: "@dreammanager/shifts",
+  money: "@dreammanager/money-entries",
+  debts: "@dreammanager/debts",
 };

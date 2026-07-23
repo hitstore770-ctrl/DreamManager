@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useDreams } from "../context/DreamContext";
 import { DREAM_CATEGORIES } from "../utils/dreamCategories";
-import { COLORS, FONTS } from "../utils/theme";
+import { BRUTAL_BORDER, BRUTAL_SHADOW, BRUTAL_SHADOW_SM, COLORS, FONTS, RADIUS } from "../utils/theme";
 
 export default function AddDreamScreen({ navigation }) {
   const { addDream } = useDreams();
@@ -22,12 +22,14 @@ export default function AddDreamScreen({ navigation }) {
   const [title, setTitle] = useState("");
   const [categoryKey, setCategoryKey] = useState(null);
   const [targetValue, setTargetValue] = useState("");
+  const [cost, setCost] = useState("");
+  const [price, setPrice] = useState("");
 
   const handleSubmit = () => {
     const target = Number(targetValue);
 
     if (!title.trim()) {
-      alert("נא להזין שם לחלום");
+      alert("נא להזין שם לפרויקט");
       return;
     }
     if (!categoryKey) {
@@ -39,7 +41,13 @@ export default function AddDreamScreen({ navigation }) {
       return;
     }
 
-    addDream({ title: title.trim(), type: categoryKey, target });
+    addDream({
+      title: title.trim(),
+      type: categoryKey,
+      target,
+      cost: Number(cost) || 0,
+      price: Number(price) || 0,
+    });
     navigation.goBack();
   };
 
@@ -53,14 +61,14 @@ export default function AddDreamScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>חלום חדש</Text>
+          <Text style={styles.headerTitle}>פרויקט חדש</Text>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Text style={styles.cancelText}>ביטול</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.field}>
-          <Text style={styles.label}>שם החלום</Text>
+          <Text style={styles.label}>שם הפרויקט</Text>
           <TextInput
             style={styles.input}
             value={title}
@@ -82,20 +90,17 @@ export default function AddDreamScreen({ navigation }) {
                   style={[
                     styles.categoryButton,
                     selected && {
-                      borderColor: category.color,
-                      backgroundColor: "rgba(17, 24, 39, 0.03)",
-                      shadowColor: category.color,
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.25,
-                      shadowRadius: 10,
-                      elevation: 4,
+                      backgroundColor: category.color,
                     },
                   ]}
                   onPress={() => setCategoryKey(category.key)}
-                  activeOpacity={0.8}
+                  activeOpacity={0.85}
                 >
                   <Text
-                    style={[styles.categoryButtonText, selected && { color: category.color }]}
+                    style={[
+                      styles.categoryButtonText,
+                      selected && { color: "#FFFFFF" },
+                    ]}
                   >
                     {category.label}
                   </Text>
@@ -118,8 +123,35 @@ export default function AddDreamScreen({ navigation }) {
           />
         </View>
 
+        <View style={styles.pricingRow}>
+          <View style={styles.pricingField}>
+            <Text style={styles.label}>עלות (₪)</Text>
+            <TextInput
+              style={styles.input}
+              value={cost}
+              onChangeText={setCost}
+              placeholder="0"
+              placeholderTextColor={COLORS.textMuted}
+              keyboardType="numeric"
+              textAlign="right"
+            />
+          </View>
+          <View style={styles.pricingField}>
+            <Text style={styles.label}>מחיר מכירה (₪)</Text>
+            <TextInput
+              style={styles.input}
+              value={price}
+              onChangeText={setPrice}
+              placeholder="0"
+              placeholderTextColor={COLORS.textMuted}
+              keyboardType="numeric"
+              textAlign="right"
+            />
+          </View>
+        </View>
+
         <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} activeOpacity={0.85}>
-          <Text style={styles.submitButtonText}>הוסף חלום</Text>
+          <Text style={styles.submitButtonText}>הוסף פרויקט 💪</Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -143,34 +175,33 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: COLORS.textPrimary,
-    fontSize: 22,
+    fontSize: 24,
     fontFamily: FONTS.bold,
   },
   cancelText: {
     color: COLORS.textSecondary,
     fontSize: 15,
-    fontFamily: FONTS.regular,
+    fontFamily: FONTS.medium,
   },
   field: {
-    marginBottom: 24,
+    marginBottom: 22,
   },
   label: {
     color: COLORS.textSecondary,
     fontSize: 14,
-    fontFamily: FONTS.medium,
+    fontFamily: FONTS.bold,
     marginBottom: 10,
     textAlign: "right",
   },
   input: {
-    backgroundColor: COLORS.glass,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 14,
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS,
     paddingHorizontal: 16,
     paddingVertical: 14,
     color: COLORS.textPrimary,
     fontSize: 16,
     fontFamily: FONTS.regular,
+    ...BRUTAL_BORDER,
   },
   categoryGrid: {
     flexDirection: "row",
@@ -180,30 +211,35 @@ const styles = StyleSheet.create({
   categoryButton: {
     width: "48%",
     paddingVertical: 16,
-    borderRadius: 14,
-    backgroundColor: COLORS.glass,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    borderRadius: RADIUS,
+    backgroundColor: COLORS.white,
     alignItems: "center",
     marginBottom: 12,
+    ...BRUTAL_BORDER,
+    ...BRUTAL_SHADOW_SM,
   },
   categoryButtonText: {
     color: COLORS.textPrimary,
     fontSize: 15,
-    fontFamily: FONTS.medium,
+    fontFamily: FONTS.bold,
+  },
+  pricingRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 22,
+  },
+  pricingField: {
+    flex: 1,
   },
   submitButton: {
     marginTop: 12,
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: COLORS.accent,
+    height: 58,
+    borderRadius: RADIUS,
+    backgroundColor: COLORS.navy,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: COLORS.accent,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 14,
-    elevation: 6,
+    ...BRUTAL_BORDER,
+    ...BRUTAL_SHADOW,
   },
   submitButtonText: {
     color: "#FFFFFF",

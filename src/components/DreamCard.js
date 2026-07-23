@@ -2,28 +2,20 @@ import { I18nManager, StyleSheet, Text, TouchableOpacity, View } from "react-nat
 
 import { getCategory } from "../utils/dreamCategories";
 import { formatAmount } from "../utils/format";
-import { COLORS, FONTS, PAPER_SHADOW, getNoteColor, getNoteTilt } from "../utils/theme";
+import { BRUTAL_BORDER, BRUTAL_SHADOW, COLORS, FONTS, RADIUS } from "../utils/theme";
 
 export default function DreamCard({ id, title, type, current, target, onPress }) {
   const category = getCategory(type);
   const percentage = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
-  const noteColor = getNoteColor(id ?? title);
-  const tilt = getNoteTilt(id ?? title);
 
   return (
-    <TouchableOpacity
-      style={[styles.card, { backgroundColor: noteColor, transform: [{ rotate: tilt }] }]}
-      onPress={onPress}
-      activeOpacity={0.8}
-    >
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
       <View style={styles.headerRow}>
         <Text style={styles.title} numberOfLines={1}>
           {title}
         </Text>
-        <View style={[styles.categoryBadge, { borderColor: category.color }]}>
-          <Text style={[styles.categoryBadgeText, { color: category.color }]}>
-            {category.label}
-          </Text>
+        <View style={[styles.categoryBadge, { backgroundColor: category.color }]}>
+          <Text style={styles.categoryBadgeText}>{category.label}</Text>
         </View>
       </View>
 
@@ -43,7 +35,7 @@ export default function DreamCard({ id, title, type, current, target, onPress })
         <Text style={styles.amount}>
           {formatAmount(current, type)} מתוך {formatAmount(target, type)}
         </Text>
-        <Text style={[styles.percentage, { color: category.color }]}>{percentage}%</Text>
+        <Text style={styles.percentage}>{percentage}%</Text>
       </View>
     </TouchableOpacity>
   );
@@ -51,11 +43,13 @@ export default function DreamCard({ id, title, type, current, target, onPress })
 
 const styles = StyleSheet.create({
   card: {
-    padding: 20,
-    borderRadius: 6,
+    padding: 18,
+    borderRadius: RADIUS,
     marginBottom: 18,
     marginHorizontal: 4,
-    ...PAPER_SHADOW,
+    backgroundColor: COLORS.card,
+    ...BRUTAL_BORDER,
+    ...BRUTAL_SHADOW,
   },
   headerRow: {
     flexDirection: "row",
@@ -73,28 +67,26 @@ const styles = StyleSheet.create({
   categoryBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: "rgba(17, 24, 39, 0.03)",
-    borderWidth: 1,
+    borderRadius: 6,
+    ...BRUTAL_BORDER,
   },
   categoryBadgeText: {
     fontSize: 11,
     fontFamily: FONTS.bold,
+    color: "#FFFFFF",
   },
   progressTrack: {
-    height: 10,
-    borderRadius: 999,
-    backgroundColor: "rgba(17, 24, 39, 0.06)",
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    height: 16,
+    borderRadius: 6,
+    backgroundColor: COLORS.background,
     overflow: "hidden",
     position: "relative",
+    ...BRUTAL_BORDER,
   },
   progressFill: {
     position: "absolute",
     top: 0,
     bottom: 0,
-    borderRadius: 999,
     ...(I18nManager.isRTL ? { right: 0 } : { left: 0 }),
   },
   footerRow: {
@@ -106,10 +98,11 @@ const styles = StyleSheet.create({
   amount: {
     color: COLORS.textSecondary,
     fontSize: 13,
-    fontFamily: FONTS.regular,
+    fontFamily: FONTS.medium,
   },
   percentage: {
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: FONTS.bold,
+    color: COLORS.textPrimary,
   },
 });

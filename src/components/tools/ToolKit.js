@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { COLORS, FONTS } from "../../utils/theme";
+import { BRUTAL_BORDER, BRUTAL_SHADOW_SM, COLORS, FONTS, RADIUS } from "../../utils/theme";
 
 // Shared building blocks so every tool looks the same and stays tiny.
 
@@ -151,22 +151,23 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   input: {
-    backgroundColor: "rgba(17, 24, 39, 0.03)",
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 14,
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 13,
     color: COLORS.textPrimary,
     fontSize: 16,
     fontFamily: FONTS.regular,
+    ...BRUTAL_BORDER,
   },
   button: {
     flex: 1,
-    height: 50,
-    borderRadius: 14,
+    height: 52,
+    borderRadius: RADIUS,
     alignItems: "center",
     justifyContent: "center",
+    ...BRUTAL_BORDER,
+    ...BRUTAL_SHADOW_SM,
   },
   buttonText: {
     color: "#FFFFFF",
@@ -176,10 +177,9 @@ const styles = StyleSheet.create({
   resultCard: {
     marginTop: 8,
     padding: 16,
-    borderRadius: 16,
-    backgroundColor: "rgba(79, 107, 255, 0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(79, 107, 255, 0.18)",
+    borderRadius: RADIUS,
+    backgroundColor: COLORS.mustard,
+    ...BRUTAL_BORDER,
   },
   resultRow: {
     flexDirection: "row",
@@ -249,12 +249,12 @@ const sheetStyles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: COLORS.background,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingHorizontal: 20,
     paddingTop: 20,
     maxHeight: "85%",
-    borderWidth: 1,
+    borderTopWidth: 3,
     borderColor: COLORS.border,
   },
   header: {
@@ -273,10 +273,9 @@ const sheetStyles = StyleSheet.create({
   close: {
     width: 34,
     height: 34,
-    borderRadius: 17,
-    backgroundColor: "rgba(17, 24, 39, 0.05)",
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    borderRadius: 8,
+    backgroundColor: COLORS.white,
+    ...BRUTAL_BORDER,
     alignItems: "center",
     justifyContent: "center",
     marginStart: 12,

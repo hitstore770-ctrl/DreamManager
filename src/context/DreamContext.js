@@ -21,8 +21,14 @@ const INITIAL_DREAMS = [
     current: 1500,
     target: 5000,
     imageUri: null,
+    cost: 3200,
+    price: 5000,
     tasks: [],
     notes: [],
+    milestones: [
+      { id: "m1", title: "חצי מהדרך", target: 2500, coins: 50, released: false },
+      { id: "m2", title: "הגענו ליעד!", target: 5000, coins: 150, released: false },
+    ],
   },
   {
     id: "2",
@@ -31,10 +37,27 @@ const INITIAL_DREAMS = [
     current: 20,
     target: 100,
     imageUri: null,
+    cost: 0,
+    price: 0,
     tasks: [],
     notes: [],
+    milestones: [],
   },
 ];
+
+// Fill in fields that may be missing on documents created before the Goals
+// upgrade, so older cloud data still renders safely.
+function normalizeDream(dream) {
+  return {
+    imageUri: null,
+    cost: 0,
+    price: 0,
+    tasks: [],
+    notes: [],
+    milestones: [],
+    ...dream,
+  };
+}
 
 export function DreamProvider({ children }) {
   const { user, addCoins } = useAuth();
@@ -74,7 +97,7 @@ export function DreamProvider({ children }) {
           );
           setDreams(INITIAL_DREAMS);
         } else {
-          setDreams(snapshot.docs.map((snap) => snap.data()));
+          setDreams(snapshot.docs.map((snap) => normalizeDream(snap.data())));
         }
       } catch (err) {
         // Cloud unreachable — fall back to defaults so the app still works.
@@ -111,7 +134,7 @@ export function DreamProvider({ children }) {
     }
   };
 
-  const addDream = ({ title, type, target }) => {
+  const addDream = ({ title, type, target, cost = 0, price = 0 }) => {
     const newDream = {
       id: Date.now().toString(),
       title,
@@ -119,24 +142,83 @@ export function DreamProvider({ children }) {
       current: 0,
       target,
       imageUri: null,
+      cost,
+      price,
       tasks: [],
       notes: [],
+      milestones: [],
     };
     setDreams((prev) => [newDream, ...prev]);
     syncDream(newDream);
   };
 
+  // Bump a project's progress. Any milestone whose threshold is now reached
+  // (and hasn't paid out yet) automatically releases its coins.
   const updateDreamProgress = (id, addedValue) => {
+    let updated = null;
+    let releasedCoins = 0;
+    setDreams((prev) =>
+      prev.map((dream) => {
+        if (dream.id !== id) return dream;
+        const current = Math.min(dream.target, dream.current + addedValue);
+        const milestones = (dream.milestones ?? []).map((milestone) => {
+          if (!milestone.released && current >= milestone.target) {
+            releasedCoins += milestone.coins;
+            return { ...milestone, released: true };
+          }
+          return milestone;
+        });
+        updated = { ...dream, current, milestones };
+        return updated;
+      })
+    );
+    if (updated) patchDream(id, { current: updated.current, milestones: updated.milestones });
+    addCoins(20 + releasedCoins);
+  };
+
+  const setDreamPricing = (id, { cost, price }) => {
     let updated = null;
     setDreams((prev) =>
       prev.map((dream) => {
         if (dream.id !== id) return dream;
-        updated = { ...dream, current: Math.min(dream.target, dream.current + addedValue) };
+        updated = { ...dream, cost, price };
         return updated;
       })
     );
-    if (updated) patchDream(id, { current: updated.current });
-    addCoins(20);
+    if (updated) patchDream(id, { cost, price });
+  };
+
+  const addMilestone = (dreamId, { title, target, coins }) => {
+    const newMilestone = {
+      id: Date.now().toString(),
+      title,
+      target,
+      coins,
+      released: false,
+    };
+    let updatedMilestones = null;
+    setDreams((prev) =>
+      prev.map((dream) => {
+        if (dream.id !== dreamId) return dream;
+        updatedMilestones = [...(dream.milestones ?? []), newMilestone].sort(
+          (a, b) => a.target - b.target
+        );
+        return { ...dream, milestones: updatedMilestones };
+      })
+    );
+    if (updatedMilestones) patchDream(dreamId, { milestones: updatedMilestones });
+  };
+
+  const removeMilestone = (dreamId, milestoneId) => {
+    let updatedMilestones = null;
+    setDreams((prev) =>
+      prev.map((dream) => {
+        if (dream.id !== dreamId) return dream;
+        updatedMilestones = (dream.milestones ?? []).filter((m) => m.id !== milestoneId);
+        return { ...dream, milestones: updatedMilestones };
+      })
+    );
+    if (updatedMilestones) patchDream(dreamId, { milestones: updatedMilestones });
   };
 
   const addTask = (dreamId, text) => {
@@ -198,6 +280,9 @@ export function DreamProvider({ children }) {
       error,
       addDream,
       updateDreamProgress,
+      setDreamPricing,
+      addMilestone,
+      removeMilestone,
       addTask,
       toggleTask,
       addNote,
