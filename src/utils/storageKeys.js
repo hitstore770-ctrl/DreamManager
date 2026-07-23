@@ -5,4 +5,8 @@ export const STORAGE_KEYS = {
   shifts: "@dreammanager/shifts",
   money: "@dreammanager/money-entries",
   debts: "@dreammanager/debts",
+  onTheWay: "@dreammanager/on-the-way",
+  warehouse: "@dreammanager/warehouse",
+  focusSettings: "@dreammanager/focus-settings",
+  focusLog: "@dreammanager/focus-log",
 };
