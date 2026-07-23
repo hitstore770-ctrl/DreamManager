@@ -1,4 +1,4 @@
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 import { COLORS, FONTS } from "../../utils/theme";
 
@@ -44,6 +44,29 @@ export function ToolResult({ label, value, highlight = false }) {
 
 export function ToolResultCard({ children }) {
   return <View style={styles.resultCard}>{children}</View>;
+}
+
+export function ToolLoading({ label = "טוען..." }) {
+  return (
+    <View style={styles.centerBox}>
+      <ActivityIndicator color={COLORS.accent} />
+      <Text style={styles.centerText}>{label}</Text>
+    </View>
+  );
+}
+
+export function ToolError({ message, onRetry }) {
+  return (
+    <View style={styles.centerBox}>
+      <Text style={styles.errorEmoji}>⚠️</Text>
+      <Text style={styles.errorText}>{message}</Text>
+      {onRetry && (
+        <TouchableOpacity style={styles.retryButton} onPress={onRetry} activeOpacity={0.85}>
+          <Text style={styles.retryButtonText}>נסה שוב</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -107,6 +130,40 @@ const styles = StyleSheet.create({
   resultValueHighlight: {
     color: COLORS.accent,
     fontSize: 20,
+    fontFamily: FONTS.bold,
+  },
+  centerBox: {
+    paddingVertical: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  centerText: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    fontFamily: FONTS.regular,
+    marginTop: 12,
+  },
+  errorEmoji: {
+    fontSize: 36,
+    marginBottom: 10,
+  },
+  errorText: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    fontFamily: FONTS.regular,
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  retryButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    backgroundColor: COLORS.accent,
+  },
+  retryButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
     fontFamily: FONTS.bold,
   },
 });

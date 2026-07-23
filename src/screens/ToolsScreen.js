@@ -12,24 +12,28 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BatteryRange from "../components/tools/BatteryRange";
-import ComingSoon from "../components/tools/ComingSoon";
+import CurrencyConverter from "../components/tools/CurrencyConverter";
 import ProfitCalculator from "../components/tools/ProfitCalculator";
+import ReceiptsArchive from "../components/tools/ReceiptsArchive";
+import ShiftManager from "../components/tools/ShiftManager";
 import SplitBill from "../components/tools/SplitBill";
 import StudyTimer from "../components/tools/StudyTimer";
 import VatCalculator from "../components/tools/VatCalculator";
+import WorldClock from "../components/tools/WorldClock";
+import ZmanimTool from "../components/tools/ZmanimTool";
 import { COLORS, FONTS } from "../utils/theme";
 
 const TOOLS = [
   { key: "profit", label: "מחשבון תמחור ורווחיות", emoji: "💰", Component: ProfitCalculator },
   { key: "battery", label: "טווח סוללה לקורקינט", emoji: "🛴", Component: BatteryRange },
-  { key: "currency", label: "המרת מטבעות", emoji: "💱", Component: ComingSoon },
-  { key: "worldclock", label: "שעון עולמי", emoji: "🌍", Component: ComingSoon },
+  { key: "currency", label: "המרת מטבעות", emoji: "💱", Component: CurrencyConverter },
+  { key: "worldclock", label: "שעון עולמי", emoji: "🌍", Component: WorldClock },
   { key: "split", label: "חלוקת הוצאות", emoji: "👥", Component: SplitBill },
   { key: "vat", label: 'מחשבון מע״מ 17%', emoji: "🧾", Component: VatCalculator },
-  { key: "receipts", label: "ארכיון קבלות", emoji: "🗂️", Component: ComingSoon },
+  { key: "receipts", label: "ארכיון קבלות", emoji: "🗂️", Component: ReceiptsArchive },
   { key: "timer", label: "טיימר לימודים", emoji: "⏱️", Component: StudyTimer },
-  { key: "shifts", label: "ניהול משמרות", emoji: "📅", Component: ComingSoon },
-  { key: "zmanim", label: "זמני היום - הלכה", emoji: "🕯️", Component: ComingSoon },
+  { key: "shifts", label: "ניהול משמרות", emoji: "📅", Component: ShiftManager },
+  { key: "zmanim", label: "זמני היום - הלכה", emoji: "🕯️", Component: ZmanimTool },
 ];
 
 export default function ToolsScreen({ navigation }) {
