@@ -20,9 +20,9 @@ import {
 } from "../../utils/theme";
 import { ToolSheet } from "./ToolKit";
 
-// A full tools hub: header, an optional action button, a glass grid of
-// tools, and the shared bottom-sheet modal. Both ToolsScreen and
-// AdvancedToolsScreen render this with their own `tools` array.
+// A full tools hub: header, an optional action button, a grid of tools, and
+// the shared bottom-sheet modal. ToolsScreen renders this with its `tools`
+// array of the nine business tools.
 export default function ToolsHub({ title, tools, navigation, headerButton }) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();

@@ -41,18 +41,11 @@ export default function HomeScreen({ navigation }) {
 
       <View style={styles.actionRow}>
         <TouchableOpacity
-          style={styles.actionButton}
+          style={[styles.actionButton, styles.actionButtonAlt]}
           onPress={() => navigation.navigate("Tools")}
           activeOpacity={0.85}
         >
-          <Text style={styles.actionButtonText}>🧰 ארגז כלים</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.actionButtonAlt]}
-          onPress={() => navigation.navigate("AdvancedTools")}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.actionButtonTextAlt}>🚀 כלים מתקדמים</Text>
+          <Text style={styles.actionButtonTextAlt}>🧰 ארגז הכלים לעסק</Text>
         </TouchableOpacity>
       </View>
 

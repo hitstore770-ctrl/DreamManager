@@ -1,36 +1,26 @@
-import BatteryRange from "../components/tools/BatteryRange";
-import ClockHub from "../components/tools/ClockHub";
-import CurrencyConverter from "../components/tools/CurrencyConverter";
-import MasterCalculator from "../components/tools/MasterCalculator";
-import MessageTemplates from "../components/tools/MessageTemplates";
-import MoneyTracker from "../components/tools/MoneyTracker";
-import ProfitCalculator from "../components/tools/ProfitCalculator";
-import ShiftTracker from "../components/tools/ShiftTracker";
-import SplitBill from "../components/tools/SplitBill";
-import StudyTimer from "../components/tools/StudyTimer";
-import TaskSplitter from "../components/tools/TaskSplitter";
+import BarcodeCart from "../components/tools/BarcodeCart";
+import CrmDebts from "../components/tools/CrmDebts";
+import ExpressPOS from "../components/tools/ExpressPOS";
+import ProfitAnalyzer from "../components/tools/ProfitAnalyzer";
+import SalesEvent from "../components/tools/SalesEvent";
+import SmartInventory from "../components/tools/SmartInventory";
+import Suppliers from "../components/tools/Suppliers";
+import TithesSavings from "../components/tools/TithesSavings";
 import ToolsHub from "../components/tools/ToolsHub";
-import VatCalculator from "../components/tools/VatCalculator";
-import WorldClock from "../components/tools/WorldClock";
-import ZmanimTool from "../components/tools/ZmanimTool";
+import ZReport from "../components/tools/ZReport";
 
 const TOOLS = [
-  { key: "money", label: "אשכרה כסף", emoji: "💰", Component: MoneyTracker },
-  { key: "shifts", label: "זמן זה כסף", emoji: "⏱️", Component: ShiftTracker },
-  { key: "calculator", label: "מחשבון המאסטר", emoji: "🧮", Component: MasterCalculator },
-  { key: "clockhub", label: "זמן ברזל", emoji: "⏰", Component: ClockHub },
-  { key: "splitter", label: "מפרק משימות", emoji: "🧩", Component: TaskSplitter },
-  { key: "templates", label: "שולף הודעות", emoji: "💬", Component: MessageTemplates },
-  { key: "profit", label: "מחשבון תמחור ורווחיות", emoji: "📊", Component: ProfitCalculator },
-  { key: "battery", label: "טווח סוללה לקורקינט", emoji: "🛴", Component: BatteryRange },
-  { key: "currency", label: "המרת מטבעות", emoji: "💱", Component: CurrencyConverter },
-  { key: "worldclock", label: "שעון עולמי", emoji: "🌍", Component: WorldClock },
-  { key: "split", label: "חלוקת הוצאות", emoji: "🧮", Component: SplitBill },
-  { key: "vat", label: 'מחשבון מע״מ 17%', emoji: "🧾", Component: VatCalculator },
-  { key: "timer", label: "טיימר לימודים", emoji: "📚", Component: StudyTimer },
-  { key: "zmanim", label: "זמני היום - הלכה", emoji: "🕯️", Component: ZmanimTool },
+  { key: "inventory", label: "ניהול מלאי חכם", emoji: "📦", Component: SmartInventory },
+  { key: "pos", label: "קופת אקספרס", emoji: "🛒", Component: ExpressPOS },
+  { key: "barcode", label: "סורק ברקודים", emoji: "🔦", Component: BarcodeCart },
+  { key: "event", label: "סיכום אירוע", emoji: "🎪", Component: SalesEvent },
+  { key: "zreport", label: 'דו״ח Z', emoji: "📋", Component: ZReport },
+  { key: "profit", label: "מנתח ריווחיות", emoji: "📈", Component: ProfitAnalyzer },
+  { key: "debts", label: "פנקס חובות", emoji: "📕", Component: CrmDebts },
+  { key: "suppliers", label: "ניהול ספקים", emoji: "🚚", Component: Suppliers },
+  { key: "savings", label: "חסכונות ומעשרות", emoji: "🪙", Component: TithesSavings },
 ];
 
 export default function ToolsScreen({ navigation }) {
-  return <ToolsHub title="🧰 ארגז כלים" tools={TOOLS} navigation={navigation} />;
+  return <ToolsHub title="🧰 ארגז הכלים לעסק" tools={TOOLS} navigation={navigation} />;
 }
