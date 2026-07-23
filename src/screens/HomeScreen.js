@@ -23,13 +23,22 @@ export default function HomeScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity
-        style={styles.arcadeButton}
-        onPress={() => navigation.navigate("Arcade")}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.arcadeButtonText}>🕹️ ארקייד: {user?.coins ?? 0} מטבעות</Text>
-      </TouchableOpacity>
+      <View style={styles.actionRow}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => navigation.navigate("Arcade")}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.actionButtonText}>🕹️ ארקייד: {user?.coins ?? 0} מטבעות</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => navigation.navigate("Tools")}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.actionButtonText}>🛠️ ארגז כלים</Text>
+        </TouchableOpacity>
+      </View>
 
       <FlatList
         data={dreams}
@@ -102,10 +111,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: FONTS.medium,
   },
-  arcadeButton: {
-    marginHorizontal: 20,
+  actionRow: {
+    flexDirection: "row",
+    gap: 12,
+    paddingHorizontal: 20,
     marginBottom: 16,
+  },
+  actionButton: {
+    flex: 1,
     paddingVertical: 12,
+    paddingHorizontal: 8,
     borderRadius: 14,
     backgroundColor: COLORS.glass,
     borderWidth: 1,
@@ -117,9 +132,9 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  arcadeButtonText: {
+  actionButtonText: {
     color: COLORS.accent,
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: FONTS.bold,
   },
   listContent: {

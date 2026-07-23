@@ -3,6 +3,17 @@ export function formatAmount(value, type) {
   return type === "money" ? `₪${formatted}` : formatted;
 }
 
+export function formatNumber(value, decimals = 2) {
+  return Number(value).toLocaleString("he-IL", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: decimals,
+  });
+}
+
+export function formatShekel(value, decimals = 2) {
+  return `₪${formatNumber(value, decimals)}`;
+}
+
 export function formatDateTime(isoString) {
   return new Date(isoString).toLocaleDateString("he-IL", {
     day: "2-digit",

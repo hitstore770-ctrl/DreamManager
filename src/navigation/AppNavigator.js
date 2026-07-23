@@ -6,6 +6,7 @@ import ArcadeScreen from "../screens/ArcadeScreen";
 import DreamDetailScreen from "../screens/DreamDetailScreen";
 import HomeScreen from "../screens/HomeScreen";
 import LoginScreen from "../screens/LoginScreen";
+import ToolsScreen from "../screens/ToolsScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -19,6 +20,7 @@ export default function AppNavigator() {
           <Stack.Screen name="Home" component={HomeScreen} />
           <Stack.Screen name="DreamDetail" component={DreamDetailScreen} />
           <Stack.Screen name="Arcade" component={ArcadeScreen} />
+          <Stack.Screen name="Tools" component={ToolsScreen} />
           <Stack.Screen
             name="AddDream"
             component={AddDreamScreen}
