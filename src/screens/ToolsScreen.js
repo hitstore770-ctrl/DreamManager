@@ -24,15 +24,5 @@ const TOOLS = [
 ];
 
 export default function ToolsScreen({ navigation }) {
-  return (
-    <ToolsHub
-      title="🛠️ ארגז כלים"
-      tools={TOOLS}
-      navigation={navigation}
-      headerButton={{
-        label: "🚀 כלים מתקדמים",
-        onPress: () => navigation.navigate("AdvancedTools"),
-      }}
-    />
-  );
+  return <ToolsHub title="🛠️ ארגז כלים" tools={TOOLS} navigation={navigation} />;
 }

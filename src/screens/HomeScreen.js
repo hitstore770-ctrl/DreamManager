@@ -23,20 +23,28 @@ export default function HomeScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
+      <TouchableOpacity
+        style={styles.arcadeButton}
+        onPress={() => navigation.navigate("Arcade")}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.actionButtonText}>🕹️ ארקייד: {user?.coins ?? 0} מטבעות</Text>
+      </TouchableOpacity>
+
       <View style={styles.actionRow}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => navigation.navigate("Arcade")}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.actionButtonText}>🕹️ ארקייד: {user?.coins ?? 0} מטבעות</Text>
-        </TouchableOpacity>
         <TouchableOpacity
           style={styles.actionButton}
           onPress={() => navigation.navigate("Tools")}
           activeOpacity={0.85}
         >
           <Text style={styles.actionButtonText}>🛠️ ארגז כלים</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => navigation.navigate("AdvancedTools")}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.actionButtonText}>🚀 כלים מתקדמים</Text>
         </TouchableOpacity>
       </View>
 
@@ -110,6 +118,21 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     fontSize: 13,
     fontFamily: FONTS.medium,
+  },
+  arcadeButton: {
+    marginHorizontal: 20,
+    marginBottom: 12,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: COLORS.glass,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: "center",
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   actionRow: {
     flexDirection: "row",
