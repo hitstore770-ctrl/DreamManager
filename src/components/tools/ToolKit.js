@@ -1,4 +1,16 @@
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { COLORS, FONTS } from "../../utils/theme";
 
@@ -44,6 +56,37 @@ export function ToolResult({ label, value, highlight = false }) {
 
 export function ToolResultCard({ children }) {
   return <View style={styles.resultCard}>{children}</View>;
+}
+
+// Reusable bottom-sheet modal shared by every tools hub screen.
+export function ToolSheet({ visible, title, onClose, children }) {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        style={sheetStyles.overlay}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <TouchableOpacity style={sheetStyles.backdrop} activeOpacity={1} onPress={onClose} />
+        <View style={[sheetStyles.sheet, { paddingBottom: insets.bottom + 20 }]}>
+          <View style={sheetStyles.header}>
+            <Text style={sheetStyles.title}>{title}</Text>
+            <TouchableOpacity
+              style={sheetStyles.close}
+              onPress={onClose}
+              activeOpacity={0.8}
+            >
+              <Text style={sheetStyles.closeText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            {children}
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
 }
 
 export function ToolLoading({ label = "טוען..." }) {
@@ -165,5 +208,55 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 14,
     fontFamily: FONTS.bold,
+  },
+});
+
+const sheetStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(17, 24, 39, 0.35)",
+  },
+  sheet: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    maxHeight: "85%",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  title: {
+    flex: 1,
+    color: COLORS.textPrimary,
+    fontSize: 18,
+    fontFamily: FONTS.bold,
+    textAlign: "right",
+  },
+  close: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(17, 24, 39, 0.05)",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: "center",
+    justifyContent: "center",
+    marginStart: 12,
+  },
+  closeText: {
+    color: COLORS.textSecondary,
+    fontSize: 16,
+    fontFamily: FONTS.medium,
   },
 });

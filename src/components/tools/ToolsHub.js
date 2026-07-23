@@ -1,0 +1,137 @@
+import { useState } from "react";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { COLORS, FONTS } from "../../utils/theme";
+import { ToolSheet } from "./ToolKit";
+
+// A full tools hub: header, an optional action button, a glass grid of
+// tools, and the shared bottom-sheet modal. Both ToolsScreen and
+// AdvancedToolsScreen render this with their own `tools` array.
+export default function ToolsHub({ title, tools, navigation, headerButton }) {
+  const insets = useSafeAreaInsets();
+  const [activeTool, setActiveTool] = useState(null);
+
+  const ActiveComponent = activeTool?.Component;
+
+  return (
+    <View style={styles.container}>
+      <View style={[styles.header, { paddingTop: insets.top + 24 }]}>
+        <Text style={styles.headerTitle}>{title}</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.backText}>חזרה</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.gridContent} showsVerticalScrollIndicator={false}>
+        {headerButton && (
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={headerButton.onPress}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.headerButtonText}>{headerButton.label}</Text>
+          </TouchableOpacity>
+        )}
+
+        <View style={styles.grid}>
+          {tools.map((tool) => (
+            <TouchableOpacity
+              key={tool.key}
+              style={styles.toolCard}
+              onPress={() => setActiveTool(tool)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.toolEmoji}>{tool.emoji}</Text>
+              <Text style={styles.toolLabel}>{tool.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
+
+      <ToolSheet
+        visible={activeTool !== null}
+        title={activeTool ? `${activeTool.emoji}  ${activeTool.label}` : ""}
+        onClose={() => setActiveTool(null)}
+      >
+        {ActiveComponent && <ActiveComponent />}
+      </ToolSheet>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+    paddingHorizontal: 20,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  headerTitle: {
+    color: COLORS.textPrimary,
+    fontSize: 22,
+    fontFamily: FONTS.bold,
+  },
+  backText: {
+    color: COLORS.textSecondary,
+    fontSize: 15,
+    fontFamily: FONTS.regular,
+  },
+  gridContent: {
+    paddingBottom: 30,
+  },
+  headerButton: {
+    paddingVertical: 14,
+    borderRadius: 16,
+    backgroundColor: COLORS.accent,
+    alignItems: "center",
+    marginBottom: 20,
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+  headerButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontFamily: FONTS.bold,
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  toolCard: {
+    width: "48%",
+    aspectRatio: 1,
+    borderRadius: 20,
+    backgroundColor: COLORS.glass,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 3,
+  },
+  toolEmoji: {
+    fontSize: 40,
+    marginBottom: 12,
+  },
+  toolLabel: {
+    color: COLORS.textPrimary,
+    fontSize: 14,
+    fontFamily: FONTS.medium,
+    textAlign: "center",
+  },
+});
