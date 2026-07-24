@@ -36,7 +36,7 @@ export function makeNote(overrides = {}) {
     checklist: [], // [{ id, text, done }]
     tags: [],
     hebrewDate: null, // { iso, formatted }
-    secured: false, // blur/lock scaffold flag
+    locked: false, // PIN-gated privacy lock
     createdAt: now,
     updatedAt: now,
     ...overrides,

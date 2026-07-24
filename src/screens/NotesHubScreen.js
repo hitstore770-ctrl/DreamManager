@@ -13,9 +13,13 @@ import {
 import { ScrollView, Swipeable } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import PinLock from "../components/PinLock";
 import { useNotes } from "../context/NotesContext";
 import { useSettings } from "../context/SettingsContext";
 import { hapticLight, hapticSuccess } from "../utils/haptics";
+
+// Default note-lock PIN (hardcoded for now, per Sprint 2 spec).
+const LOCK_PIN = "1234";
 import { gregorianToHebrew } from "../utils/hebrewDate";
 import { STORAGE_KEYS } from "../utils/storageKeys";
 import { shekel, todayKey } from "../utils/posStore";
@@ -67,6 +71,7 @@ export default function NotesHubScreen({ navigation }) {
   const [toolbox, setToolbox] = useState(false);
   const [panel, setPanel] = useState(null); // scaffold panel key
   const [actionNote, setActionNote] = useState(null); // per-note action sheet
+  const [pinNote, setPinNote] = useState(null); // locked note awaiting PIN
 
   const allTags = useMemo(() => {
     const set = new Set();
@@ -192,7 +197,7 @@ export default function NotesHubScreen({ navigation }) {
             note={n}
             theme={theme}
             styles={s}
-            onOpen={() => (n.secured ? setActionNote(n) : openNote(n.id))}
+            onOpen={() => (n.locked ? setPinNote(n) : openNote(n.id))}
             onLong={() => setActionNote(n)}
             onDelete={() => deleteNote(n.id)}
           />
@@ -227,9 +232,9 @@ export default function NotesHubScreen({ navigation }) {
       <Sheet visible={!!actionNote} onClose={() => setActionNote(null)} theme={theme} title={actionNote?.title || "הערה"}>
         {actionNote && (
           <View style={{ gap: 8 }}>
-            <ActionRow theme={theme} label={actionNote.secured ? "🔓 בטל הגנה ופתח" : "✏️ פתח לעריכה"} onPress={() => { const id = actionNote.id; if (actionNote.secured) patch(id, { secured: false }); setActionNote(null); openNote(id); }} />
+            <ActionRow theme={theme} label="✏️ פתח לעריכה" onPress={() => { const n = actionNote; setActionNote(null); n.locked ? setPinNote(n) : openNote(n.id); }} />
             <ActionRow theme={theme} label={actionNote.pinned ? "📍 בטל נעיצה" : "📌 נעץ למעלה"} onPress={() => { togglePin(actionNote); setActionNote(null); }} />
-            <ActionRow theme={theme} label={actionNote.secured ? "🛡️ מוגן (הפעל/כבה)" : "🛡️ הגן על ההערה"} onPress={() => { patch(actionNote.id, { secured: !actionNote.secured }); setActionNote(null); }} />
+            <ActionRow theme={theme} label={actionNote.locked ? "🔓 בטל נעילה" : "🔒 נעל הערה"} onPress={() => { patch(actionNote.id, { locked: !actionNote.locked }); setActionNote(null); }} />
             <ActionRow theme={theme} label="📤 שתף / ייצא" onPress={async () => { const n = actionNote; setActionNote(null); try { await Share.share({ message: `📝 ${n.title}\n${n.isChecklist ? checklistToText(n.checklist) : n.body}` }); } catch {} }} />
             <ActionRow theme={theme} danger label="🗑️ מחק" onPress={() => { deleteNote(actionNote.id); setActionNote(null); }} />
           </View>
@@ -278,12 +283,22 @@ export default function NotesHubScreen({ navigation }) {
         {panel === "security" && (
           <View>
             <Text style={s.panelHint}>אבטחת הערות:</Text>
-            <View style={s.scaffoldRow}><Text style={s.scaffoldText}>🛡️ הגנת הערה (טשטוש)</Text><Text style={[s.soon, { color: theme.success }]}>פעיל</Text></View>
+            <View style={s.scaffoldRow}><Text style={s.scaffoldText}>🔒 נעילת הערה + קוד</Text><Text style={[s.soon, { color: theme.success }]}>פעיל</Text></View>
             <View style={s.scaffoldRow}><Text style={s.scaffoldText}>🔢 נעילת PIN לפנקס</Text><Text style={s.soon}>דרך ההגדרות</Text></View>
-            <Text style={s.panelHint}>סמן הערה כ״מוגנת״ (לחיצה ארוכה על הערה) כדי לטשטש אותה ברשימה. נעילת PIN גלובלית זמינה במסך ההגדרות.</Text>
+            <Text style={s.panelHint}>נעל הערה מתוך העורך (אייקון המנעול) או בלחיצה ארוכה. הערה נעולה מוצגת מטושטשת ודורשת קוד ({LOCK_PIN}) לפתיחה.</Text>
           </View>
         )}
       </Sheet>
+
+      {/* PIN gate for opening a locked note */}
+      {pinNote && (
+        <PinLock
+          mode="unlock"
+          expected={LOCK_PIN}
+          onSuccess={() => { const id = pinNote.id; setPinNote(null); openNote(id); }}
+          onCancel={() => setPinNote(null)}
+        />
+      )}
     </View>
   );
 }
@@ -292,8 +307,8 @@ export default function NotesHubScreen({ navigation }) {
 // that deletes the note (with a success haptic, fired by onDelete).
 function NoteCard({ note, theme, styles, onOpen, onLong, onDelete }) {
   const bg = noteBg(note.bg, theme.scheme === "dark");
-  const preview = note.secured
-    ? "🔒 הערה מוגנת"
+  const preview = note.locked
+    ? "🔒 הערה נעולה  •••••••••••"
     : note.isChecklist
       ? checklistToText(note.checklist).slice(0, 140)
       : (note.body || "").slice(0, 140) || "הערה ריקה";

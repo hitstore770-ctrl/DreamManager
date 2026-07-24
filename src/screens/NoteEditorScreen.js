@@ -4,6 +4,7 @@ import {
   Modal,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -22,6 +23,13 @@ import { countWords, parseInline, wrapSelection } from "../utils/markdownLite";
 import { NOTE_BG, extractTags, noteBg, textToChecklist, uid } from "../utils/notesStore";
 import { FONTS, RADIUS, RADIUS_SM, SHADOW, SHADOW_SM } from "../utils/theme";
 import HebrewDateTools from "../components/notes/HebrewDateTools";
+
+// Ready-to-use business templates appended into the note from the toolbar.
+const BUSINESS_TEMPLATES = [
+  { key: "print", emoji: "🖨️", label: "הזמנת הדפסות", text: "הזמנת הדפסות/מדבקות: לקוח: ___ | גודל: A5 | כמות: ___ | מחיר סה״כ: ___" },
+  { key: "scooter", emoji: "🛴", label: "משלוח בקורקינט", text: "משלוח (קורקינט): יעד: ___ | שעה: ___ | סטטוס: ממתין" },
+  { key: "restock", emoji: "📦", label: "השלמת מלאי", text: "השלמת מלאי קופה: מוצר: ___ | כמות חסרה: ___" },
+];
 
 export default function NoteEditorScreen({ route, navigation }) {
   const { theme, fontScale, haptic } = useSettings();
@@ -43,6 +51,7 @@ export default function NoteEditorScreen({ route, navigation }) {
   // Panels
   const [showCalc, setShowCalc] = useState(false);
   const [showDates, setShowDates] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
 
   // Floating calculator state
   const [calcExpr, setCalcExpr] = useState("");
@@ -143,6 +152,38 @@ export default function NoteEditorScreen({ route, navigation }) {
     setBody(next);
   };
 
+  // ---- Sprint 2: templates, timestamp, share ------------------------------
+  const appendTemplate = (tpl) => {
+    haptic("light");
+    setBody((b) => (b.trim() ? `${b}\n${tpl.text}` : tpl.text));
+    setShowTemplates(false);
+  };
+
+  // Inject the current HH:MM at the cursor position.
+  const insertTimestamp = () => {
+    if (readOnly) return;
+    haptic("light");
+    const now = new Date();
+    const stamp = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    const pos = Math.min(selection.start ?? body.length, body.length);
+    const next = `${body.slice(0, pos)}${stamp} ${body.slice(pos)}`;
+    setBody(next);
+    const caret = pos + stamp.length + 1;
+    setSelection({ start: caret, end: caret });
+  };
+
+  const shareNote = async () => {
+    haptic("light");
+    const content = note.isChecklist
+      ? note.checklist.map((i) => `${i.done ? "✓" : "•"} ${i.text}`).join("\n")
+      : body;
+    try {
+      await Share.share({ message: `📝 ${title || "הערה"}\n\n${content}` });
+    } catch {
+      /* user cancelled */
+    }
+  };
+
   // ---- Floating calculator ------------------------------------------------
   const calcValue = evalArithmetic(calcExpr);
   const calcEquals = () => {
@@ -209,9 +250,18 @@ export default function NoteEditorScreen({ route, navigation }) {
             {hebrewWeekday(new Date())} · {savedAt ? "נשמר ✓" : "נשמר אוטומטית"}
           </Text>
         </View>
-        <TouchableOpacity style={s.iconBtn} onPress={() => patchNote({ pinned: !note.pinned })} activeOpacity={0.7}>
-          <Text style={s.icon}>{note.pinned ? "📌" : "📍"}</Text>
-        </TouchableOpacity>
+        <View style={s.headerActions}>
+          <TouchableOpacity style={s.iconBtn} onPress={shareNote} activeOpacity={0.7}>
+            <Text style={s.icon}>📤</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.iconBtn, note.locked && { backgroundColor: theme.accent }]}
+            onPress={() => { hapticLight(); patchNote({ locked: !note.locked }); }}
+            activeOpacity={0.7}
+          >
+            <Text style={s.icon}>{note.locked ? "🔒" : "🔓"}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Formatting toolbar */}
@@ -224,7 +274,10 @@ export default function NoteEditorScreen({ route, navigation }) {
         <TBtn label="A+" on={() => bumpFont(1)} />
         <View style={s.tsep} />
         <TBtn label={preview ? "✏️ עריכה" : "👁️ תצוגה"} on={() => setPreview((p) => !p)} active={preview} wide />
-        <TBtn label={readOnly ? "🔒 נעול" : "🔓 פתוח"} on={() => patchNote({ readOnly: !readOnly })} active={readOnly} wide />
+        <TBtn label={readOnly ? "🔏 לקריאה" : "🖊️ לעריכה"} on={() => patchNote({ readOnly: !readOnly })} active={readOnly} wide />
+        <View style={s.tsep} />
+        <TBtn label="🪄 תבניות" on={() => setShowTemplates(true)} wide />
+        <TBtn label="🕐 חותמת זמן" on={insertTimestamp} wide />
       </ScrollView>
 
       {/* Background color picker — four soft pastels */}
@@ -467,6 +520,32 @@ export default function NoteEditorScreen({ route, navigation }) {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      {/* Business templates injector */}
+      <Modal visible={showTemplates} transparent animationType="fade" onRequestClose={() => setShowTemplates(false)}>
+        <TouchableWithoutFeedback onPress={() => setShowTemplates(false)}>
+          <View style={s.calcBackdrop}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={s.calcCard}>
+                <Text style={s.calcTitle}>🪄 תבניות עסקיות</Text>
+                {BUSINESS_TEMPLATES.map((tpl) => (
+                  <TouchableOpacity key={tpl.key} style={s.tplRow} onPress={() => appendTemplate(tpl)} activeOpacity={0.8}>
+                    <Text style={s.tplEmoji}>{tpl.emoji}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.tplLabel}>{tpl.label}</Text>
+                      <Text style={s.tplPreview} numberOfLines={1}>{tpl.text}</Text>
+                    </View>
+                    <Text style={s.tplPlus}>＋</Text>
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity style={[s.calcAction, { backgroundColor: theme.surfaceMuted, marginTop: 10 }]} onPress={() => setShowTemplates(false)}>
+                  <Text style={[s.calcActionText, { color: theme.textSecondary }]}>סגור</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 }
@@ -474,6 +553,7 @@ export default function NoteEditorScreen({ route, navigation }) {
 function makeStyles(t, fs) {
   return StyleSheet.create({
     header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingBottom: 10, backgroundColor: t.surface, borderBottomWidth: 1, borderBottomColor: t.hairline },
+    headerActions: { flexDirection: "row", gap: 8 },
     iconBtn: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: t.surfaceAlt },
     icon: { fontSize: 22, color: t.textPrimary, fontFamily: FONTS.bold },
     headerDate: { color: t.textPrimary, fontSize: 15 * fs, fontFamily: FONTS.bold },
@@ -525,6 +605,11 @@ function makeStyles(t, fs) {
     calcBackdrop: { flex: 1, backgroundColor: t.overlay, justifyContent: "flex-end" },
     calcCard: { backgroundColor: t.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, ...SHADOW },
     calcTitle: { color: t.textPrimary, fontSize: 17, fontFamily: FONTS.bold, textAlign: "right", marginBottom: 12 },
+    tplRow: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: t.surfaceAlt, borderRadius: RADIUS_SM, padding: 14, marginBottom: 8 },
+    tplEmoji: { fontSize: 24 },
+    tplLabel: { color: t.textPrimary, fontSize: 15 * fs, fontFamily: FONTS.bold, textAlign: "right" },
+    tplPreview: { color: t.textMuted, fontSize: 12 * fs, fontFamily: FONTS.regular, textAlign: "right", marginTop: 2 },
+    tplPlus: { color: t.accent, fontSize: 22, fontFamily: FONTS.bold },
     calcDisplay: { backgroundColor: t.surfaceAlt, borderRadius: RADIUS_SM, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: t.hairline },
     calcExpr: { color: t.textPrimary, fontSize: 24, fontFamily: FONTS.bold, textAlign: "left" },
     calcResult: { color: t.accent, fontSize: 16, fontFamily: FONTS.medium, textAlign: "left", marginTop: 4 },
