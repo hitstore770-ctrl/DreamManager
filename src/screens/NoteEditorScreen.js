@@ -119,6 +119,21 @@ export default function NoteEditorScreen({ route, navigation }) {
   };
 
   // ---- Inline math --------------------------------------------------------
+  // As the user finishes typing a trailing "expr=", append the result inline
+  // (e.g. "150*4=" → "150*4= 600"). Only fires on growth so deleting is safe.
+  const onBodyChange = (text) => {
+    if (text.length > body.length) {
+      const m = text.match(/([\d.]+(?:\s*[+\-*/%]\s*[\d.]+)+)\s*=\s*$/);
+      if (m) {
+        const val = evalArithmetic(m[1]);
+        if (val !== null) {
+          setBody(text + " " + val);
+          return;
+        }
+      }
+    }
+    setBody(text);
+  };
   const applyInline = (item) => {
     haptic("light");
     const next = body.slice(0, item.end) + ` ${item.value}` + body.slice(item.end);
@@ -320,7 +335,7 @@ export default function NoteEditorScreen({ route, navigation }) {
           <TextInput
             style={[s.paper, s.bodyInput, { backgroundColor: bg, color: theme.textPrimary, fontSize: (note.fontSize || 16) * fontScale, lineHeight: (note.fontSize || 16) * fontScale * 1.6 }]}
             value={body}
-            onChangeText={setBody}
+            onChangeText={onBodyChange}
             onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
             placeholder="התחל לכתוב... אפשר **מודגש**, *נטוי*, __קו תחתון__, ולכתוב תרגיל כמו 50*4="
             placeholderTextColor={theme.textMuted}

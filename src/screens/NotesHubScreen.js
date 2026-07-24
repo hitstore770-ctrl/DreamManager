@@ -36,6 +36,11 @@ const TOOLBOX = [
 ];
 
 const TEMPLATES = [
+  {
+    key: "print",
+    label: "הזמנת הדפסה ומדבקות A5",
+    body: "🖨️ הזמנת הדפסה ומדבקות A5\nשם הלקוח: \nכמות: \nסוג: \nסה״כ: ",
+  },
   { key: "meeting", label: "סיכום פגישה", body: "📋 סיכום פגישה\nתאריך: \nמשתתפים: \n\nנושאים:\n• \n\nמשימות להמשך:\n• " },
   { key: "shopping", label: "רשימת קניות", body: "🛒 רשימת קניות\n• \n• \n• " },
   { key: "idea", label: "רעיון לעסק", body: "💡 רעיון\nהרעיון: \nקהל יעד: \nעלות משוערת: \nרווח פוטנציאלי: " },
@@ -131,10 +136,7 @@ export default function NotesHubScreen({ navigation }) {
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       {/* Header */}
       <View style={[s.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity style={s.iconBtn} onPress={() => navigation.openDrawer()} activeOpacity={0.7}>
-          <Text style={s.icon}>☰</Text>
-        </TouchableOpacity>
-        <Text style={s.title}>📝 פנקס חכם</Text>
+        <Text style={s.title}>🗒️ פתקים</Text>
         <TouchableOpacity style={s.iconBtn} onPress={() => setToolbox(true)} activeOpacity={0.7}>
           <Text style={s.icon}>🧰</Text>
         </TouchableOpacity>

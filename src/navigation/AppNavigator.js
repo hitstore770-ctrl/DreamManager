@@ -1,50 +1,72 @@
-import { I18nManager } from "react-native";
-import { createDrawerNavigator } from "@react-navigation/drawer";
+import { Text } from "react-native";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import { useAuth } from "../context/AuthContext";
-import AddDreamScreen from "../screens/AddDreamScreen";
-import ArcadeScreen from "../screens/ArcadeScreen";
-import DashboardScreen from "../screens/DashboardScreen";
-import DreamDetailScreen from "../screens/DreamDetailScreen";
+import { useSettings } from "../context/SettingsContext";
 import LoginScreen from "../screens/LoginScreen";
 import NoteEditorScreen from "../screens/NoteEditorScreen";
 import NotesHubScreen from "../screens/NotesHubScreen";
-import SettingsScreen from "../screens/SettingsScreen";
-import ToolScreen from "../screens/ToolScreen";
-import DrawerContent from "./DrawerContent";
-import { TOOLS } from "./toolsRegistry";
+import {
+  BusinessPlaceholder,
+  DreamsPlaceholder,
+  SettingsPlaceholder,
+  TasksPlaceholder,
+} from "../screens/TabPlaceholders";
+import { FONTS } from "../utils/theme";
 
 const RootStack = createNativeStackNavigator();
-const Drawer = createDrawerNavigator();
+const Tab = createBottomTabNavigator();
 
-// The main authed experience: a side drawer holding the Dashboard, all nine
-// tools (grouped in DrawerContent), Arcade and Settings.
-function MainDrawer() {
+// iOS-style bottom tab bar. Five tabs, Notes (פתקים) is the default. Emoji
+// icons + Heebo labels, accent tint when active, hairline top border — themed
+// from the global settings so it follows light/dark + accent.
+const TAB_ICON = {
+  Notes: "🗒️",
+  Dreams: "✨",
+  Tasks: "✅",
+  Business: "💼",
+  Settings: "⚙️",
+};
+const TAB_LABEL = {
+  Notes: "פתקים",
+  Dreams: "חלומות",
+  Tasks: "משימות",
+  Business: "העסק שלי",
+  Settings: "הגדרות",
+};
+
+function MainTabs() {
+  const { theme } = useSettings();
+
   return (
-    <Drawer.Navigator
-      drawerContent={(props) => <DrawerContent {...props} />}
-      screenOptions={{
+    <Tab.Navigator
+      initialRouteName="Notes"
+      screenOptions={({ route }) => ({
         headerShown: false,
-        drawerType: "front",
-        drawerPosition: I18nManager.isRTL ? "right" : "left",
-        drawerStyle: { width: 300 },
-        swipeEdgeWidth: 60,
-      }}
+        tabBarActiveTintColor: theme.accent,
+        tabBarInactiveTintColor: theme.textMuted,
+        tabBarStyle: {
+          backgroundColor: theme.surface,
+          borderTopColor: theme.hairline,
+          borderTopWidth: 1,
+          height: 62,
+          paddingTop: 6,
+          paddingBottom: 8,
+        },
+        tabBarLabelStyle: { fontFamily: FONTS.medium, fontSize: 11 },
+        tabBarIcon: ({ focused }) => (
+          <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.55 }}>{TAB_ICON[route.name]}</Text>
+        ),
+        tabBarLabel: TAB_LABEL[route.name],
+      })}
     >
-      <Drawer.Screen name="Dashboard" component={DashboardScreen} />
-      <Drawer.Screen name="Notes" component={NotesHubScreen} />
-      {TOOLS.map((tool) => (
-        <Drawer.Screen
-          key={tool.key}
-          name={tool.key}
-          component={ToolScreen}
-          initialParams={{ toolKey: tool.key }}
-        />
-      ))}
-      <Drawer.Screen name="Arcade" component={ArcadeScreen} />
-      <Drawer.Screen name="Settings" component={SettingsScreen} />
-    </Drawer.Navigator>
+      <Tab.Screen name="Notes" component={NotesHubScreen} />
+      <Tab.Screen name="Dreams" component={DreamsPlaceholder} />
+      <Tab.Screen name="Tasks" component={TasksPlaceholder} />
+      <Tab.Screen name="Business" component={BusinessPlaceholder} />
+      <Tab.Screen name="Settings" component={SettingsPlaceholder} />
+    </Tab.Navigator>
   );
 }
 
@@ -55,14 +77,9 @@ export default function AppNavigator() {
     <RootStack.Navigator screenOptions={{ headerShown: false }}>
       {user ? (
         <>
-          <RootStack.Screen name="Main" component={MainDrawer} />
+          <RootStack.Screen name="Main" component={MainTabs} />
+          {/* The note editor opens full-screen over the tab bar. */}
           <RootStack.Screen name="NoteEditor" component={NoteEditorScreen} />
-          <RootStack.Screen name="DreamDetail" component={DreamDetailScreen} />
-          <RootStack.Screen
-            name="AddDream"
-            component={AddDreamScreen}
-            options={{ presentation: "modal" }}
-          />
         </>
       ) : (
         <RootStack.Screen name="Login" component={LoginScreen} />
