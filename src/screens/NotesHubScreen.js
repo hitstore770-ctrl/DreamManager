@@ -10,17 +10,25 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
-import { ScrollView } from "react-native-gesture-handler";
+import { ScrollView, Swipeable } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useNotes } from "../context/NotesContext";
 import { useSettings } from "../context/SettingsContext";
+import { hapticLight, hapticSuccess } from "../utils/haptics";
 import { gregorianToHebrew } from "../utils/hebrewDate";
 import { STORAGE_KEYS } from "../utils/storageKeys";
 import { shekel, todayKey } from "../utils/posStore";
 import { checklistToText, makeNote, noteBg } from "../utils/notesStore";
 import { FONTS, RADIUS, RADIUS_SM, SHADOW, SHADOW_SM } from "../utils/theme";
 import { usePersistentState } from "../utils/usePersistentState";
+
+// Rough reading-time estimate at ~200 words/min (min 1 minute).
+function readTime(note) {
+  const text = note.isChecklist ? checklistToText(note.checklist) : note.body || "";
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  return Math.max(1, Math.round(words / 200));
+}
 
 // ── The eight scaffolded tools (functional where cheap, informative preview
 // where they need deeper wiring). Rendered in the "toolbox" sheet. ──
@@ -89,6 +97,14 @@ export default function NotesHubScreen({ navigation }) {
   };
   const patch = (id, fields) => setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, ...fields } : n)));
   const remove = (id) => setNotes((prev) => prev.filter((n) => n.id !== id));
+  const togglePin = (n) => {
+    hapticLight(); // light vibration when pinned
+    patch(n.id, { pinned: !n.pinned });
+  };
+  const deleteNote = (id) => {
+    hapticSuccess(); // success vibration on delete
+    remove(id);
+  };
 
   const runTool = (key) => {
     haptic("light");
@@ -168,45 +184,19 @@ export default function NotesHubScreen({ navigation }) {
         </ScrollView>
       )}
 
-      {/* Notes grid */}
-      <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 100 }} showsVerticalScrollIndicator={false}>
-        <View style={s.grid}>
-          {filtered.map((n) => {
-            const bg = noteBg(n.bg, theme.scheme === "dark");
-            const preview = n.secured
-              ? "🔒 הערה מוגנת"
-              : n.isChecklist
-                ? checklistToText(n.checklist).slice(0, 120)
-                : (n.body || "").slice(0, 120);
-            return (
-              <TouchableOpacity
-                key={n.id}
-                style={[s.note, { backgroundColor: bg }]}
-                activeOpacity={0.85}
-                onPress={() => (n.secured ? setActionNote(n) : openNote(n.id))}
-                onLongPress={() => setActionNote(n)}
-              >
-                <View style={s.noteTop}>
-                  {n.pinned && <Text style={s.pin}>📌</Text>}
-                  <Text style={[s.noteTitle, { color: theme.textPrimary }]} numberOfLines={1}>
-                    {n.title || "ללא כותרת"}
-                  </Text>
-                </View>
-                <Text style={[s.notePreview, { color: theme.textSecondary }]} numberOfLines={4}>
-                  {preview}
-                </Text>
-                <View style={s.noteFoot}>
-                  {n.isChecklist && (
-                    <Text style={s.noteBadge}>✅ {n.checklist.filter((i) => i.done).length}/{n.checklist.length}</Text>
-                  )}
-                  {(n.tags || []).slice(0, 1).map((t) => (
-                    <Text key={t} style={[s.noteBadge, { color: theme.accent }]}>#{t}</Text>
-                  ))}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+      {/* Notes list — premium swipeable cards */}
+      <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 100 }} showsVerticalScrollIndicator={false}>
+        {filtered.map((n) => (
+          <NoteCard
+            key={n.id}
+            note={n}
+            theme={theme}
+            styles={s}
+            onOpen={() => (n.secured ? setActionNote(n) : openNote(n.id))}
+            onLong={() => setActionNote(n)}
+            onDelete={() => deleteNote(n.id)}
+          />
+        ))}
         {filtered.length === 0 && (
           <Text style={s.empty}>{query ? "לא נמצאו הערות" : "אין הערות עדיין. הקש על ＋ ליצירת הערה חדשה."}</Text>
         )}
@@ -238,10 +228,10 @@ export default function NotesHubScreen({ navigation }) {
         {actionNote && (
           <View style={{ gap: 8 }}>
             <ActionRow theme={theme} label={actionNote.secured ? "🔓 בטל הגנה ופתח" : "✏️ פתח לעריכה"} onPress={() => { const id = actionNote.id; if (actionNote.secured) patch(id, { secured: false }); setActionNote(null); openNote(id); }} />
-            <ActionRow theme={theme} label={actionNote.pinned ? "📍 בטל נעיצה" : "📌 נעץ למעלה"} onPress={() => { patch(actionNote.id, { pinned: !actionNote.pinned }); setActionNote(null); }} />
+            <ActionRow theme={theme} label={actionNote.pinned ? "📍 בטל נעיצה" : "📌 נעץ למעלה"} onPress={() => { togglePin(actionNote); setActionNote(null); }} />
             <ActionRow theme={theme} label={actionNote.secured ? "🛡️ מוגן (הפעל/כבה)" : "🛡️ הגן על ההערה"} onPress={() => { patch(actionNote.id, { secured: !actionNote.secured }); setActionNote(null); }} />
             <ActionRow theme={theme} label="📤 שתף / ייצא" onPress={async () => { const n = actionNote; setActionNote(null); try { await Share.share({ message: `📝 ${n.title}\n${n.isChecklist ? checklistToText(n.checklist) : n.body}` }); } catch {} }} />
-            <ActionRow theme={theme} danger label="🗑️ מחק" onPress={() => { remove(actionNote.id); setActionNote(null); }} />
+            <ActionRow theme={theme} danger label="🗑️ מחק" onPress={() => { deleteNote(actionNote.id); setActionNote(null); }} />
           </View>
         )}
       </Sheet>
@@ -298,6 +288,61 @@ export default function NotesHubScreen({ navigation }) {
   );
 }
 
+// A premium iOS-style pastel note card. Swipe left reveals a red trash action
+// that deletes the note (with a success haptic, fired by onDelete).
+function NoteCard({ note, theme, styles, onOpen, onLong, onDelete }) {
+  const bg = noteBg(note.bg, theme.scheme === "dark");
+  const preview = note.secured
+    ? "🔒 הערה מוגנת"
+    : note.isChecklist
+      ? checklistToText(note.checklist).slice(0, 140)
+      : (note.body || "").slice(0, 140) || "הערה ריקה";
+  const mins = readTime(note);
+
+  const renderRightActions = () => (
+    <View style={styles.deleteAction}>
+      <Text style={styles.deleteIcon}>🗑️</Text>
+      <Text style={styles.deleteLabel}>מחק</Text>
+    </View>
+  );
+
+  return (
+    <Swipeable
+      renderRightActions={renderRightActions}
+      onSwipeableOpen={() => onDelete()}
+      overshootRight={false}
+      friction={2}
+      rightThreshold={44}
+    >
+      <TouchableOpacity
+        style={[styles.card, { backgroundColor: bg }]}
+        activeOpacity={0.85}
+        onPress={onOpen}
+        onLongPress={onLong}
+      >
+        <View style={styles.cardTop}>
+          {note.pinned && <Text style={styles.pin}>📌</Text>}
+          <Text style={[styles.cardTitle, { color: theme.textPrimary }]} numberOfLines={1}>
+            {note.title || "ללא כותרת"}
+          </Text>
+        </View>
+        <Text style={[styles.cardPreview, { color: theme.textSecondary }]} numberOfLines={2}>
+          {preview}
+        </Text>
+        <View style={styles.cardFoot}>
+          <Text style={styles.readTime}>⏱️ {mins} דק׳ קריאה</Text>
+          {note.isChecklist && (
+            <Text style={styles.badge}>✅ {note.checklist.filter((i) => i.done).length}/{note.checklist.length}</Text>
+          )}
+          {(note.tags || []).slice(0, 2).map((t) => (
+            <Text key={t} style={[styles.badge, { color: theme.accent }]}>#{t}</Text>
+          ))}
+        </View>
+      </TouchableOpacity>
+    </Swipeable>
+  );
+}
+
 function Sheet({ visible, onClose, theme, title, children }) {
   const insets = useSafeAreaInsets();
   return (
@@ -343,13 +388,25 @@ function makeStyles(t, fs) {
     tag: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16, backgroundColor: t.surface, ...SHADOW_SM },
     tagText: { fontSize: 13 * fs, fontFamily: FONTS.bold },
     grid: { flexDirection: "row", flexWrap: "wrap" },
-    note: { width: "46%", minHeight: 120, margin: "2%", borderRadius: RADIUS, padding: 14, ...SHADOW_SM },
-    noteTop: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 },
-    pin: { fontSize: 13 },
-    noteTitle: { flex: 1, fontSize: 15 * fs, fontFamily: FONTS.bold, textAlign: "right" },
-    notePreview: { fontSize: 13 * fs, fontFamily: FONTS.regular, textAlign: "right", lineHeight: 19 * fs },
-    noteFoot: { flexDirection: "row", gap: 8, marginTop: 8, flexWrap: "wrap" },
-    noteBadge: { fontSize: 11 * fs, fontFamily: FONTS.bold, color: t.textMuted },
+    // Premium iOS list cards
+    card: { borderRadius: RADIUS, padding: 16, marginBottom: 12, ...SHADOW_SM },
+    cardTop: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
+    pin: { fontSize: 14 },
+    cardTitle: { flex: 1, fontSize: 16 * fs, fontFamily: FONTS.bold, textAlign: "right" },
+    cardPreview: { fontSize: 14 * fs, fontFamily: FONTS.regular, textAlign: "right", lineHeight: 20 * fs },
+    cardFoot: { flexDirection: "row", gap: 10, marginTop: 10, flexWrap: "wrap", alignItems: "center" },
+    readTime: { fontSize: 12 * fs, fontFamily: FONTS.medium, color: t.textMuted },
+    badge: { fontSize: 11 * fs, fontFamily: FONTS.bold, color: t.textMuted },
+    deleteAction: {
+      backgroundColor: t.danger,
+      justifyContent: "center",
+      alignItems: "center",
+      width: 92,
+      marginBottom: 12,
+      borderRadius: RADIUS,
+    },
+    deleteIcon: { fontSize: 22 },
+    deleteLabel: { color: "#FFF", fontFamily: FONTS.bold, fontSize: 12, marginTop: 2 },
     empty: { color: t.textMuted, fontSize: 14 * fs, fontFamily: FONTS.regular, textAlign: "center", marginTop: 50, paddingHorizontal: 30, lineHeight: 22 },
     fab: { position: "absolute", width: 64, height: 64, borderRadius: 32, backgroundColor: t.accent, alignItems: "center", justifyContent: "center", ...SHADOW },
     fabIcon: { color: "#FFF", fontSize: 34, fontFamily: FONTS.bold, marginTop: -4 },

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Keyboard,
   Modal,
   Pressable,
   ScrollView,
@@ -14,10 +15,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useNotes } from "../context/NotesContext";
 import { useSettings } from "../context/SettingsContext";
+import { hapticLight } from "../utils/haptics";
 import { gregorianToHebrew, hebrewWeekday } from "../utils/hebrewDate";
 import { autoSum, evalArithmetic, scanInlineMath } from "../utils/mathEval";
 import { countWords, parseInline, wrapSelection } from "../utils/markdownLite";
-import { NOTE_BG, noteBg, textToChecklist, uid } from "../utils/notesStore";
+import { NOTE_BG, extractTags, noteBg, textToChecklist, uid } from "../utils/notesStore";
 import { FONTS, RADIUS, RADIUS_SM, SHADOW, SHADOW_SM } from "../utils/theme";
 import HebrewDateTools from "../components/notes/HebrewDateTools";
 
@@ -67,7 +69,7 @@ export default function NoteEditorScreen({ route, navigation }) {
     if (!initedRef.current) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      patchNote({ title, body });
+      patchNote({ title, body, tags: extractTags(`${title} ${body}`) });
       setSavedAt(Date.now());
     }, 3000);
     return () => saveTimer.current && clearTimeout(saveTimer.current);
@@ -90,6 +92,7 @@ export default function NoteEditorScreen({ route, navigation }) {
   const sum = useMemo(() => autoSum(body), [body]);
   const inlineMath = useMemo(() => scanInlineMath(body), [body]);
   const segments = useMemo(() => parseInline(body), [body]);
+  const liveTags = useMemo(() => extractTags(`${title} ${body}`), [title, body]);
 
   if (!loaded) {
     return <View style={{ flex: 1, backgroundColor: theme.background }} />;
@@ -224,9 +227,9 @@ export default function NoteEditorScreen({ route, navigation }) {
         <TBtn label={readOnly ? "🔒 נעול" : "🔓 פתוח"} on={() => patchNote({ readOnly: !readOnly })} active={readOnly} wide />
       </ScrollView>
 
-      {/* Background color picker */}
+      {/* Background color picker — four soft pastels */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.bgRow}>
-        {NOTE_BG.map((b) => (
+        {NOTE_BG.filter((b) => ["yellow", "blue", "green", "pink"].includes(b.key)).map((b) => (
           <TouchableOpacity
             key={b.key}
             style={[
@@ -234,7 +237,7 @@ export default function NoteEditorScreen({ route, navigation }) {
               { backgroundColor: theme.scheme === "dark" ? b.dark : b.color },
               note.bg === b.key && { borderColor: theme.accent, borderWidth: 3 },
             ]}
-            onPress={() => patchNote({ bg: b.key })}
+            onPress={() => patchNote({ bg: note.bg === b.key ? "white" : b.key })}
             activeOpacity={0.8}
           />
         ))}
@@ -248,11 +251,25 @@ export default function NoteEditorScreen({ route, navigation }) {
         )}
       </ScrollView>
 
+      {/* Dynamic #tag pills */}
+      {liveTags.length > 0 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tagPillRow}>
+          {liveTags.map((t) => (
+            <View key={t} style={s.tagPill}>
+              <Text style={s.tagPillText}>#{t}</Text>
+            </View>
+          ))}
+        </ScrollView>
+      )}
+
+      <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()} accessible={false}>
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 30 }}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 130 }}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
-        {/* Title */}
+        {/* Title — auto aligns RTL for Hebrew, LTR for English */}
         <TextInput
           style={[s.title, { color: theme.textPrimary }]}
           value={title}
@@ -260,7 +277,7 @@ export default function NoteEditorScreen({ route, navigation }) {
           placeholder="כותרת ההערה"
           placeholderTextColor={theme.textMuted}
           editable={!readOnly}
-          textAlign="right"
+          textAlign="auto"
         />
 
         {/* Inline math suggestions */}
@@ -299,7 +316,7 @@ export default function NoteEditorScreen({ route, navigation }) {
                   placeholder="פריט..."
                   placeholderTextColor={theme.textMuted}
                   editable={!readOnly}
-                  textAlign="right"
+                  textAlign="auto"
                 />
               </View>
             ))}
@@ -337,23 +354,18 @@ export default function NoteEditorScreen({ route, navigation }) {
             value={body}
             onChangeText={onBodyChange}
             onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
-            placeholder="התחל לכתוב... אפשר **מודגש**, *נטוי*, __קו תחתון__, ולכתוב תרגיל כמו 50*4="
+            placeholder="התחל לכתוב... אפשר **מודגש**, *נטוי*, __קו תחתון__, #תגית ותרגיל כמו 50*4="
             placeholderTextColor={theme.textMuted}
             multiline
             editable={!readOnly}
-            textAlign="right"
+            textAlign="auto"
             textAlignVertical="top"
           />
         )}
 
-        {/* Auto-sum + counters footer */}
+        {/* Counters */}
         <View style={s.footer}>
           <Text style={s.footerText}>{counts.words} מילים · {counts.chars} תווים</Text>
-          {sum.count > 0 && !note.isChecklist && (
-            <Text style={[s.footerText, { color: theme.accent, fontFamily: FONTS.bold }]}>
-              Σ סכום המספרים: {sum.total}
-            </Text>
-          )}
         </View>
 
         {note.hebrewDate && (
@@ -362,6 +374,27 @@ export default function NoteEditorScreen({ route, navigation }) {
           </View>
         )}
       </ScrollView>
+      </TouchableWithoutFeedback>
+
+      {/* Floating "Pin to Top" toggle */}
+      <TouchableOpacity
+        style={[s.floatPin, { backgroundColor: note.pinned ? theme.accent : theme.surface, bottom: (insets.bottom || 0) + 74 }]}
+        onPress={() => {
+          hapticLight();
+          patchNote({ pinned: !note.pinned });
+        }}
+        activeOpacity={0.85}
+      >
+        <Text style={[s.floatPinIcon, { color: note.pinned ? "#FFF" : theme.textSecondary }]}>📌</Text>
+      </TouchableOpacity>
+
+      {/* Sticky auto-sum bar */}
+      <View style={[s.sumBar, { paddingBottom: (insets.bottom || 0) + 10, borderTopColor: theme.hairline, backgroundColor: theme.surface }]}>
+        <Text style={[s.sumLabel, { color: theme.textMuted }]}>
+          {sum.count > 0 ? `${sum.count} מספרים בהערה` : "אין מספרים בהערה"}
+        </Text>
+        <Text style={[s.sumTotal, { color: theme.accent }]}>Σ סה״כ: {sum.total}</Text>
+      </View>
 
       {/* Floating calculator */}
       <Modal visible={showCalc} transparent animationType="fade" onRequestClose={() => setShowCalc(false)}>
@@ -453,6 +486,17 @@ function makeStyles(t, fs) {
 
     bgRow: { paddingHorizontal: 12, paddingBottom: 10, gap: 8, alignItems: "center" },
     bgDot: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: t.hairline },
+
+    tagPillRow: { paddingHorizontal: 12, paddingBottom: 8, gap: 8, alignItems: "center" },
+    tagPill: { backgroundColor: t.accent + "18", borderRadius: 14, paddingHorizontal: 12, paddingVertical: 6, marginEnd: 6 },
+    tagPillText: { color: t.accent, fontSize: 13 * fs, fontFamily: FONTS.bold },
+
+    floatPin: { position: "absolute", left: 20, width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center", ...SHADOW },
+    floatPinIcon: { fontSize: 22 },
+
+    sumBar: { position: "absolute", left: 0, right: 0, bottom: 0, flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingTop: 12, borderTopWidth: 1 },
+    sumLabel: { fontSize: 13 * fs, fontFamily: FONTS.medium },
+    sumTotal: { fontSize: 16 * fs, fontFamily: FONTS.bold },
 
     title: { fontSize: 22 * fs, fontFamily: FONTS.bold, marginBottom: 12, paddingVertical: 4 },
     paper: { borderRadius: RADIUS, padding: 16, ...SHADOW_SM },

@@ -55,3 +55,15 @@ export function textToChecklist(text) {
 export function checklistToText(items) {
   return (items || []).map((i) => `${i.done ? "✓" : "•"} ${i.text}`).join("\n");
 }
+
+// Pull #hashtags out of free text (Unicode-aware, so Hebrew tags work), and
+// dedupe while preserving order.
+export function extractTags(text) {
+  const matches = (text || "").match(/#[\p{L}\p{N}_]+/gu) || [];
+  const seen = [];
+  matches.forEach((m) => {
+    const tag = m.slice(1);
+    if (tag && !seen.includes(tag)) seen.push(tag);
+  });
+  return seen;
+}
