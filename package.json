@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "dependencies": {
+    "@expo-google-fonts/assistant": "^0.4.1",
     "@expo-google-fonts/gveret-levin": "^0.4.0",
     "@expo-google-fonts/heebo": "^0.4.2",
     "@expo-google-fonts/rubik": "^0.4.2",

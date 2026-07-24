@@ -11,6 +11,13 @@ import {
   Heebo_500Medium,
   Heebo_700Bold,
 } from "@expo-google-fonts/heebo";
+import {
+  Assistant_300Light,
+  Assistant_400Regular,
+  Assistant_500Medium,
+  Assistant_600SemiBold,
+  Assistant_700Bold,
+} from "@expo-google-fonts/assistant";
 
 import PinLock from "./src/components/PinLock";
 import { AuthProvider } from "./src/context/AuthContext";
@@ -57,6 +64,11 @@ export default function App() {
     Heebo_400Regular,
     Heebo_500Medium,
     Heebo_700Bold,
+    Assistant_300Light,
+    Assistant_400Regular,
+    Assistant_500Medium,
+    Assistant_600SemiBold,
+    Assistant_700Bold,
   });
 
   if (!fontsLoaded) {

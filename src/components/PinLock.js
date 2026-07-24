@@ -9,8 +9,10 @@ import { FONTS, RADIUS, SHADOW_SM } from "../utils/theme";
 //   mode="unlock" → compares against the saved PIN, calls onSuccess() when it
 //                   matches (used as the launch lock overlay).
 //   mode="set"    → asks for a new PIN twice, returns it via onSet(pin).
-export default function PinLock({ mode = "unlock", expected, onSuccess, onSet, onCancel }) {
-  const { theme, fontScale, haptic } = useSettings();
+export default function PinLock({ mode = "unlock", expected, onSuccess, onSet, onCancel, themeOverride }) {
+  const settings = useSettings();
+  const theme = themeOverride || settings.theme;
+  const { fontScale, haptic } = settings;
   const insets = useSafeAreaInsets();
   const [entry, setEntry] = useState("");
   const [firstPass, setFirstPass] = useState(null); // set mode: first entry

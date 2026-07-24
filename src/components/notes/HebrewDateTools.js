@@ -10,13 +10,15 @@ import {
   hebrewWeekday,
   numberToHebrew,
 } from "../../utils/hebrewDate";
-import { FONTS, RADIUS_SM } from "../../utils/theme";
+import { NOTES_FONTS as FONTS, NOTES_THEME } from "../../utils/notesTheme";
+import { RADIUS_SM } from "../../utils/theme";
 
 // The Hebrew Calendar Pro panel: live Hebrew date, a two-way date converter, a
 // "link this note to a Hebrew date" action, plus scaffolded Zmanim and
 // Parashat Hashavua cards (both need location/weekly data wired later).
 export default function HebrewDateTools({ onLink, onClose }) {
-  const { theme, fontScale } = useSettings();
+  const { fontScale } = useSettings();
+  const theme = NOTES_THEME;
   const today = gregorianToHebrew(new Date());
 
   // Gregorian → Hebrew converter (defaults to today)
@@ -50,7 +52,7 @@ export default function HebrewDateTools({ onLink, onClose }) {
       </View>
 
       {/* Today */}
-      <View style={[s.card, { backgroundColor: theme.accent }]}>
+      <View style={s.card}>
         <Text style={s.todayLabel}>התאריך העברי היום</Text>
         <Text style={s.todayBig}>{today.formatted}</Text>
         <Text style={s.todaySub}>{hebrewWeekday(new Date())} · {gDate.toLocaleDateString("he-IL")}</Text>
@@ -137,10 +139,10 @@ function makeStyles(t, fs) {
     headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
     title: { color: t.textPrimary, fontSize: 18 * fs, fontFamily: FONTS.bold },
     close: { color: t.textMuted, fontSize: 18, fontFamily: FONTS.bold },
-    card: { borderRadius: 16, padding: 18, alignItems: "center", marginBottom: 8 },
-    todayLabel: { color: "rgba(255,255,255,0.8)", fontSize: 13 * fs, fontFamily: FONTS.medium },
-    todayBig: { color: "#FFF", fontSize: 24 * fs, fontFamily: FONTS.bold, marginVertical: 4, textAlign: "center" },
-    todaySub: { color: "rgba(255,255,255,0.85)", fontSize: 12 * fs, fontFamily: FONTS.regular },
+    card: { borderRadius: 16, padding: 18, alignItems: "center", marginBottom: 8, backgroundColor: t.surfaceAlt, borderWidth: 1, borderColor: t.hairline },
+    todayLabel: { color: t.textMuted, fontSize: 13 * fs, fontFamily: FONTS.regular },
+    todayBig: { color: t.accent, fontSize: 24 * fs, fontFamily: FONTS.bold, marginVertical: 4, textAlign: "center" },
+    todaySub: { color: t.textSecondary, fontSize: 12 * fs, fontFamily: FONTS.regular },
     section: { color: t.textSecondary, fontSize: 14 * fs, fontFamily: FONTS.bold, textAlign: "right", marginTop: 18, marginBottom: 8 },
     card2: { backgroundColor: t.surfaceAlt, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: t.hairline },
     inputRow: { flexDirection: "row", gap: 10 },

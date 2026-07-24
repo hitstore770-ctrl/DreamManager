@@ -21,7 +21,8 @@ import { gregorianToHebrew, hebrewWeekday } from "../utils/hebrewDate";
 import { autoSum, evalArithmetic, scanInlineMath } from "../utils/mathEval";
 import { countWords, parseInline, wrapSelection } from "../utils/markdownLite";
 import { NOTE_BG, extractTags, noteBg, textToChecklist, uid } from "../utils/notesStore";
-import { FONTS, RADIUS, RADIUS_SM, SHADOW, SHADOW_SM } from "../utils/theme";
+import { NOTES_FONTS as FONTS, NOTES_SHADOW as SHADOW_SM, NOTES_SHADOW_LG as SHADOW, NOTES_THEME } from "../utils/notesTheme";
+import { RADIUS, RADIUS_SM } from "../utils/theme";
 import HebrewDateTools from "../components/notes/HebrewDateTools";
 
 // Ready-to-use business templates appended into the note from the toolbar.
@@ -32,7 +33,8 @@ const BUSINESS_TEMPLATES = [
 ];
 
 export default function NoteEditorScreen({ route, navigation }) {
-  const { theme, fontScale, haptic } = useSettings();
+  const { fontScale, haptic } = useSettings();
+  const theme = NOTES_THEME; // 770JLM Modern Light — scoped to the Notes editor
   const insets = useSafeAreaInsets();
   const noteId = route.params?.noteId;
 
@@ -446,7 +448,7 @@ export default function NoteEditorScreen({ route, navigation }) {
         <Text style={[s.sumLabel, { color: theme.textMuted }]}>
           {sum.count > 0 ? `${sum.count} מספרים בהערה` : "אין מספרים בהערה"}
         </Text>
-        <Text style={[s.sumTotal, { color: theme.accent }]}>Σ סה״כ: {sum.total}</Text>
+        <Text style={[s.sumTotal, { color: theme.gold }]}>Σ סה״כ: {sum.total}</Text>
       </View>
 
       {/* Floating calculator */}

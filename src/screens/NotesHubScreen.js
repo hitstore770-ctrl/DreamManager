@@ -24,7 +24,8 @@ import { gregorianToHebrew } from "../utils/hebrewDate";
 import { STORAGE_KEYS } from "../utils/storageKeys";
 import { shekel, todayKey } from "../utils/posStore";
 import { checklistToText, makeNote, noteBg } from "../utils/notesStore";
-import { FONTS, RADIUS, RADIUS_SM, SHADOW, SHADOW_SM } from "../utils/theme";
+import { NOTES_FONTS as FONTS, NOTES_SHADOW as SHADOW_SM, NOTES_SHADOW_LG as SHADOW, NOTES_THEME } from "../utils/notesTheme";
+import { RADIUS, RADIUS_SM } from "../utils/theme";
 import { usePersistentState } from "../utils/usePersistentState";
 
 // Rough reading-time estimate at ~200 words/min (min 1 minute).
@@ -60,7 +61,8 @@ const TEMPLATES = [
 ];
 
 export default function NotesHubScreen({ navigation }) {
-  const { theme, fontScale, haptic } = useSettings();
+  const { fontScale, haptic } = useSettings();
+  const theme = NOTES_THEME; // 770JLM Modern Light — scoped to the Notes Hub
   const insets = useSafeAreaInsets();
 
   const { notes, setNotes } = useNotes();
@@ -151,6 +153,27 @@ export default function NotesHubScreen({ navigation }) {
     setPanel(null);
   };
 
+  // Daily Journal generator — one tap creates a dated work-journal note with a
+  // ready-made timeline layout.
+  const generateJournal = () => {
+    haptic("light");
+    const dateStr = new Date().toLocaleDateString("he-IL");
+    const title = `יומן עבודה - ${dateStr}`;
+    const body = [
+      `📔 ${title}`,
+      "",
+      "🕘 09:00 — ",
+      "🕚 11:00 — ",
+      "🕐 13:00 — ",
+      "🕒 15:00 — ",
+      "🕔 17:00 — ",
+      "",
+      "📝 סיכום היום:",
+      "",
+    ].join("\n");
+    createNote({ title, body, tags: ["יומן"] });
+  };
+
   const s = makeStyles(theme, fontScale);
 
   return (
@@ -158,9 +181,14 @@ export default function NotesHubScreen({ navigation }) {
       {/* Header */}
       <View style={[s.header, { paddingTop: insets.top + 12 }]}>
         <Text style={s.title}>🗒️ פתקים</Text>
-        <TouchableOpacity style={s.iconBtn} onPress={() => setToolbox(true)} activeOpacity={0.7}>
-          <Text style={s.icon}>🧰</Text>
-        </TouchableOpacity>
+        <View style={s.headerActions}>
+          <TouchableOpacity style={s.journalBtn} onPress={generateJournal} activeOpacity={0.8}>
+            <Text style={s.journalText}>📔 יומן עבודה</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.iconBtn} onPress={() => setToolbox(true)} activeOpacity={0.7}>
+            <Text style={s.icon}>🧰</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Search */}
@@ -295,6 +323,7 @@ export default function NotesHubScreen({ navigation }) {
         <PinLock
           mode="unlock"
           expected={LOCK_PIN}
+          themeOverride={NOTES_THEME}
           onSuccess={() => { const id = pinNote.id; setPinNote(null); openNote(id); }}
           onCancel={() => setPinNote(null)}
         />
@@ -394,24 +423,27 @@ function ActionRow({ theme, label, onPress, danger, muted }) {
 function makeStyles(t, fs) {
   return StyleSheet.create({
     header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 14, paddingBottom: 12 },
+    headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
     iconBtn: { width: 42, height: 42, borderRadius: 12, backgroundColor: t.surface, alignItems: "center", justifyContent: "center", ...SHADOW_SM },
-    icon: { fontSize: 20, color: t.textPrimary, fontFamily: FONTS.bold },
-    title: { color: t.textPrimary, fontSize: 19 * fs, fontFamily: FONTS.bold },
-    searchWrap: { paddingHorizontal: 14, marginBottom: 10 },
-    search: { backgroundColor: t.surface, borderRadius: RADIUS_SM, paddingVertical: 12, paddingHorizontal: 16, color: t.textPrimary, fontFamily: FONTS.regular, fontSize: 15, ...SHADOW_SM },
+    icon: { fontSize: 20, color: t.textPrimary, fontFamily: FONTS.medium },
+    journalBtn: { flexDirection: "row", alignItems: "center", height: 42, paddingHorizontal: 14, borderRadius: 12, backgroundColor: t.surface, borderWidth: 1, borderColor: t.gold, ...SHADOW_SM },
+    journalText: { color: t.gold, fontSize: 13 * fs, fontFamily: FONTS.semibold },
+    title: { color: t.textPrimary, fontSize: 20 * fs, fontFamily: FONTS.bold },
+    searchWrap: { paddingHorizontal: 14, marginBottom: 12 },
+    search: { backgroundColor: t.surface, borderRadius: RADIUS, paddingVertical: 13, paddingHorizontal: 18, color: t.textPrimary, fontFamily: FONTS.regular, fontSize: 15, borderWidth: 1, borderColor: t.hairline, ...SHADOW_SM },
     tagRow: { paddingHorizontal: 14, gap: 8, paddingBottom: 8 },
-    tag: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16, backgroundColor: t.surface, ...SHADOW_SM },
-    tagText: { fontSize: 13 * fs, fontFamily: FONTS.bold },
+    tag: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16, backgroundColor: t.surface, borderWidth: 1, borderColor: t.hairline },
+    tagText: { fontSize: 13 * fs, fontFamily: FONTS.semibold },
     grid: { flexDirection: "row", flexWrap: "wrap" },
     // Premium iOS list cards
-    card: { borderRadius: RADIUS, padding: 16, marginBottom: 12, ...SHADOW_SM },
+    card: { borderRadius: RADIUS, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: t.hairline, ...SHADOW_SM },
     cardTop: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
     pin: { fontSize: 14 },
-    cardTitle: { flex: 1, fontSize: 16 * fs, fontFamily: FONTS.bold, textAlign: "right" },
-    cardPreview: { fontSize: 14 * fs, fontFamily: FONTS.regular, textAlign: "right", lineHeight: 20 * fs },
+    cardTitle: { flex: 1, fontSize: 16 * fs, fontFamily: FONTS.semibold, textAlign: "right" },
+    cardPreview: { fontSize: 14 * fs, fontFamily: FONTS.light, textAlign: "right", lineHeight: 21 * fs },
     cardFoot: { flexDirection: "row", gap: 10, marginTop: 10, flexWrap: "wrap", alignItems: "center" },
-    readTime: { fontSize: 12 * fs, fontFamily: FONTS.medium, color: t.textMuted },
-    badge: { fontSize: 11 * fs, fontFamily: FONTS.bold, color: t.textMuted },
+    readTime: { fontSize: 12 * fs, fontFamily: FONTS.regular, color: t.textMuted },
+    badge: { fontSize: 11 * fs, fontFamily: FONTS.semibold, color: t.textMuted },
     deleteAction: {
       backgroundColor: t.danger,
       justifyContent: "center",
