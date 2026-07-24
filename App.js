@@ -19,6 +19,7 @@ import {
   Assistant_700Bold,
 } from "@expo-google-fonts/assistant";
 
+import ErrorBoundary from "./src/components/ErrorBoundary";
 import PinLock from "./src/components/PinLock";
 import { AuthProvider } from "./src/context/AuthContext";
 import { DreamProvider } from "./src/context/DreamContext";
@@ -60,7 +61,7 @@ function Shell() {
 }
 
 export default function App() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Heebo_400Regular,
     Heebo_500Medium,
     Heebo_700Bold,
@@ -71,7 +72,10 @@ export default function App() {
     Assistant_700Bold,
   });
 
-  if (!fontsLoaded) {
+  // Only block on the very first load. If a font fails to fetch (e.g. flaky
+  // network in a web preview), still render the app with system-font fallbacks
+  // rather than hanging forever on a blank screen.
+  if (!fontsLoaded && !fontError) {
     return (
       <View style={{ flex: 1, backgroundColor: "#F2F4F7", alignItems: "center", justifyContent: "center" }}>
         <ActivityIndicator color="#2E6BE6" />
@@ -80,18 +84,20 @@ export default function App() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <SettingsProvider>
-          <AuthProvider>
-            <DreamProvider>
-              <NotesProvider>
-                <Shell />
-              </NotesProvider>
-            </DreamProvider>
-          </AuthProvider>
-        </SettingsProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <ErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <SettingsProvider>
+            <AuthProvider>
+              <DreamProvider>
+                <NotesProvider>
+                  <Shell />
+                </NotesProvider>
+              </DreamProvider>
+            </AuthProvider>
+          </SettingsProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }
