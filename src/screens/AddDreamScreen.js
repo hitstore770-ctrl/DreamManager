@@ -73,7 +73,7 @@ export default function AddDreamScreen({ navigation }) {
             style={styles.input}
             value={title}
             onChangeText={setTitle}
-            placeholder="לדוגמה: רחפן DJI חדש"
+            placeholder="לדוגמה: מכונת שתייה נוספת"
             placeholderTextColor={COLORS.textMuted}
             textAlign="right"
           />

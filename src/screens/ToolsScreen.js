@@ -15,12 +15,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown, FadeInUp, LinearTransition } from "react-native-reanimated";
 
 import { MINI_APPS } from "../components/tools/MiniApps";
-import { hapticLight, hapticWarning } from "../utils/haptics";
-import { ALL_TOOLS, IMPLEMENTED, TOOL_CATEGORIES, TOOL_COUNT } from "../utils/toolsCatalog";
+import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
+import { ALL_TOOLS, IMPLEMENTED, TOOL_CATEGORIES, TOOL_COUNT, toolById } from "../utils/toolsCatalog";
+import { STORAGE_KEYS } from "../utils/storageKeys";
+import { usePersistentState } from "../utils/usePersistentState";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 
-// כלים — a 120-utility directory: fixed search on top, eight collapsible
-// category accordions, and a sheet that hosts the fully-built mini-apps.
+// כלים — a 120-utility directory: fixed search, a pinned favorites row,
+// eight collapsible category accordions, and a sheet hosting the built
+// mini-apps. Long-press any tool to favorite it.
 
 const WHITE = "#FFFFFF";
 const BG = "#F4F5F7";
@@ -33,15 +36,23 @@ const GOLD = "#D4AF37";
 export default function ToolsScreen() {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState("");
-  const [openSections, setOpenSections] = useState({ logistics: true });
+  const [openSections, setOpenSections] = useState({ vending: true });
   const [activeTool, setActiveTool] = useState(null);
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
 
+  // Favorites persist across launches.
+  const [favorites, setFavorites] = usePersistentState(STORAGE_KEYS.toolFavorites, []);
+  const favSet = useMemo(() => new Set(favorites || []), [favorites]);
+  // Resolve ids through the catalog so tools removed in a refactor simply
+  // disappear from favorites instead of rendering as blanks.
+  const favTools = useMemo(
+    () => (favorites || []).map(toolById).filter(Boolean),
+    [favorites]
+  );
+
   const q = query.trim().toLowerCase();
 
-  // While searching, show a single flat result list instead of accordions —
-  // collapsing sections would hide matches behind another tap.
   const searchResults = useMemo(() => {
     if (!q) return null;
     return ALL_TOOLS.filter(
@@ -66,21 +77,34 @@ export default function ToolsScreen() {
       setActiveTool(tool);
       return;
     }
-    // Not built yet — say so instead of opening an empty screen.
     hapticWarning();
     flash(`${tool.emoji} ${tool.name} — בקרוב 🚧`);
+  };
+
+  const toggleFavorite = (tool) => {
+    const isFav = favSet.has(tool.id);
+    if (isFav) {
+      hapticLight();
+      setFavorites((prev) => (prev || []).filter((id) => id !== tool.id));
+      flash(`הוסר מהמועדפים ☆`);
+    } else {
+      hapticSuccess();
+      setFavorites((prev) => [...(prev || []), tool.id]);
+      flash(`${tool.emoji} ${tool.name} נוסף למועדפים ⭐`);
+    }
   };
 
   const ActiveMini = activeTool ? MINI_APPS[activeTool.id] : null;
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
-      {/* Header */}
       <View style={[s.header, { paddingTop: insets.top + 12 }]}>
         <View style={{ flex: 1 }}>
           <Text style={s.title}>🧰 כלים</Text>
           <Text style={s.subtitle}>
-            {searchResults ? `${searchResults.length} תוצאות` : `${TOOL_COUNT} כלים ב-${TOOL_CATEGORIES.length} קטגוריות`}
+            {searchResults
+              ? `${searchResults.length} תוצאות`
+              : `${TOOL_COUNT} כלים ב-${TOOL_CATEGORIES.length} קטגוריות`}
           </Text>
         </View>
         <View style={s.readyPill}>
@@ -88,7 +112,6 @@ export default function ToolsScreen() {
         </View>
       </View>
 
-      {/* Fixed search */}
       <View style={s.searchWrap}>
         <TextInput
           style={s.search}
@@ -120,44 +143,83 @@ export default function ToolsScreen() {
           ) : (
             <View style={s.grid}>
               {searchResults.map((tool, i) => (
-                <ToolCard key={tool.id} tool={tool} index={i} onPress={() => openTool(tool)} showCategory />
+                <ToolCard
+                  key={tool.id}
+                  tool={tool}
+                  index={i}
+                  fav={favSet.has(tool.id)}
+                  onPress={() => openTool(tool)}
+                  onLongPress={() => toggleFavorite(tool)}
+                  showCategory
+                />
               ))}
             </View>
           )
         ) : (
-          TOOL_CATEGORIES.map((cat) => {
-            const isOpen = !!openSections[cat.key];
-            const ready = cat.tools.filter((t) => IMPLEMENTED.has(t.id)).length;
-            return (
-              <Animated.View key={cat.key} layout={LinearTransition.springify()} style={s.section}>
-                <TouchableOpacity style={s.sectionHead} onPress={() => toggleSection(cat.key)} activeOpacity={0.75}>
-                  <Text style={[s.chevron, isOpen && { transform: [{ rotate: "90deg" }] }]}>›</Text>
+          <>
+            {/* Favorites */}
+            {favTools.length > 0 && (
+              <Animated.View layout={LinearTransition.springify()} style={s.section}>
+                <View style={[s.sectionHead, { backgroundColor: GOLD + "12", borderWidth: 1, borderColor: GOLD + "44" }]}>
                   <View style={{ flex: 1, alignItems: "flex-end" }}>
-                    <Text style={s.sectionLabel}>{cat.label}</Text>
-                    <Text style={s.sectionMeta}>
-                      {cat.tools.length} כלים{ready ? ` · ${ready} פעילים` : ""}
-                    </Text>
+                    <Text style={s.sectionLabel}>מועדפים</Text>
+                    <Text style={s.sectionMeta}>{favTools.length} כלים · לחיצה ארוכה להסרה</Text>
                   </View>
-                  <View style={[s.sectionBadge, { backgroundColor: cat.color + "16" }]}>
-                    <Text style={{ fontSize: 20 }}>{cat.emoji}</Text>
+                  <View style={[s.sectionBadge, { backgroundColor: GOLD + "24" }]}>
+                    <Text style={{ fontSize: 20 }}>⭐</Text>
                   </View>
-                </TouchableOpacity>
-
-                {isOpen && (
-                  <View style={s.grid}>
-                    {cat.tools.map((tool, i) => (
-                      <ToolCard
-                        key={tool.id}
-                        tool={{ ...tool, color: cat.color }}
-                        index={i}
-                        onPress={() => openTool(tool)}
-                      />
-                    ))}
-                  </View>
-                )}
+                </View>
+                <View style={s.grid}>
+                  {favTools.map((tool, i) => (
+                    <ToolCard
+                      key={`fav-${tool.id}`}
+                      tool={tool}
+                      index={i}
+                      fav
+                      onPress={() => openTool(tool)}
+                      onLongPress={() => toggleFavorite(tool)}
+                    />
+                  ))}
+                </View>
               </Animated.View>
-            );
-          })
+            )}
+
+            {TOOL_CATEGORIES.map((cat) => {
+              const isOpen = !!openSections[cat.key];
+              const ready = cat.tools.filter((t) => IMPLEMENTED.has(t.id)).length;
+              return (
+                <Animated.View key={cat.key} layout={LinearTransition.springify()} style={s.section}>
+                  <TouchableOpacity style={s.sectionHead} onPress={() => toggleSection(cat.key)} activeOpacity={0.75}>
+                    <Text style={[s.chevron, isOpen && { transform: [{ rotate: "90deg" }] }]}>›</Text>
+                    <View style={{ flex: 1, alignItems: "flex-end" }}>
+                      <Text style={s.sectionLabel}>{cat.label}</Text>
+                      <Text style={s.sectionMeta}>
+                        {cat.tools.length} כלים{ready ? ` · ${ready} פעילים` : ""}
+                      </Text>
+                    </View>
+                    <View style={[s.sectionBadge, { backgroundColor: cat.color + "16" }]}>
+                      <Text style={{ fontSize: 20 }}>{cat.emoji}</Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  {isOpen && (
+                    <View style={s.grid}>
+                      {cat.tools.map((tool, i) => (
+                        <ToolCard
+                          key={tool.id}
+                          tool={{ ...tool, color: cat.color }}
+                          index={i}
+                          fav={favSet.has(tool.id)}
+                          onPress={() => openTool(tool)}
+                          onLongPress={() => toggleFavorite({ ...tool, color: cat.color })}
+                        />
+                      ))}
+                    </View>
+                  )}
+                </Animated.View>
+              );
+            })}
+          </>
         )}
       </ScrollView>
 
@@ -167,7 +229,6 @@ export default function ToolsScreen() {
         </Animated.View>
       )}
 
-      {/* Mini-app sheet */}
       <Modal visible={!!activeTool} transparent animationType="slide" onRequestClose={() => setActiveTool(null)}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <TouchableWithoutFeedback onPress={() => setActiveTool(null)}>
@@ -178,6 +239,13 @@ export default function ToolsScreen() {
                   <View style={s.sheetHead}>
                     <TouchableOpacity style={s.closeBtn} onPress={() => setActiveTool(null)} activeOpacity={0.7}>
                       <Text style={s.closeBtnText}>✕</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={s.favBtn}
+                      onPress={() => activeTool && toggleFavorite(activeTool)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={{ fontSize: 18 }}>{activeTool && favSet.has(activeTool.id) ? "⭐" : "☆"}</Text>
                     </TouchableOpacity>
                     <Text style={s.sheetTitle} numberOfLines={1}>
                       {activeTool?.emoji} {activeTool?.name}
@@ -201,16 +269,23 @@ export default function ToolsScreen() {
   );
 }
 
-function ToolCard({ tool, index, onPress, showCategory }) {
+function ToolCard({ tool, index, fav, onPress, onLongPress, showCategory }) {
   const ready = IMPLEMENTED.has(tool.id);
   return (
     <Animated.View entering={FadeInDown.delay(Math.min(index * 22, 260)).duration(240)} style={s.cardWrap}>
-      <TouchableOpacity style={s.card} onPress={onPress} activeOpacity={0.8}>
+      <TouchableOpacity
+        style={[s.card, fav && { borderWidth: 1, borderColor: GOLD + "55" }]}
+        onPress={onPress}
+        onLongPress={onLongPress}
+        delayLongPress={320}
+        activeOpacity={0.8}
+      >
         {ready && (
           <View style={s.readyDot}>
             <Text style={s.readyDotText}>✓</Text>
           </View>
         )}
+        {fav && <Text style={s.favStar}>⭐</Text>}
         <View style={[s.cardIcon, { backgroundColor: (tool.color || BLUE) + "14" }]}>
           <Text style={{ fontSize: 21 }}>{tool.emoji}</Text>
         </View>
@@ -312,6 +387,7 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   readyDotText: { fontFamily: FONTS.bold, fontSize: 10, color: "#3A2E08" },
+  favStar: { position: "absolute", top: 6, right: 7, fontSize: 11 },
 
   empty: { alignItems: "center", paddingTop: 60, gap: 10 },
   emptyText: { fontFamily: FONTS.regular, fontSize: 14, color: INK_MUTED },
@@ -331,7 +407,8 @@ const s = StyleSheet.create({
   sheet: { backgroundColor: WHITE, borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 16, paddingTop: 8 },
   grabber: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: "#E3E6EA", marginBottom: 10 },
   sheetHead: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 },
-  sheetTitle: { flex: 1, fontFamily: FONTS.bold, fontSize: 18, color: INK, textAlign: "right" },
+  sheetTitle: { flex: 1, fontFamily: FONTS.bold, fontSize: 17, color: INK, textAlign: "right" },
   closeBtn: { width: 40, height: 40, borderRadius: 13, backgroundColor: BG, alignItems: "center", justifyContent: "center" },
   closeBtnText: { fontFamily: FONTS.bold, fontSize: 15, color: INK_SOFT },
+  favBtn: { width: 40, height: 40, borderRadius: 13, backgroundColor: BG, alignItems: "center", justifyContent: "center" },
 });

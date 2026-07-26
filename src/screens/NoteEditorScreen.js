@@ -44,19 +44,19 @@ const INK_RED = "#D32F2F";
 const INK_BLUE = "#1565C0";
 
 // Smart business templates — injected verbatim at the cursor position.
-// Template 1 is strictly standard document/A5-sticker prints (no sublimation).
+// Aligned with the current business focus: vending machines and imports.
 const SMART_TEMPLATES = [
   {
-    key: "print",
-    emoji: "🖨️",
-    label: "הדפסת מסמכים ומדבקות A5",
-    text: "הזמנת הדפסת מסמכים ומדבקות A5: לקוח: ___ | כמות: ___ | סה״כ לתשלום: ___",
+    key: "restock",
+    emoji: "🥤",
+    label: "מילוי מכונת שתייה",
+    text: "מילוי מכונה: מיקום: ___ | פחיות שהוכנסו: ___ | נגבה מהמכונה: ___",
   },
   {
-    key: "delivery",
-    emoji: "🛴",
-    label: "משלוח קורקינט",
-    text: "משלוח קורקינט: יעד: ___ | שעת יציאה: ___ | סטטוס: ממתין",
+    key: "import",
+    emoji: "📦",
+    label: "הזמנת ייבוא",
+    text: "הזמנת ייבוא: מוצר: ___ | ספק: ___ | עלות $: ___ | הגעה משוערת: ___",
   },
   {
     key: "meeting",

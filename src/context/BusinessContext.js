@@ -8,7 +8,7 @@ import { usePersistentState } from "../utils/usePersistentState";
 // gold promo chips even if the Promos module was never opened.
 export const DEFAULT_PROMOS = [
   { id: "promo-night", name: "מארז לילה: 2 חטיפים + פחית", price: 20, emoji: "🌙", active: true },
-  { id: "promo-stickers", name: "100 מדבקות A5 + חיתוך", price: 120, emoji: "🏷️", active: true },
+  { id: "promo-sixpack", name: "מארז 6 פחיות + חטיף", price: 35, emoji: "📦", active: true },
 ];
 
 // Single source of truth for the business data while the "My Business" tab is

@@ -25,7 +25,7 @@ export const DREAM_COVERS = [
 const INITIAL_DREAMS = [
   {
     id: "1",
-    title: "רחפן DJI חדש",
+    title: "מכונת שתייה נוספת",
     type: "money",
     current: 1500,
     target: 5000,
@@ -38,7 +38,7 @@ const INITIAL_DREAMS = [
     notes: [],
     milestones: [
       { id: "m1", title: "לחסוך 2,500 ₪", target: 2500, coins: 50, released: false, done: true },
-      { id: "m2", title: "להשוות דגמים ומחירים", target: 3500, coins: 50, released: false, done: false },
+      { id: "m2", title: "לאתר מיקום ולסגור דמי הצבה", target: 3500, coins: 50, released: false, done: false },
       { id: "m3", title: "הגענו ליעד — לרכוש!", target: 5000, coins: 150, released: false, done: false },
     ],
   },

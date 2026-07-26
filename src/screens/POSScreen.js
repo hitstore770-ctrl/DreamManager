@@ -39,12 +39,12 @@ const RED_SOFT = "#FDEBEB";
 
 // Quick-add products for the print/delivery counter. Prices in ₪.
 const PRODUCTS = [
-  { name: "הדפסה שחור-לבן", price: 2, emoji: "🖨️" },
-  { name: "הדפסה צבעונית", price: 5, emoji: "🌈" },
-  { name: "מדבקות A5", price: 15, emoji: "🏷️" },
-  { name: "למינציה", price: 10, emoji: "📄" },
-  { name: "סריקה", price: 3, emoji: "📠" },
-  { name: "משלוח קורקינט", price: 25, emoji: "🛴" },
+  { name: "פחית שתייה", price: 6, emoji: "🥤" },
+  { name: "בקבוק מים", price: 5, emoji: "💧" },
+  { name: "משקה אנרגיה", price: 12, emoji: "⚡" },
+  { name: "קפה קר", price: 10, emoji: "☕" },
+  { name: "חטיף", price: 7, emoji: "🍫" },
+  { name: "מארז 6 פחיות", price: 30, emoji: "📦" },
 ];
 
 // Above this many cart lines the list becomes unusable on a small screen, so
