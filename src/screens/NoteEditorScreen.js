@@ -130,12 +130,13 @@ export default function NoteEditorScreen({ route, navigation }) {
   }
 
   const readOnly = note.readOnly;
-  // Editor surface defaults to the 770JLM soft grey (#F8F9FA); a chosen pastel
-  // overrides it. Keeps the writing area calm and on-theme by default.
+  // The editor lives inside a white card; by default the writing surface is
+  // transparent so it reads as one clean white sheet. Picking a pastel tints
+  // just the inner writing area, leaving the white framed boundary intact.
   const bg =
     note.bg && note.bg !== "white"
       ? noteBg(note.bg, theme.scheme === "dark")
-      : theme.surfaceAlt;
+      : "transparent";
   const s = makeStyles(theme, fontScale);
 
   // ---- Rich-text toolbar --------------------------------------------------
@@ -260,7 +261,7 @@ export default function NoteEditorScreen({ route, navigation }) {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.surface }}>
+    <View style={{ flex: 1, backgroundColor: "#F4F5F7" }}>
       {/* Header */}
       <View style={[s.header, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity style={s.iconBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
@@ -383,7 +384,7 @@ export default function NoteEditorScreen({ route, navigation }) {
 
         {/* Body: checklist / preview / editor */}
         {note.isChecklist ? (
-          <View style={[s.paper, { backgroundColor: bg }]}>
+          <View style={[s.editorCard, bg !== "transparent" && { backgroundColor: bg }]}>
             <View style={s.progressWrap}>
               <Text style={s.progressText}>{checklistDone}/{note.checklist.length} הושלמו</Text>
               <View style={s.progressBg}>
@@ -422,7 +423,7 @@ export default function NoteEditorScreen({ route, navigation }) {
             )}
           </View>
         ) : preview ? (
-          <View style={[s.paper, { backgroundColor: bg, minHeight: 240 }]}>
+          <View style={[s.editorCard, bg !== "transparent" && { backgroundColor: bg }]}>
             <Text style={{ fontSize: (note.fontSize || 16) * fontScale, color: theme.textPrimary, textAlign: "right", lineHeight: (note.fontSize || 16) * fontScale * 1.6 }}>
               {segments.map((seg, i) => (
                 <Text
@@ -439,18 +440,20 @@ export default function NoteEditorScreen({ route, navigation }) {
             </Text>
           </View>
         ) : (
-          <TextInput
-            style={[s.paper, s.bodyInput, { backgroundColor: bg, color: theme.textPrimary, fontSize: (note.fontSize || 16) * fontScale, lineHeight: (note.fontSize || 16) * fontScale * 1.6 }]}
-            value={body}
-            onChangeText={onBodyChange}
-            onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
-            placeholder="התחל לכתוב... אפשר **מודגש**, *נטוי*, __קו תחתון__, #תגית ותרגיל כמו 50*4="
-            placeholderTextColor={theme.textMuted}
-            multiline
-            editable={!readOnly}
-            textAlign="auto"
-            textAlignVertical="top"
-          />
+          <View style={[s.editorCard, bg !== "transparent" && { backgroundColor: bg }]}>
+            <TextInput
+              style={[s.bodyInput, { color: theme.textPrimary, fontSize: (note.fontSize || 16) * fontScale, lineHeight: (note.fontSize || 16) * fontScale * 1.6 }]}
+              value={body}
+              onChangeText={onBodyChange}
+              onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
+              placeholder="התחל לכתוב... אפשר **מודגש**, *נטוי*, __קו תחתון__, #תגית ותרגיל כמו 50*4="
+              placeholderTextColor={theme.textMuted}
+              multiline
+              editable={!readOnly}
+              textAlign="auto"
+              textAlignVertical="top"
+            />
+          </View>
         )}
 
         {/* Counters */}
@@ -585,9 +588,30 @@ function makeStyles(t, fs) {
     headerSub: { color: t.textMuted, fontSize: 11 * fs, fontFamily: FONTS.regular, marginTop: 1 },
 
     // One prominent, grouped toolbar card that sits right above the editor.
-    toolbarCard: { marginHorizontal: 12, marginTop: 10, marginBottom: 2, backgroundColor: t.surfaceAlt, borderRadius: RADIUS, paddingVertical: 8, borderWidth: 1, borderColor: t.hairline, ...SHADOW_SM },
+    // Explicit white card on the grey (#F4F5F7) screen so it clearly stands out.
+    toolbarCard: {
+      backgroundColor: "#FFFFFF",
+      borderRadius: 25,
+      paddingVertical: 12,
+      paddingHorizontal: 15,
+      borderWidth: 1,
+      borderColor: "#EAEAEA",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
+      elevation: 2,
+      // NOTE: alignSelf:'center' shrink-wraps this card to the full scroll-content
+      // width (~730px), pushing the rounded pill + borders off-screen. We keep it
+      // stretched to the screen width (minus margins) so the white card boundary
+      // is fully visible and the icons scroll inside it.
+      marginTop: 12,
+      marginBottom: 20,
+      marginHorizontal: 12,
+      gap: 10,
+    },
     // flexGrow + center keeps the row centered when it fits, scrollable when not.
-    toolbar: { flexGrow: 1, justifyContent: "center", alignItems: "center", gap: 6, paddingHorizontal: 8 },
+    toolbar: { flexGrow: 1, justifyContent: "center", alignItems: "center", gap: 10, paddingHorizontal: 2 },
     tbtn: { minWidth: 42, height: 40, paddingHorizontal: 10, borderRadius: RADIUS_SM, backgroundColor: t.surface, borderWidth: 1, borderColor: t.hairline, alignItems: "center", justifyContent: "center" },
     tbtnText: { fontSize: 16 * fs, fontFamily: FONTS.bold, textAlign: "center" },
     tsep: { width: 1, height: 24, backgroundColor: t.hairline, marginHorizontal: 4 },
@@ -603,8 +627,19 @@ function makeStyles(t, fs) {
     sumTotal: { fontSize: 16 * fs, fontFamily: FONTS.bold },
 
     title: { fontSize: 22 * fs, fontFamily: FONTS.bold, marginBottom: 12, paddingVertical: 4 },
-    paper: { borderRadius: RADIUS, padding: 16, ...SHADOW_SM },
-    bodyInput: { minHeight: 260, textAlignVertical: "top", fontFamily: FONTS.regular },
+    // White editor card — a clear visual boundary for the writing area.
+    editorCard: {
+      backgroundColor: "#FFFFFF",
+      padding: 20,
+      borderRadius: RADIUS,
+      minHeight: 300,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+    },
+    bodyInput: { flex: 1, minHeight: 260, textAlignVertical: "top", fontFamily: FONTS.regular },
 
     mathChip: { backgroundColor: t.accent + "18", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, marginEnd: 8 },
     mathChipText: { color: t.accent, fontSize: 14 * fs, fontFamily: FONTS.bold },
