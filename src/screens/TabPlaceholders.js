@@ -24,9 +24,6 @@ function Placeholder({ emoji, title, subtitle }) {
   );
 }
 
-export function DreamsPlaceholder() {
-  return <Placeholder emoji="✨" title="חלומות" subtitle="היעדים והחלומות שלך יופיעו כאן" />;
-}
 export function ToolsPlaceholder() {
   return <Placeholder emoji="🧰" title="כלים" subtitle="כלי העבודה המהירים יופיעו כאן" />;
 }

@@ -13,6 +13,15 @@ import { useAuth } from "./AuthContext";
 
 const DreamContext = createContext(undefined);
 
+// Vision-board cover palettes, used when a dream has no photo yet.
+export const DREAM_COVERS = [
+  { key: "night", colors: ["#1B2A4A", "#0E1729"] },
+  { key: "sunset", colors: ["#8A3B4B", "#3A1C28"] },
+  { key: "forest", colors: ["#1E4A3C", "#0F2620"] },
+  { key: "gold", colors: ["#6B5320", "#2E230D"] },
+  { key: "royal", colors: ["#3C2E6B", "#1B1433"] },
+];
+
 const INITIAL_DREAMS = [
   {
     id: "1",
@@ -20,14 +29,17 @@ const INITIAL_DREAMS = [
     type: "money",
     current: 1500,
     target: 5000,
+    saved: 1500,
+    cover: "night",
     imageUri: null,
     cost: 3200,
     price: 5000,
     tasks: [],
     notes: [],
     milestones: [
-      { id: "m1", title: "חצי מהדרך", target: 2500, coins: 50, released: false },
-      { id: "m2", title: "הגענו ליעד!", target: 5000, coins: 150, released: false },
+      { id: "m1", title: "לחסוך 2,500 ₪", target: 2500, coins: 50, released: false, done: true },
+      { id: "m2", title: "להשוות דגמים ומחירים", target: 3500, coins: 50, released: false, done: false },
+      { id: "m3", title: "הגענו ליעד — לרכוש!", target: 5000, coins: 150, released: false, done: false },
     ],
   },
   {
@@ -36,12 +48,17 @@ const INITIAL_DREAMS = [
     type: "knowledge",
     current: 20,
     target: 100,
+    saved: 0,
+    cover: "royal",
     imageUri: null,
     cost: 0,
     price: 0,
     tasks: [],
     notes: [],
-    milestones: [],
+    milestones: [
+      { id: "k1", title: "לסיים קורס בסיס", target: 40, coins: 30, released: false, done: false },
+      { id: "k2", title: "לערוך סרטון ראשון", target: 100, coins: 60, released: false, done: false },
+    ],
   },
 ];
 
@@ -52,11 +69,26 @@ function normalizeDream(dream) {
     imageUri: null,
     cost: 0,
     price: 0,
+    saved: 0,
+    cover: "night",
     tasks: [],
     notes: [],
     milestones: [],
     ...dream,
   };
+}
+
+// Vision-board progress: milestone completion when a checklist exists,
+// otherwise the numeric current/target ratio. Always 0–100.
+export function dreamProgress(dream) {
+  const ms = dream?.milestones || [];
+  if (ms.length) {
+    const done = ms.filter((m) => m.done).length;
+    return Math.round((done / ms.length) * 100);
+  }
+  const target = Number(dream?.target) || 0;
+  if (!target) return 0;
+  return Math.min(100, Math.round(((Number(dream?.current) || 0) / target) * 100));
 }
 
 export function DreamProvider({ children }) {
@@ -100,9 +132,12 @@ export function DreamProvider({ children }) {
           setDreams(snapshot.docs.map((snap) => normalizeDream(snap.data())));
         }
       } catch (err) {
-        // Cloud unreachable — fall back to defaults so the app still works.
+        // Cloud unreachable — fall back to defaults so the app still works,
+        // but never clobber dreams the user already has on screen: this
+        // rejection can land long after the board rendered, and overwriting
+        // then silently discards edits made in the meantime.
         if (!cancelled) {
-          setDreams(INITIAL_DREAMS);
+          setDreams((prev) => (prev.length ? prev : INITIAL_DREAMS));
           setError("שגיאה בטעינת הנתונים מהענן. מוצגים נתוני ברירת מחדל.");
         }
       } finally {
@@ -134,22 +169,83 @@ export function DreamProvider({ children }) {
     }
   };
 
-  const addDream = ({ title, type, target, cost = 0, price = 0 }) => {
+  const addDream = ({ title, type, target, cost = 0, price = 0, cover = "night", imageUri = null, milestones = [] }) => {
     const newDream = {
       id: Date.now().toString(),
       title,
       type,
       current: 0,
       target,
-      imageUri: null,
+      saved: 0,
+      cover,
+      imageUri,
       cost,
       price,
       tasks: [],
       notes: [],
-      milestones: [],
+      milestones,
     };
     setDreams((prev) => [newDream, ...prev]);
     syncDream(newDream);
+    return newDream;
+  };
+
+  // ---- Vision-board milestone checklist -----------------------------------
+  // Ticking a milestone drives the card's progress bar directly. Coins are
+  // awarded once per milestone (tracked by `released`, same as the numeric
+  // threshold engine) so completing then un-completing can't farm coins.
+  const toggleMilestone = (dreamId, milestoneId) => {
+    let updated = null;
+    let reward = 0;
+    setDreams((prev) =>
+      prev.map((dream) => {
+        if (dream.id !== dreamId) return dream;
+        const milestones = (dream.milestones || []).map((m) => {
+          if (m.id !== milestoneId) return m;
+          const done = !m.done;
+          if (done && !m.released) {
+            reward = m.coins || 25;
+            return { ...m, done, released: true };
+          }
+          return { ...m, done };
+        });
+        updated = { ...dream, milestones };
+        return updated;
+      })
+    );
+    if (updated) patchDream(dreamId, { milestones: updated.milestones });
+    if (reward) addCoins(reward);
+  };
+
+  const addChecklistMilestone = (dreamId, title) => {
+    const milestone = { id: Date.now().toString(), title, target: 0, coins: 25, released: false, done: false };
+    let updated = null;
+    setDreams((prev) =>
+      prev.map((dream) => {
+        if (dream.id !== dreamId) return dream;
+        updated = [...(dream.milestones || []), milestone];
+        return { ...dream, milestones: updated };
+      })
+    );
+    if (updated) patchDream(dreamId, { milestones: updated });
+  };
+
+  // Money put aside toward the dream's financial target.
+  const addDreamSavings = (dreamId, amount) => {
+    let updated = null;
+    setDreams((prev) =>
+      prev.map((dream) => {
+        if (dream.id !== dreamId) return dream;
+        const saved = Math.max(0, (Number(dream.saved) || 0) + amount);
+        updated = { ...dream, saved, current: Math.min(dream.target || saved, saved) };
+        return updated;
+      })
+    );
+    if (updated) patchDream(dreamId, { saved: updated.saved, current: updated.current });
+  };
+
+  const removeDream = (dreamId) => {
+    setDreams((prev) => prev.filter((d) => d.id !== dreamId));
   };
 
   // Bump a project's progress. Any milestone whose threshold is now reached
@@ -279,10 +375,14 @@ export function DreamProvider({ children }) {
       isLoading,
       error,
       addDream,
+      removeDream,
       updateDreamProgress,
       setDreamPricing,
       addMilestone,
       removeMilestone,
+      toggleMilestone,
+      addChecklistMilestone,
+      addDreamSavings,
       addTask,
       toggleTask,
       addNote,
