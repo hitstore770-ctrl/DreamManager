@@ -7,7 +7,7 @@ import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
 // rows/sub-views inside it.
 
 const WHITE = "#FFFFFF";
-const CARD = "#F4F5F7";
+const CARD = "#F0F2F5";
 const INK = "#1A1D21";
 const INK_SOFT = "#5A6470";
 const INK_MUTED = "#9AA4B0";

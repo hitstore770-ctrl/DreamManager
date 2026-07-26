@@ -1,7 +1,7 @@
 // Modern, sleek design system — a soft iOS / Material surface language.
 // Light-grey canvas, white cards, a deep-blue brand and a swappable accent,
 // gentle drop shadows (low opacity, soft blur), generous rounded corners and
-// the clean Heebo Hebrew sans-serif.
+// the light Assistant Hebrew sans-serif.
 //
 // The legacy neo-brutalist export names (BRUTAL_SHADOW, BRUTAL_BORDER, …) are
 // kept as *soft* aliases so every existing tool restyles automatically without
@@ -135,19 +135,19 @@ export function getNoteTilt() {
 // offset shadow). Legacy names preserved.
 // ---------------------------------------------------------------------------
 export const SHADOW = {
-  shadowColor: "#101828",
+  shadowColor: "#0A1F44",
   shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.1,
-  shadowRadius: 16,
-  elevation: 4,
+  shadowOpacity: 0.04,
+  shadowRadius: 12,
+  elevation: 2,
 };
 
 export const SHADOW_SM = {
-  shadowColor: "#101828",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.08,
-  shadowRadius: 8,
-  elevation: 2,
+  shadowColor: "#0A1F44",
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.04,
+  shadowRadius: 10,
+  elevation: 1,
 };
 
 export const SHADOW_LG = {
@@ -179,10 +179,14 @@ export const RADIUS_LG = 22;
 // Spacing scale for consistent, generous padding.
 export const SPACING = { xs: 6, sm: 10, md: 16, lg: 22, xl: 30 };
 
+// Assistant, app-wide. Body sits at 400 and "bold" resolves to 600 — the
+// blockier 700/800 cuts read as heavy next to the soft surfaces.
 export const FONTS = {
-  regular: "Heebo_400Regular",
-  medium: "Heebo_500Medium",
-  bold: "Heebo_700Bold",
+  light: "Assistant_300Light",
+  regular: "Assistant_400Regular",
+  medium: "Assistant_500Medium",
+  semibold: "Assistant_600SemiBold",
+  bold: "Assistant_600SemiBold",
 };
 
 // Font-scale multipliers for the accessibility setting.

@@ -8,7 +8,7 @@ export const NOTES_THEME = {
   scheme: "light",
 
   // Surfaces — clean whites and very soft greys, no heavy color blocks.
-  background: "#F8F9FA", // soft off-white canvas
+  background: "#F0F2F5", // soft grey canvas
   surface: "#FFFFFF", // clean white cards
   surfaceAlt: "#F8F9FA", // subtle raised / input fill
   surfaceMuted: "#EEF1F4", // chips / progress track
@@ -41,22 +41,23 @@ export const NOTES_FONTS = {
   regular: "Assistant_400Regular",
   medium: "Assistant_500Medium",
   semibold: "Assistant_600SemiBold",
-  bold: "Assistant_700Bold",
+  // Titles top out at 600: 700+ reads blocky against the soft surfaces.
+  bold: "Assistant_600SemiBold",
 };
 
 // Soft, barely-there elevation per the spec (elevation 2, opacity 0.05).
 export const NOTES_SHADOW = {
   shadowColor: "#0A1F44",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.05,
-  shadowRadius: 10,
+  shadowOffset: { width: 0, height: 6 },
+  shadowOpacity: 0.04,
+  shadowRadius: 12,
   elevation: 2,
 };
 
 export const NOTES_SHADOW_LG = {
   shadowColor: "#0A1F44",
   shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.08,
-  shadowRadius: 20,
+  shadowOpacity: 0.04,
+  shadowRadius: 12,
   elevation: 5,
 };

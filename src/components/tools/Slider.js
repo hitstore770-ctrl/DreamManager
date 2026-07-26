@@ -7,7 +7,7 @@ import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
 // A slider built on React Native's own PanResponder — no slider package is
 // installed and adding a native one risks the build, so this stays pure RN.
 
-const CARD = "#F4F5F7";
+const CARD = "#F0F2F5";
 const INK = "#1A1D21";
 const INK_SOFT = "#5A6470";
 const BLUE = "#003366";

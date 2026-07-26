@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { I18nManager, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
+import Icon from "../components/Icon";
+import { SCREEN_IN } from "../utils/motion";
 import { BusinessProvider } from "../context/BusinessContext";
 import BizDashboardScreen from "./BizDashboardScreen";
 import DebtsScreen from "./DebtsScreen";
@@ -18,28 +20,30 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 // POS, Warehouse, customer tabs, Z-report, promos, pricing and the dashboard
 // (ספקים remains the one scaffold).
 
+const INK_SOFT_PILL = "#5A6470";
+const BLUE_ACCENT = "#003366";
 const WHITE = "#FFFFFF";
-const CARD = "#F4F5F7";
+const CARD = "#F0F2F5";
 const INK = "#1A1D21";
 const INK_MUTED = "#9AA4B0";
 const BLUE = "#003366";
 
 const MODULES = [
-  { key: "pos", label: "קופה", emoji: "🛒" },
-  { key: "inventory", label: "מחסן", emoji: "📦" },
-  { key: "tabs", label: "הקפות", emoji: "📒" },
-  { key: "suppliers", label: "ספקים", emoji: "🚚" },
-  { key: "zreport", label: "דוח Z", emoji: "🧾" },
-  { key: "deals", label: "מבצעים", emoji: "🎯" },
-  { key: "pricing", label: "תמחור", emoji: "🏷️" },
-  { key: "dash", label: "דשבורד", emoji: "📊" },
+  { key: "pos", label: "קופה", icon: "shopping-cart" },
+  { key: "inventory", label: "מחסן", icon: "package" },
+  { key: "tabs", label: "הקפות", icon: "book-open" },
+  { key: "suppliers", label: "ספקים", icon: "truck" },
+  { key: "zreport", label: "דוח Z", icon: "file-text" },
+  { key: "deals", label: "מבצעים", icon: "target" },
+  { key: "pricing", label: "תמחור", icon: "tag" },
+  { key: "dash", label: "דשבורד", icon: "bar-chart-2" },
 ];
 
-function ModuleScaffold({ emoji, title }) {
+function ModuleScaffold({ icon, title }) {
   return (
     <View style={s.scaffold}>
       <View style={s.scaffoldBadge}>
-        <Text style={{ fontSize: 40 }}>{emoji}</Text>
+        <Icon name={icon} size={34} color={BLUE_ACCENT} />
       </View>
       <Text style={s.scaffoldTitle}>{title}</Text>
       <View style={s.scaffoldPill}>
@@ -77,13 +81,13 @@ function BusinessShell() {
         return <BizDashboardScreen />;
       default: {
         const m = MODULES.find((x) => x.key === module);
-        return <ModuleScaffold emoji={m.emoji} title={m.label} />;
+        return <ModuleScaffold icon={m.icon} title={m.label} />;
       }
     }
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: WHITE, paddingTop: insets.top + 6 }}>
+    <Animated.View entering={SCREEN_IN} style={{ flex: 1, backgroundColor: WHITE, paddingTop: insets.top + 6 }}>
       {/* Sub-navigation pills */}
       <ScrollView
         horizontal
@@ -100,9 +104,8 @@ function BusinessShell() {
               onPress={() => switchTo(m.key)}
               activeOpacity={0.7}
             >
-              <Text style={[s.pillText, active && { color: WHITE }]}>
-                {m.emoji} {m.label}
-              </Text>
+              <Icon name={m.icon} size={15} color={active ? WHITE : INK_SOFT_PILL} />
+              <Text style={[s.pillText, active && { color: WHITE }]}>{m.label}</Text>
             </TouchableOpacity>
           );
         })}
@@ -112,7 +115,7 @@ function BusinessShell() {
       <Animated.View key={module} entering={FadeInDown.duration(220)} style={{ flex: 1 }}>
         {renderModule()}
       </Animated.View>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -127,6 +130,9 @@ export default function BusinessScreen() {
 const s = StyleSheet.create({
   pillRow: { paddingHorizontal: 12, paddingVertical: 6, gap: 8, alignItems: "center" },
   pill: {
+    flexDirection: I18nManager.isRTL ? "row" : "row-reverse",
+    alignItems: "center",
+    gap: 7,
     minHeight: 48,
     paddingHorizontal: 16,
     borderRadius: 24,
@@ -137,9 +143,9 @@ const s = StyleSheet.create({
   pillActive: {
     backgroundColor: BLUE,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
     elevation: 2,
   },
   pillText: { fontFamily: FONTS.semibold, fontSize: 13, color: INK },

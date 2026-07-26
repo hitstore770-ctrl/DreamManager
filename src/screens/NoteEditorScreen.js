@@ -17,6 +17,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInUp, FadeOutDown } from "react-native-reanimated";
 
+import Bounce from "../components/Bounce";
+import Icon from "../components/Icon";
 import { useNotes } from "../context/NotesContext";
 import { useSettings } from "../context/SettingsContext";
 import { hapticLight } from "../utils/haptics";
@@ -331,14 +333,19 @@ export default function NoteEditorScreen({ route, navigation }) {
     ? Math.round((checklistDone / note.checklist.length) * 100)
     : 0;
 
-  const TBtn = ({ label, on, active, labelColor }) => (
-    <TouchableOpacity
+  // A toolbar key. Pass `icon` for a vector glyph, `label` for the typographic
+  // ones (B / I / U / A / Σ) where a letterform is the clearer control.
+  const TBtn = ({ label, icon, on, active, labelColor }) => (
+    <Bounce
       style={[s.tbtn, active && { backgroundColor: theme.accent, borderColor: theme.accent }]}
       onPress={on}
-      activeOpacity={0.7}
     >
-      <Text style={[s.tbtnText, { color: active ? "#FFF" : labelColor || theme.accent }]}>{label}</Text>
-    </TouchableOpacity>
+      {icon ? (
+        <Icon name={icon} size={18} color={active ? "#FFF" : labelColor || theme.accent} />
+      ) : (
+        <Text style={[s.tbtnText, { color: active ? "#FFF" : labelColor || theme.accent }]}>{label}</Text>
+      )}
+    </Bounce>
   );
 
   const checklistBlock = (
@@ -546,33 +553,33 @@ export default function NoteEditorScreen({ route, navigation }) {
                 <TBtn label="B" on={() => applyMarker("**")} />
                 <TBtn label="I" on={() => applyMarker("*")} />
                 <TBtn label="U" on={() => applyMarker("__")} />
-                <TBtn label="🖍️" on={() => applyMarker("==")} />
+                <TBtn icon="edit-2" on={() => applyMarker("==")} />
                 <TBtn label="A" labelColor={INK_RED} active={note.inkColor === "red"} on={() => toggleInk("red")} />
                 <TBtn label="A" labelColor={INK_BLUE} active={note.inkColor === "blue"} on={() => toggleInk("blue")} />
                 <View style={s.tsep} />
-                <TBtn label="⇥" active={bodyAlign === "right"} on={() => setAlign("right")} />
-                <TBtn label="↔" active={bodyAlign === "center"} on={() => setAlign("center")} />
-                <TBtn label="⇤" active={bodyAlign === "left"} on={() => setAlign("left")} />
+                <TBtn icon="align-right" active={bodyAlign === "right"} on={() => setAlign("right")} />
+                <TBtn icon="align-center" active={bodyAlign === "center"} on={() => setAlign("center")} />
+                <TBtn icon="align-left" active={bodyAlign === "left"} on={() => setAlign("left")} />
                 <View style={s.tsep} />
                 {!note.isChecklist ? (
-                  <TBtn label="✅" on={convertToChecklist} />
+                  <TBtn icon="check-square" on={convertToChecklist} />
                 ) : (
-                  <TBtn label="📝" active on={() => patchNote({ isChecklist: false })} />
+                  <TBtn icon="type" active on={() => patchNote({ isChecklist: false })} />
                 )}
-                <TBtn label="🪄" on={() => setShowTemplates(true)} />
+                <TBtn icon="file-plus" on={() => setShowTemplates(true)} />
                 <View style={s.tsep} />
                 {/* Advanced pro tools: WhatsApp · lock · auto-sum block */}
-                <TBtn label="💬" on={sendToWhatsApp} />
+                <TBtn icon="message-circle" on={sendToWhatsApp} />
                 <TBtn
-                  label={note.locked ? "🔒" : "🔓"}
+                  icon={note.locked ? "lock" : "unlock"}
                   active={note.locked}
                   on={() => { hapticLight(); patchNote({ locked: !note.locked }); }}
                 />
                 <TBtn label="Σ" on={appendSumBlock} />
                 <View style={s.tsep} />
-                <TBtn label="🧮" on={() => setShowCalc(true)} />
-                <TBtn label="📆" on={() => setShowDates(true)} />
-                <TBtn label="🕐" on={insertTimestamp} />
+                <TBtn icon="percent" on={() => setShowCalc(true)} />
+                <TBtn icon="calendar" on={() => setShowDates(true)} />
+                <TBtn icon="clock" on={insertTimestamp} />
                 <View style={s.tsep} />
                 {NOTE_BG.filter((b) => ["yellow", "blue", "green", "pink"].includes(b.key)).map((b) => (
                   <TouchableOpacity
@@ -589,8 +596,8 @@ export default function NoteEditorScreen({ route, navigation }) {
                 <View style={s.tsep} />
                 <TBtn label="A−" on={() => bumpFont(-1)} />
                 <TBtn label="A+" on={() => bumpFont(1)} />
-                <TBtn label="👁️" active={preview} on={() => setPreview((p) => !p)} />
-                <TBtn label={readOnly ? "🔏" : "🖊️"} active={readOnly} on={() => patchNote({ readOnly: !readOnly })} />
+                <TBtn icon="eye" active={preview} on={() => setPreview((p) => !p)} />
+                <TBtn icon={readOnly ? "eye-off" : "edit-3"} active={readOnly} on={() => patchNote({ readOnly: !readOnly })} />
               </ScrollView>
             </View>
           </Animated.View>
@@ -746,10 +753,10 @@ function makeStyles(t, fsScale) {
       borderRadius: RADIUS,
       minHeight: 300,
       shadowColor: "#000",
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 2,
-      elevation: 1,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.04,
+      shadowRadius: 12,
+      elevation: 2,
     },
     bodyInput: { flex: 1, minHeight: 260, textAlignVertical: "top", fontFamily: FONTS.regular, ...NO_OUTLINE },
 
@@ -769,9 +776,9 @@ function makeStyles(t, fsScale) {
       borderWidth: 1,
       borderColor: "#EAEAEA",
       shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 3,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.04,
+      shadowRadius: 12,
       elevation: 2,
       marginHorizontal: 12,
       marginBottom: 8,

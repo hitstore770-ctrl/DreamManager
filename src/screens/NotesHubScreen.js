@@ -14,6 +14,9 @@ import { ScrollView, Swipeable } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
+
+import Icon from "../components/Icon";
+import { SCREEN_IN } from "../utils/motion";
 import PinLock from "../components/PinLock";
 import { useNotes } from "../context/NotesContext";
 import { useSettings } from "../context/SettingsContext";
@@ -30,7 +33,9 @@ import { RADIUS, RADIUS_SM } from "../utils/theme";
 import { usePersistentState } from "../utils/usePersistentState";
 
 // Hub surface: white cards on soft grey, per the Phase 2 spec.
-const HUB_BG = "#F4F5F7";
+const BLUE_TITLE = "#003366";
+const GOLD_HDR = "#D4AF37";
+const HUB_BG = "#F0F2F5";
 
 // Rough reading-time estimate at ~200 words/min (min 1 minute).
 function readTime(note) {
@@ -223,16 +228,20 @@ export default function NotesHubScreen({ navigation }) {
   const s = makeStyles(theme, fontScale);
 
   return (
-    <View style={{ flex: 1, backgroundColor: HUB_BG }}>
+    <Animated.View entering={SCREEN_IN} style={{ flex: 1, backgroundColor: HUB_BG }}>
       {/* Header */}
       <View style={[s.header, { paddingTop: insets.top + 12 }]}>
-        <Text style={s.title}>🗒️ פתקים</Text>
+        <View style={s.titleRow}>
+          <Icon name="edit-3" size={20} color={BLUE_TITLE} />
+          <Text style={s.title}>פתקים</Text>
+        </View>
         <View style={s.headerActions}>
           <TouchableOpacity style={s.journalBtn} onPress={generateJournal} activeOpacity={0.8}>
-            <Text style={s.journalText}>📔 יומן עבודה</Text>
+            <Icon name="book" size={15} color={GOLD_HDR} />
+            <Text style={s.journalText}>יומן עבודה</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s.iconBtn} onPress={() => setToolbox(true)} activeOpacity={0.7}>
-            <Text style={s.icon}>🧰</Text>
+            <Icon name="grid" size={19} color={BLUE_TITLE} />
           </TouchableOpacity>
         </View>
       </View>
@@ -388,7 +397,7 @@ export default function NotesHubScreen({ navigation }) {
           onCancel={() => setPinNote(null)}
         />
       )}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -493,10 +502,16 @@ function ActionRow({ theme, label, onPress, danger, muted }) {
 function makeStyles(t, fs) {
   return StyleSheet.create({
     header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 14, paddingBottom: 12 },
+    titleRow: {
+      flexDirection: I18nManager.isRTL ? "row" : "row-reverse",
+      alignItems: "center",
+      gap: 8,
+      flexShrink: 0,
+    },
     headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
     iconBtn: { width: 42, height: 42, borderRadius: 12, backgroundColor: t.surface, alignItems: "center", justifyContent: "center", ...SHADOW_SM },
     icon: { fontSize: 20, color: t.textPrimary, fontFamily: FONTS.medium },
-    journalBtn: { flexDirection: "row", alignItems: "center", height: 42, paddingHorizontal: 14, borderRadius: 12, backgroundColor: t.surface, borderWidth: 1, borderColor: t.gold, ...SHADOW_SM },
+    journalBtn: { flexDirection: I18nManager.isRTL ? "row" : "row-reverse", alignItems: "center", gap: 7, height: 42, paddingHorizontal: 14, borderRadius: 12, backgroundColor: t.surface, borderWidth: 1, borderColor: t.gold, ...SHADOW_SM },
     journalText: { color: t.gold, fontSize: 13 * fs, fontFamily: FONTS.semibold },
     title: { color: t.textPrimary, fontSize: 20 * fs, fontFamily: FONTS.bold },
     searchWrap: { paddingHorizontal: 14, marginBottom: 12 },

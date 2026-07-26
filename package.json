@@ -8,6 +8,7 @@
     "@expo-google-fonts/heebo": "^0.4.2",
     "@expo-google-fonts/rubik": "^0.4.2",
     "@expo/metro-runtime": "^57.0.6",
+    "@expo/vector-icons": "^15.1.1",
     "@react-native-async-storage/async-storage": "^3.1.1",
     "@react-navigation/bottom-tabs": "^7.18.13",
     "@react-navigation/drawer": "^7.13.4",

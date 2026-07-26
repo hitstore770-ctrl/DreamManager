@@ -106,8 +106,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     shadowColor: COLORS.shadow,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
     elevation: 3,
   },
   balanceLabel: {
@@ -130,8 +130,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     shadowColor: COLORS.shadow,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
     elevation: 3,
   },
   machineEmoji: {

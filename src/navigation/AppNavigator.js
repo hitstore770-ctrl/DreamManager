@@ -1,9 +1,8 @@
-import { Text } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
+import Icon from "../components/Icon";
 import { useAuth } from "../context/AuthContext";
-import { useSettings } from "../context/SettingsContext";
 import LoginScreen from "../screens/LoginScreen";
 import NoteEditorScreen from "../screens/NoteEditorScreen";
 import NotesHubScreen from "../screens/NotesHubScreen";
@@ -12,6 +11,7 @@ import DreamsScreen from "../screens/DreamsScreen";
 import ToolsScreen from "../screens/ToolsScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import { FONTS } from "../utils/theme";
+import { UI } from "../utils/ui";
 
 const RootStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -19,12 +19,13 @@ const Tab = createBottomTabNavigator();
 // iOS-style bottom tab bar. Five tabs, Notes (פתקים) is the center/default.
 // Declared left→right as Tools/Dreams/Notes/Business/Settings so the natural
 // RTL reading (rightmost first) is: הגדרות · העסק שלי · פתקים · חלומות · כלים.
+// Feather line icons — one thin stroke weight across the whole bar.
 const TAB_ICON = {
-  Notes: "🗒️",
-  Dreams: "✨",
-  Tools: "🧰",
-  Business: "💼",
-  Settings: "⚙️",
+  Notes: "edit-3",
+  Dreams: "star",
+  Tools: "grid",
+  Business: "briefcase",
+  Settings: "settings",
 };
 const TAB_LABEL = {
   Notes: "פתקים",
@@ -35,26 +36,24 @@ const TAB_LABEL = {
 };
 
 function MainTabs() {
-  const { theme } = useSettings();
-
   return (
     <Tab.Navigator
       initialRouteName="Notes"
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: theme.accent,
-        tabBarInactiveTintColor: theme.textMuted,
+        tabBarActiveTintColor: UI.blue,
+        tabBarInactiveTintColor: UI.inkMuted,
         tabBarStyle: {
-          backgroundColor: theme.surface,
-          borderTopColor: theme.hairline,
+          backgroundColor: UI.surface,
+          borderTopColor: UI.hairline,
           borderTopWidth: 1,
-          height: 62,
-          paddingTop: 6,
-          paddingBottom: 8,
+          height: 68,
+          paddingTop: 8,
+          paddingBottom: 10,
         },
-        tabBarLabelStyle: { fontFamily: FONTS.medium, fontSize: 11 },
+        tabBarLabelStyle: { fontFamily: FONTS.medium, fontSize: 11, marginTop: 2 },
         tabBarIcon: ({ focused }) => (
-          <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.55 }}>{TAB_ICON[route.name]}</Text>
+          <Icon name={TAB_ICON[route.name]} size={22} color={focused ? UI.blue : UI.inkMuted} />
         ),
         tabBarLabel: TAB_LABEL[route.name],
       })}

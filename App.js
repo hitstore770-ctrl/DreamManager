@@ -5,12 +5,7 @@ import { ActivityIndicator, I18nManager, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NavigationContainer } from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import {
-  useFonts,
-  Heebo_400Regular,
-  Heebo_500Medium,
-  Heebo_700Bold,
-} from "@expo-google-fonts/heebo";
+import { useFonts } from "expo-font";
 import {
   Assistant_300Light,
   Assistant_400Regular,
@@ -61,10 +56,8 @@ function Shell() {
 }
 
 export default function App() {
+  // Assistant, app-wide — one family, light-to-semibold.
   const [fontsLoaded, fontError] = useFonts({
-    Heebo_400Regular,
-    Heebo_500Medium,
-    Heebo_700Bold,
     Assistant_300Light,
     Assistant_400Regular,
     Assistant_500Medium,
@@ -77,7 +70,7 @@ export default function App() {
   // rather than hanging forever on a blank screen.
   if (!fontsLoaded && !fontError) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#F2F4F7", alignItems: "center", justifyContent: "center" }}>
+      <View style={{ flex: 1, backgroundColor: "#F0F2F5", alignItems: "center", justifyContent: "center" }}>
         <ActivityIndicator color="#2E6BE6" />
       </View>
     );

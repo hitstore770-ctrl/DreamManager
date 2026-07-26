@@ -19,8 +19,12 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown, FadeInUp, LinearTransition } from "react-native-reanimated";
 
+
 import { doc, setDoc } from "firebase/firestore";
 
+import Bounce from "../components/Bounce";
+import Icon from "../components/Icon";
+import { SCREEN_IN } from "../utils/motion";
 import PinLock from "../components/PinLock";
 import { db, isFirebaseConfigured } from "../config/firebaseConfig";
 import { useAuth } from "../context/AuthContext";
@@ -38,7 +42,7 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 // group that renders above everything else.
 
 const WHITE = "#FFFFFF";
-const BG = "#F4F5F7";
+const BG = "#F0F2F5";
 const INK = "#1A1D21";
 const INK_SOFT = "#5A6470";
 const INK_MUTED = "#9AA4B0";
@@ -563,10 +567,13 @@ export default function SettingsScreen() {
   if (crash) throw new Error("Forced crash from Developer Options 🛠️");
 
   return (
-    <View style={{ flex: 1, backgroundColor: BG }}>
+    <Animated.View entering={SCREEN_IN} style={{ flex: 1, backgroundColor: BG }}>
       <View style={[s.header, { paddingTop: insets.top + 12 }]}>
         <View style={{ flex: 1 }}>
-          <Text style={s.title}>⚙️ הגדרות</Text>
+          <View style={s.titleRow}>
+            <Icon name="settings" size={20} color={BLUE} />
+            <Text style={s.title}>הגדרות</Text>
+          </View>
           <Text style={s.subtitle}>
             {settings.userName ? `שלום, ${settings.userName}` : "העדפות, גיבוי ומערכת"}
           </Text>
@@ -878,9 +885,9 @@ export default function SettingsScreen() {
               מחיקה מוחלטת של כל המכירות, המלאי, ההקפות, הפתקים, החלומות וההעדפות מהמכשיר, וחזרה
               להגדרות היצרן.
             </Text>
-            <TouchableOpacity testID="factory-reset" style={[s.dangerBtn, bounds]} onPress={factoryReset} activeOpacity={0.85}>
-              <Text style={s.dangerBtnText}>⚠️  איפוס אפליקציה מוחלט</Text>
-            </TouchableOpacity>
+            <Bounce testID="factory-reset" style={[s.dangerBtn, bounds]} onPress={factoryReset}>
+              <Text style={s.dangerBtnText}>איפוס אפליקציה מוחלט</Text>
+            </Bounce>
           </View>
         </Group>
         </Section>
@@ -995,7 +1002,7 @@ export default function SettingsScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -1110,13 +1117,20 @@ function Segment({ options, value, onChange, disabled, bounds }) {
 
 const SHADOW = {
   shadowColor: "#000",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.05,
-  shadowRadius: 3,
-  elevation: 1,
+  shadowOffset: { width: 0, height: 6 },
+  shadowOpacity: 0.04,
+  shadowRadius: 12,
+  elevation: 2,
 };
 
 const s = StyleSheet.create({
+  titleRow: {
+    flexDirection: I18nManager.isRTL ? "row" : "row-reverse",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    gap: 8,
+    flexShrink: 0,
+  },
   header: {
     flexDirection: I18nManager.isRTL ? "row" : "row-reverse",
     alignItems: "center",
@@ -1147,7 +1161,7 @@ const s = StyleSheet.create({
     marginBottom: 8,
     marginHorizontal: 6,
   },
-  groupCard: { backgroundColor: WHITE, borderRadius: 16, overflow: "hidden", ...SHADOW },
+  groupCard: { backgroundColor: WHITE, borderRadius: 18, overflow: "hidden", ...SHADOW },
   divider: { height: 1, backgroundColor: HAIRLINE, marginStart: 16 },
 
   // I18nManager.isRTL is false on web, so a plain "row" would mirror the whole
@@ -1157,9 +1171,9 @@ const s = StyleSheet.create({
     flexDirection: I18nManager.isRTL ? "row" : "row-reverse",
     alignItems: "center",
     gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    minHeight: 56,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    minHeight: 60,
   },
   rowCompact: { paddingVertical: 7, minHeight: 44 },
   rowLabel: { fontFamily: FONTS.semibold, fontSize: 14.5, color: INK, textAlign: "right" },

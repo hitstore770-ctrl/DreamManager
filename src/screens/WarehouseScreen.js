@@ -13,7 +13,7 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 // category color tag, cost/sell prices. The ⚙️ FAB opens the Pro Tools sheet.
 
 const WHITE = "#FFFFFF";
-const CARD = "#F4F5F7";
+const CARD = "#F0F2F5";
 const INK = "#1A1D21";
 const INK_MUTED = "#9AA4B0";
 const BLUE = "#003366";
@@ -228,9 +228,9 @@ export default function WarehouseScreen({ onGoToPos }) {
 
 const SHADOW = {
   shadowColor: "#000",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.05,
-  shadowRadius: 3,
+  shadowOffset: { width: 0, height: 6 },
+  shadowOpacity: 0.04,
+  shadowRadius: 12,
   elevation: 2,
 };
 

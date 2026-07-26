@@ -17,6 +17,9 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown, FadeInUp, LinearTransition } from "react-native-reanimated";
 
+
+import Icon from "../components/Icon";
+import { SCREEN_IN } from "../utils/motion";
 import Celebration from "../components/dreams/Celebration";
 import HabitChain from "../components/dreams/HabitChain";
 import ProgressBar from "../components/dreams/ProgressBar";
@@ -45,7 +48,7 @@ import { usePersistentState } from "../utils/usePersistentState";
 
 const WHITE = "#FFFFFF";
 const BG = "#F8F9FA";
-const CARD = "#F4F5F7";
+const CARD = "#F0F2F5";
 const INK = "#1A1D21";
 const INK_SOFT = "#5A6470";
 const INK_MUTED = "#9AA4B0";
@@ -317,10 +320,13 @@ export default function DreamsScreen({ navigation }) {
   const fundPct = open?.target ? Math.min(100, ((open.saved || 0) / open.target) * 100) : 0;
 
   return (
-    <View style={{ flex: 1, backgroundColor: BG }}>
+    <Animated.View entering={SCREEN_IN} style={{ flex: 1, backgroundColor: BG }}>
       <View style={[s.header, { paddingTop: insets.top + 12 }]}>
         <View style={{ flex: 1 }}>
-          <Text style={s.title}>✨ חלומות</Text>
+          <View style={s.titleRow}>
+            <Icon name="star" size={20} color={GOLD} />
+            <Text style={s.title}>חלומות</Text>
+          </View>
           {board.length > 0 && <Text style={s.headerSub}>{board.length} חלומות על הלוח</Text>}
         </View>
         {archived.length > 0 && (
@@ -795,7 +801,7 @@ export default function DreamsScreen({ navigation }) {
         onArchive={() => archiveDream(celebrating)}
         onClose={() => setCelebrating(null)}
       />
-    </View>
+    </Animated.View>
   );
 }
 
@@ -871,13 +877,20 @@ function DreamCard({ dream, height, index, onPress }) {
 
 const SHADOW = {
   shadowColor: "#000",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.05,
-  shadowRadius: 3,
+  shadowOffset: { width: 0, height: 6 },
+  shadowOpacity: 0.04,
+  shadowRadius: 12,
   elevation: 2,
 };
 
 const s = StyleSheet.create({
+  titleRow: {
+    flexDirection: I18nManager.isRTL ? "row" : "row-reverse",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    gap: 8,
+    flexShrink: 0,
+  },
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 10, gap: 10 },
   title: { fontFamily: FONTS.bold, fontSize: 22, color: INK, textAlign: "right" },
   headerSub: { fontFamily: FONTS.regular, fontSize: 12, color: INK_MUTED, textAlign: "right", marginTop: 2 },

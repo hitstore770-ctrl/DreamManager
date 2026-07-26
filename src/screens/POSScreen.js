@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  I18nManager,
   Modal,
   ScrollView,
   Share,
@@ -11,6 +12,8 @@ import {
   View,
 } from "react-native";
 
+import Bounce from "../components/Bounce";
+import Icon from "../components/Icon";
 import ToolsSheet, { SheetRow } from "../components/business/ToolsSheet";
 import { useBusiness } from "../context/BusinessContext";
 import { useSettings } from "../context/SettingsContext";
@@ -29,7 +32,7 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 // ---------------------------------------------------------------------------
 
 const WHITE = "#FFFFFF";
-const CARD = "#F4F5F7";
+const CARD = "#F0F2F5";
 const GREEN = "#34C759";
 const INK = "#1A1D21";
 const INK_SOFT = "#5A6470";
@@ -372,7 +375,7 @@ export default function POSScreen() {
           }}
           activeOpacity={0.7}
         >
-          <Text style={{ fontSize: 16 }}>{expressMode ? "🧾" : "⌨️"}</Text>
+          <Icon name={expressMode ? "list" : "hash"} size={18} color={INK_SOFT} />
         </TouchableOpacity>
         {/* Pro tools sheet — docked in the header so it never collides with
             the quick-cash / undo strip above the charge bar */}
@@ -381,7 +384,7 @@ export default function POSScreen() {
           onPress={openSheet}
           activeOpacity={0.7}
         >
-          <Text style={{ fontSize: 16 }}>⚙️</Text>
+          <Icon name="sliders" size={18} color={INK_SOFT} />
         </TouchableOpacity>
         {/* Clear cart: tap once to arm ("בטוח?"), tap again to empty */}
         {cart.length > 0 && (
@@ -393,12 +396,15 @@ export default function POSScreen() {
             {confirmClear ? (
               <Text style={s.trashConfirm}>בטוח?</Text>
             ) : (
-              <Text style={{ fontSize: 16 }}>🗑️</Text>
+              <Icon name="trash-2" size={18} color={RED} />
             )}
           </TouchableOpacity>
         )}
         <View style={{ flex: 1, alignItems: "flex-end" }}>
-          <Text style={s.headerTitle}>קופה 💼</Text>
+          <View style={s.headerTitleRow}>
+            <Icon name="shopping-cart" size={19} color={BLUE} />
+            <Text style={s.headerTitle}>קופה</Text>
+          </View>
           <Text style={s.headerSub}>
             {itemCount > 0 ? `${itemCount} פריטים בסל` : "הסל ריק"}
             {orderNote ? " · 📝 הערה מצורפת" : ""}
@@ -545,13 +551,10 @@ export default function POSScreen() {
 
       {/* Fixed charge bar — always the bottom ~15% of the screen */}
       <View style={s.chargeBar}>
-        <TouchableOpacity
-          style={[s.chargeBtn, !cart.length && { opacity: 0.35 }]}
-          onPress={() => checkout()}
-          activeOpacity={0.85}
-        >
-          <Text style={s.chargeBtnText}>💳 חיוב</Text>
-        </TouchableOpacity>
+        <Bounce style={[s.chargeBtn, !cart.length && { opacity: 0.35 }]} onPress={() => checkout()}>
+          <Icon name="credit-card" size={20} color={WHITE} />
+          <Text style={s.chargeBtnText}>חיוב</Text>
+        </Bounce>
         <View style={s.totalBlock}>
           <Text style={s.totalLabel}>
             {discountAmount > 0
@@ -617,7 +620,7 @@ export default function POSScreen() {
       </Modal>
 
       {/* Pro tools */}
-      <ToolsSheet visible={sheetOpen} onClose={() => setSheetOpen(false)} title="⚙️ כלים מקצועיים">
+      <ToolsSheet visible={sheetOpen} onClose={() => setSheetOpen(false)} title="כלים מקצועיים">
         {sheetView === "menu" && (
           <>
             <SheetRow
@@ -742,9 +745,9 @@ export default function POSScreen() {
 
 const SHADOW = {
   shadowColor: "#000",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.05,
-  shadowRadius: 3,
+  shadowOffset: { width: 0, height: 6 },
+  shadowOpacity: 0.04,
+  shadowRadius: 12,
   elevation: 2,
 };
 
@@ -756,6 +759,11 @@ const s = StyleSheet.create({
     paddingTop: 6,
     paddingBottom: 8,
     backgroundColor: WHITE,
+  },
+  headerTitleRow: {
+    flexDirection: I18nManager.isRTL ? "row" : "row-reverse",
+    alignItems: "center",
+    gap: 8,
   },
   headerTitle: { fontFamily: FONTS.bold, fontSize: 20, color: INK },
   headerSub: { fontFamily: FONTS.regular, fontSize: 12, color: INK_MUTED, marginTop: 1 },
@@ -1045,6 +1053,8 @@ const s = StyleSheet.create({
   totalLabel: { fontFamily: FONTS.regular, fontSize: 12, color: INK_MUTED },
   totalValue: { fontFamily: FONTS.bold, fontSize: 26, color: INK, marginTop: 1 },
   chargeBtn: {
+    flexDirection: "row",
+    gap: 10,
     flex: 1,
     height: 56,
     borderRadius: 18,

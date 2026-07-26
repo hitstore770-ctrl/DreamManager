@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import {
+  I18nManager,
   KeyboardAvoidingView,
   Modal,
   PanResponder,
@@ -23,6 +24,10 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
+
+import Bounce from "../components/Bounce";
+import Icon from "../components/Icon";
+import { SCREEN_IN } from "../utils/motion";
 import { MINI_APPS } from "../components/tools/MiniApps";
 import { useSettings } from "../context/SettingsContext";
 import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
@@ -36,7 +41,7 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 // the built mini-apps. Long-press any tool to favorite it.
 
 const WHITE = "#FFFFFF";
-const BG = "#F4F5F7";
+const BG = "#F0F2F5";
 const INK = "#1A1D21";
 const INK_SOFT = "#5A6470";
 const INK_MUTED = "#9AA4B0";
@@ -145,10 +150,13 @@ export default function ToolsScreen() {
   const ActiveMini = activeTool ? MINI_APPS[activeTool.id] : null;
 
   return (
-    <View style={{ flex: 1, backgroundColor: BG }}>
+    <Animated.View entering={SCREEN_IN} style={{ flex: 1, backgroundColor: BG }}>
       <View style={[s.header, { paddingTop: insets.top + 12 }]}>
         <View style={{ flex: 1 }}>
-          <Text style={s.title}>🧰 כלים</Text>
+          <View style={s.titleRow}>
+            <Icon name="grid" size={20} color={BLUE} />
+            <Text style={s.title}>כלים</Text>
+          </View>
           <Text style={s.subtitle}>
             {searchResults
               ? `${searchResults.length} תוצאות`
@@ -315,7 +323,7 @@ export default function ToolsScreen() {
           </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
       </Modal>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -323,12 +331,11 @@ function ToolCard({ tool, index, fav, onPress, onLongPress, showCategory }) {
   const ready = IMPLEMENTED.has(tool.id);
   return (
     <Animated.View entering={FadeInDown.delay(Math.min(index * 22, 260)).duration(240)} style={s.cardWrap}>
-      <TouchableOpacity
+      <Bounce
         style={[s.card, fav && { borderWidth: 1, borderColor: GOLD + "55" }]}
         onPress={onPress}
         onLongPress={onLongPress}
         delayLongPress={320}
-        activeOpacity={0.8}
       >
         {ready && (
           <View style={s.readyDot}>
@@ -341,20 +348,27 @@ function ToolCard({ tool, index, fav, onPress, onLongPress, showCategory }) {
         </View>
         <Text style={s.cardName} numberOfLines={2}>{tool.name}</Text>
         {showCategory && <Text style={s.cardCat} numberOfLines={1}>{tool.categoryLabel}</Text>}
-      </TouchableOpacity>
+      </Bounce>
     </Animated.View>
   );
 }
 
 const SHADOW = {
   shadowColor: "#000",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.05,
-  shadowRadius: 3,
+  shadowOffset: { width: 0, height: 6 },
+  shadowOpacity: 0.04,
+  shadowRadius: 12,
   elevation: 2,
 };
 
 const s = StyleSheet.create({
+  titleRow: {
+    flexDirection: I18nManager.isRTL ? "row" : "row-reverse",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    gap: 8,
+    flexShrink: 0,
+  },
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 10, gap: 10 },
   title: { fontFamily: FONTS.bold, fontSize: 22, color: INK, textAlign: "right" },
   subtitle: { fontFamily: FONTS.regular, fontSize: 12, color: INK_MUTED, textAlign: "right", marginTop: 2 },
@@ -401,9 +415,9 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     backgroundColor: WHITE,
-    borderRadius: 16,
-    padding: 12,
-    minHeight: 64,
+    borderRadius: 18,
+    padding: 14,
+    minHeight: 68,
     ...SHADOW,
   },
   sectionBadge: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center" },
@@ -412,14 +426,14 @@ const s = StyleSheet.create({
   chevron: { fontFamily: FONTS.bold, fontSize: 20, color: INK_MUTED, width: 18, textAlign: "center" },
 
   grid: { flexDirection: "row", flexWrap: "wrap", marginTop: 8 },
-  cardWrap: { width: "33.33%", padding: 4 },
+  cardWrap: { width: "33.33%", padding: 5 },
   card: {
     backgroundColor: WHITE,
     borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 6,
+    paddingVertical: 15,
+    paddingHorizontal: 8,
     alignItems: "center",
-    minHeight: 104,
+    minHeight: 112,
     ...SHADOW,
   },
   cardIcon: { width: 42, height: 42, borderRadius: 13, alignItems: "center", justifyContent: "center", marginBottom: 6 },

@@ -20,7 +20,7 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 // tool suite show up here untouched.
 
 const WHITE = "#FFFFFF";
-const CARD = "#F4F5F7";
+const CARD = "#F0F2F5";
 const INK = "#1A1D21";
 const INK_SOFT = "#5A6470";
 const INK_MUTED = "#9AA4B0";
@@ -233,9 +233,9 @@ export default function DebtsScreen() {
 
 const SHADOW = {
   shadowColor: "#000",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.05,
-  shadowRadius: 3,
+  shadowOffset: { width: 0, height: 6 },
+  shadowOpacity: 0.04,
+  shadowRadius: 12,
   elevation: 2,
 };
 
