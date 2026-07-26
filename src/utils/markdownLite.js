@@ -1,18 +1,20 @@
 // Ultra-light inline markdown for the note preview. Supports **bold**,
-// *italic* and __underline__. Returns an array of style segments the editor
-// renders with <Text>. Non-nested by design (keeps it predictable and fast).
+// *italic*, __underline__ and ==highlight==. Returns an array of style
+// segments the editor renders with <Text>. Non-nested by design (keeps it
+// predictable and fast).
 
 export function parseInline(text) {
   if (!text) return [{ text: "" }];
   const segs = [];
-  const re = /(\*\*([^*]+)\*\*|__([^_]+)__|\*([^*]+)\*)/g;
+  const re = /(\*\*([^*]+)\*\*|__([^_]+)__|==([^=]+)==|\*([^*]+)\*)/g;
   let last = 0;
   let m;
   while ((m = re.exec(text)) !== null) {
     if (m.index > last) segs.push({ text: text.slice(last, m.index) });
     if (m[2] !== undefined) segs.push({ text: m[2], bold: true });
     else if (m[3] !== undefined) segs.push({ text: m[3], underline: true });
-    else if (m[4] !== undefined) segs.push({ text: m[4], italic: true });
+    else if (m[4] !== undefined) segs.push({ text: m[4], highlight: true });
+    else if (m[5] !== undefined) segs.push({ text: m[5], italic: true });
     last = re.lastIndex;
   }
   if (last < text.length) segs.push({ text: text.slice(last) });

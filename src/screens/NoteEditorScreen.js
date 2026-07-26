@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Keyboard,
+  KeyboardAvoidingView,
   Modal,
-  Pressable,
+  Platform,
   ScrollView,
   Share,
   StyleSheet,
@@ -13,11 +14,13 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, { FadeInUp, FadeOutDown } from "react-native-reanimated";
 
 import { useNotes } from "../context/NotesContext";
 import { useSettings } from "../context/SettingsContext";
 import { hapticLight } from "../utils/haptics";
-import { gregorianToHebrew, hebrewWeekday } from "../utils/hebrewDate";
+import { gregorianToHebrew } from "../utils/hebrewDate";
+import { extractLinks, openLink } from "../utils/linkify";
 import { autoSum, evalArithmetic, scanInlineMath } from "../utils/mathEval";
 import { countWords, parseInline, wrapSelection } from "../utils/markdownLite";
 import { NOTE_BG, extractTags, noteBg, textToChecklist, uid } from "../utils/notesStore";
@@ -25,25 +28,22 @@ import { NOTES_FONTS as FONTS, NOTES_SHADOW as SHADOW_SM, NOTES_SHADOW_LG as SHA
 import { RADIUS, RADIUS_SM } from "../utils/theme";
 import HebrewDateTools from "../components/notes/HebrewDateTools";
 
-// Ready-to-use business templates appended into the note from the toolbar.
-// The primary template is the standard document + A5 sticker printing order
-// (NO sublimation) — kept verbatim per the business's intake form.
-const BUSINESS_TEMPLATES = [
-  {
-    key: "print",
-    emoji: "🖨️",
-    label: "הזמנת הדפסת מסמכים ומדבקות A5",
-    text:
-      "הזמנת הדפסת מסמכים ומדבקות A5:\n" +
-      "לקוח: ___\n" +
-      "סוג: מסמכים / מדבקות A5\n" +
-      "כמות: ___\n" +
-      "צבע: צבעוני / שחור-לבן\n" +
-      "מחיר סה״כ: ___",
-  },
-  { key: "scooter", emoji: "🛴", label: "משלוח בקורקינט", text: "משלוח (קורקינט): יעד: ___ | שעה: ___ | סטטוס: ממתין" },
-  { key: "restock", emoji: "📦", label: "השלמת מלאי", text: "השלמת מלאי קופה: מוצר: ___ | כמות חסרה: ___" },
-];
+// ---------------------------------------------------------------------------
+// Dual-mode note editor:
+//  • Zen 🪶 (default): pure white page, just a title and a huge body input.
+//  • Pro ✨: soft-grey "work mode" with a rich-text toolbar that slides up
+//    and pins above the keyboard (KeyboardAvoidingView).
+// The mode is remembered per note.
+// ---------------------------------------------------------------------------
+
+const ZEN_BG = "#FFFFFF";
+const PRO_BG = "#F8F9FA";
+const HIGHLIGHT_BG = "#FFF3B0";
+const INK_RED = "#D32F2F";
+const INK_BLUE = "#1565C0";
+
+// Injected verbatim by the Smart Templates toolbar button.
+const TEMPLATE_TEXT = "הזמנת הדפסת מסמכים ומדבקות A5: _______";
 
 export default function NoteEditorScreen({ route, navigation }) {
   const { fontScale, haptic } = useSettings();
@@ -54,7 +54,7 @@ export default function NoteEditorScreen({ route, navigation }) {
   const { notes, setNotes, loaded } = useNotes();
   const note = notes.find((n) => n.id === noteId);
 
-  // Local draft for the fast-changing fields; committed to storage on a 3s debounce.
+  // Local draft for the fast-changing fields; committed on a 3s debounce.
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [selection, setSelection] = useState({ start: 0, end: 0 });
@@ -66,7 +66,6 @@ export default function NoteEditorScreen({ route, navigation }) {
   // Panels
   const [showCalc, setShowCalc] = useState(false);
   const [showDates, setShowDates] = useState(false);
-  const [showTemplates, setShowTemplates] = useState(false);
 
   // Floating calculator state
   const [calcExpr, setCalcExpr] = useState("");
@@ -113,33 +112,46 @@ export default function NoteEditorScreen({ route, navigation }) {
 
   const today = useMemo(() => gregorianToHebrew(new Date()), []);
   const counts = countWords(body);
-  const sum = useMemo(() => autoSum(body), [body]);
+  const links = useMemo(() => extractLinks(body), [body]);
+  // Phone numbers / URLs must not leak their digits into the auto-sum.
+  const sum = useMemo(() => {
+    let src = body;
+    for (const l of links) src = src.split(l.label).join(" ");
+    return autoSum(src);
+  }, [body, links]);
   const inlineMath = useMemo(() => scanInlineMath(body), [body]);
   const segments = useMemo(() => parseInline(body), [body]);
   const liveTags = useMemo(() => extractTags(`${title} ${body}`), [title, body]);
 
   if (!loaded) {
-    return <View style={{ flex: 1, backgroundColor: theme.background }} />;
+    return <View style={{ flex: 1, backgroundColor: ZEN_BG }} />;
   }
   if (!note) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.background, alignItems: "center", justifyContent: "center" }}>
+      <View style={{ flex: 1, backgroundColor: ZEN_BG, alignItems: "center", justifyContent: "center" }}>
         <Text style={{ color: theme.textMuted, fontFamily: FONTS.medium }}>ההערה לא נמצאה</Text>
       </View>
     );
   }
 
+  const pro = !!note.proMode;
   const readOnly = note.readOnly;
-  // The editor lives inside a white card; by default the writing surface is
-  // transparent so it reads as one clean white sheet. Picking a pastel tints
-  // just the inner writing area, leaving the white framed boundary intact.
-  const bg =
-    note.bg && note.bg !== "white"
-      ? noteBg(note.bg, theme.scheme === "dark")
-      : "transparent";
+  const fs = (note.fontSize || 17) * fontScale;
+  const lineHeight = Math.max(24, Math.round(fs * 1.55));
+  // Note-level ink color + alignment (Pro tools; harmless in Zen).
+  const inkColor = note.inkColor === "red" ? INK_RED : note.inkColor === "blue" ? INK_BLUE : theme.textPrimary;
+  const bodyAlign = note.align || "auto";
+  // Pastel tint applies to the Pro editor card only.
+  const cardBg =
+    note.bg && note.bg !== "white" ? noteBg(note.bg, false) : "#FFFFFF";
   const s = makeStyles(theme, fontScale);
 
-  // ---- Rich-text toolbar --------------------------------------------------
+  const toggleMode = () => {
+    hapticLight();
+    patchNote({ proMode: !pro });
+  };
+
+  // ---- Rich-text markers --------------------------------------------------
   const applyMarker = (marker) => {
     if (readOnly) return;
     haptic("light");
@@ -148,12 +160,19 @@ export default function NoteEditorScreen({ route, navigation }) {
     setSelection({ start: caret, end: caret });
   };
   const bumpFont = (delta) => {
-    patchNote({ fontSize: Math.max(12, Math.min(30, (note.fontSize || 16) + delta)) });
+    patchNote({ fontSize: Math.max(12, Math.min(30, (note.fontSize || 17) + delta)) });
+  };
+  const toggleInk = (color) => {
+    haptic("light");
+    patchNote({ inkColor: note.inkColor === color ? null : color });
+  };
+  const setAlign = (align) => {
+    haptic("light");
+    patchNote({ align });
   };
 
   // ---- Inline math --------------------------------------------------------
-  // As the user finishes typing a trailing "expr=", append the result inline
-  // (e.g. "150*4=" → "150*4= 600"). Only fires on growth so deleting is safe.
+  // Trailing "expr=" appends the result (e.g. "150*4=" → "150*4= 600").
   const onBodyChange = (text) => {
     if (text.length > body.length) {
       const m = text.match(/([\d.]+(?:\s*[+\-*/%]\s*[\d.]+)+)\s*=\s*$/);
@@ -173,24 +192,22 @@ export default function NoteEditorScreen({ route, navigation }) {
     setBody(next);
   };
 
-  // ---- Sprint 2: templates, timestamp, share ------------------------------
-  const appendTemplate = (tpl) => {
-    haptic("light");
-    setBody((b) => (b.trim() ? `${b}\n${tpl.text}` : tpl.text));
-    setShowTemplates(false);
-  };
-
-  // Inject the current HH:MM at the cursor position.
-  const insertTimestamp = () => {
+  // ---- Cursor insertion (timestamp / template) ----------------------------
+  const insertAtCursor = (str) => {
     if (readOnly) return;
     haptic("light");
-    const now = new Date();
-    const stamp = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
     const pos = Math.min(selection.start ?? body.length, body.length);
-    const next = `${body.slice(0, pos)}${stamp} ${body.slice(pos)}`;
+    const next = `${body.slice(0, pos)}${str}${body.slice(pos)}`;
     setBody(next);
-    const caret = pos + stamp.length + 1;
+    const caret = pos + str.length;
     setSelection({ start: caret, end: caret });
+  };
+  const insertTimestamp = () => {
+    const now = new Date();
+    insertAtCursor(`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")} `);
+  };
+  const insertTemplate = () => {
+    insertAtCursor(body && !body.endsWith("\n") ? `\n${TEMPLATE_TEXT}\n` : `${TEMPLATE_TEXT}\n`);
   };
 
   const shareNote = async () => {
@@ -245,34 +262,80 @@ export default function NoteEditorScreen({ route, navigation }) {
     const done = note.checklist.filter((i) => i.done);
     patchNote({ checklist: [...active, ...done] });
   };
-  const checklistDone = note.checklist.filter((i) => i.done).length;
-  const checklistPct = note.checklist.length ? Math.round((checklistDone / note.checklist.length) * 100) : 0;
+  const checklistDone = note.isChecklist ? note.checklist.filter((i) => i.done).length : 0;
+  const checklistPct = note.isChecklist && note.checklist.length
+    ? Math.round((checklistDone / note.checklist.length) * 100)
+    : 0;
 
-  // Toolbar button — Deep Blue by default (signals interactivity), solid Deep
-  // Blue fill with white glyph when active.
-  const TBtn = ({ label, on, active }) => (
+  const TBtn = ({ label, on, active, labelColor }) => (
     <TouchableOpacity
       style={[s.tbtn, active && { backgroundColor: theme.accent, borderColor: theme.accent }]}
       onPress={on}
       activeOpacity={0.7}
     >
-      <Text style={[s.tbtnText, { color: active ? "#FFF" : theme.accent }]}>{label}</Text>
+      <Text style={[s.tbtnText, { color: active ? "#FFF" : labelColor || theme.accent }]}>{label}</Text>
     </TouchableOpacity>
   );
 
+  const checklistBlock = (
+    <View style={[pro ? s.editorCard : s.zenChecklistWrap, pro && { backgroundColor: cardBg }]}>
+      <View style={s.progressWrap}>
+        <Text style={s.progressText}>{checklistDone}/{note.checklist?.length || 0} הושלמו</Text>
+        <View style={s.progressBg}>
+          <View style={[s.progressFill, { width: `${checklistPct}%`, backgroundColor: theme.accent }]} />
+        </View>
+      </View>
+      {(note.checklist || []).map((item) => (
+        <View key={item.id} style={s.checkRow}>
+          <TouchableOpacity
+            style={[s.checkbox, item.done && { backgroundColor: theme.accent, borderColor: theme.accent }]}
+            onPress={() => toggleItem(item.id)}
+          >
+            {item.done && <Text style={s.checkMark}>✓</Text>}
+          </TouchableOpacity>
+          <TextInput
+            style={[
+              s.checkText,
+              { color: item.done ? theme.textMuted : inkColor, fontSize: fs, lineHeight },
+              item.done && { textDecorationLine: "line-through" },
+            ]}
+            value={item.text}
+            onChangeText={(t) => editChecklistItem(item.id, t)}
+            placeholder="פריט..."
+            placeholderTextColor={theme.textMuted}
+            editable={!readOnly}
+            textAlign="auto"
+          />
+        </View>
+      ))}
+      {!readOnly && (
+        <View style={s.checkActions}>
+          <TouchableOpacity style={s.smallAction} onPress={addChecklistItem}>
+            <Text style={[s.smallActionText, { color: theme.accent }]}>＋ פריט</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.smallAction} onPress={clearCompleted}>
+            <Text style={[s.smallActionText, { color: theme.textSecondary }]}>הורד שהושלמו לתחתית</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+
   return (
-    <View style={{ flex: 1, backgroundColor: "#F4F5F7" }}>
-      {/* Header */}
-      <View style={[s.header, { paddingTop: insets.top + 10 }]}>
+    <View style={{ flex: 1, backgroundColor: pro ? PRO_BG : ZEN_BG }}>
+      {/* Header: back · mode toggle · pin/share/lock */}
+      <View style={[s.header, { paddingTop: insets.top + 10 }, !pro && { backgroundColor: ZEN_BG }]}>
         <TouchableOpacity style={s.iconBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
           <Text style={s.icon}>‹</Text>
         </TouchableOpacity>
-        <View style={{ flex: 1, alignItems: "center" }}>
-          <Text style={s.headerDate}>📅 {today.formatted}</Text>
-          <Text style={s.headerSub}>
-            {hebrewWeekday(new Date())} · {savedAt ? "נשמר ✓" : "נשמר אוטומטית"}
-          </Text>
-        </View>
+        <TouchableOpacity
+          style={[s.modePill, pro && s.modePillPro]}
+          onPress={toggleMode}
+          activeOpacity={0.75}
+        >
+          <Text style={[s.modePillText, pro && { color: "#FFF" }]}>{pro ? "Pro ✨" : "Zen 🪶"}</Text>
+        </TouchableOpacity>
+        <View style={{ flex: 1 }} />
         <View style={s.headerActions}>
           <TouchableOpacity
             style={[s.iconBtn, note.pinned && { backgroundColor: theme.accent }]}
@@ -294,188 +357,181 @@ export default function NoteEditorScreen({ route, navigation }) {
         </View>
       </View>
 
-      {/* Unified Action Toolbar (סרגל כלים) — one prominent, centered, grouped
-          panel that scrolls horizontally instead of buttons floating loose. */}
-      <View style={s.toolbarCard}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.toolbar}
-        >
-          {/* Rich text */}
-          <TBtn label="B" on={() => applyMarker("**")} />
-          <TBtn label="I" on={() => applyMarker("*")} />
-          <TBtn label="U" on={() => applyMarker("__")} />
-          <View style={s.tsep} />
-          {/* Font size */}
-          <TBtn label="A−" on={() => bumpFont(-1)} />
-          <TBtn label="A+" on={() => bumpFont(1)} />
-          <View style={s.tsep} />
-          {/* Colors */}
-          {NOTE_BG.filter((b) => ["yellow", "blue", "green", "pink"].includes(b.key)).map((b) => (
-            <TouchableOpacity
-              key={b.key}
-              style={[
-                s.bgDot,
-                { backgroundColor: theme.scheme === "dark" ? b.dark : b.color },
-                note.bg === b.key && { borderColor: theme.accent, borderWidth: 3 },
-              ]}
-              onPress={() => patchNote({ bg: note.bg === b.key ? "white" : b.key })}
-              activeOpacity={0.8}
-            />
-          ))}
-          <View style={s.tsep} />
-          {/* Smart tools */}
-          <TBtn label="🧮" on={() => setShowCalc(true)} />
-          <TBtn label="📆" on={() => setShowDates(true)} />
-          <TBtn label="🪄" on={() => setShowTemplates(true)} />
-          <TBtn label="🕐" on={insertTimestamp} />
-          <View style={s.tsep} />
-          {/* View / mode */}
-          <TBtn label="👁️" on={() => setPreview((p) => !p)} active={preview} />
-          {!note.isChecklist ? (
-            <TBtn label="✅" on={convertToChecklist} />
-          ) : (
-            <TBtn label="📝" on={() => patchNote({ isChecklist: false })} active />
-          )}
-          <TBtn label={readOnly ? "🔏" : "🖊️"} on={() => patchNote({ readOnly: !readOnly })} active={readOnly} />
-        </ScrollView>
-      </View>
-
-      <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()} accessible={false}>
-      <ScrollView
+      <KeyboardAvoidingView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16, paddingBottom: 130 }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        {/* Title — auto aligns RTL for Hebrew, LTR for English */}
-        <TextInput
-          style={[s.title, { color: theme.textPrimary }]}
-          value={title}
-          onChangeText={setTitle}
-          placeholder="כותרת ההערה"
-          placeholderTextColor={theme.textMuted}
-          editable={!readOnly}
-          textAlign="auto"
-        />
+        <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()} accessible={false}>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ padding: pro ? 16 : 22, paddingBottom: 40 }}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+          >
+            {/* Title */}
+            <TextInput
+              style={[s.title, { color: theme.textPrimary }]}
+              value={title}
+              onChangeText={setTitle}
+              placeholder="כותרת ההערה"
+              placeholderTextColor={theme.textMuted}
+              editable={!readOnly}
+              textAlign="auto"
+            />
 
-        {/* Dynamic #tag pills */}
-        {liveTags.length > 0 && (
-          <View style={s.tagPillRow}>
-            {liveTags.map((t) => (
-              <View key={t} style={s.tagPill}>
-                <Text style={s.tagPillText}>#{t}</Text>
+            {/* Pro extras: tag pills + inline math suggestions */}
+            {pro && liveTags.length > 0 && (
+              <View style={s.tagPillRow}>
+                {liveTags.map((t) => (
+                  <View key={t} style={s.tagPill}>
+                    <Text style={s.tagPillText}>#{t}</Text>
+                  </View>
+                ))}
               </View>
-            ))}
-          </View>
-        )}
+            )}
+            {pro && inlineMath.length > 0 && !note.isChecklist && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+                {inlineMath.map((m, i) => (
+                  <TouchableOpacity key={i} style={s.mathChip} onPress={() => applyInline(m)} activeOpacity={0.8}>
+                    <Text style={s.mathChipText}>{m.expr} = {m.value}  ⊕</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
 
-        {/* Inline math suggestions */}
-        {inlineMath.length > 0 && !note.isChecklist && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
-            {inlineMath.map((m, i) => (
-              <TouchableOpacity key={i} style={s.mathChip} onPress={() => applyInline(m)} activeOpacity={0.8}>
-                <Text style={s.mathChipText}>{m.expr} = {m.value}  ⊕</Text>
+            {/* Body */}
+            {note.isChecklist ? (
+              checklistBlock
+            ) : pro && preview ? (
+              <View style={[s.editorCard, { backgroundColor: cardBg, minHeight: 260 }]}>
+                <Text style={{ fontSize: fs, color: inkColor, textAlign: bodyAlign === "auto" ? "right" : bodyAlign, lineHeight }}>
+                  {segments.map((seg, i) => (
+                    <Text
+                      key={i}
+                      style={[
+                        seg.bold && { fontFamily: FONTS.bold },
+                        seg.italic && { fontStyle: "italic" },
+                        seg.underline && { textDecorationLine: "underline" },
+                        seg.highlight && { backgroundColor: HIGHLIGHT_BG },
+                      ]}
+                    >
+                      {seg.text}
+                    </Text>
+                  ))}
+                </Text>
+              </View>
+            ) : pro ? (
+              <View style={[s.editorCard, { backgroundColor: cardBg }]}>
+                <TextInput
+                  style={[s.bodyInput, { color: inkColor, fontSize: fs, lineHeight, textAlign: bodyAlign }]}
+                  value={body}
+                  onChangeText={onBodyChange}
+                  onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
+                  placeholder="מצב עבודה: **מודגש**, ==מרקר==, #תגית, תרגיל 50*4="
+                  placeholderTextColor={theme.textMuted}
+                  multiline
+                  editable={!readOnly}
+                  textAlignVertical="top"
+                />
+              </View>
+            ) : (
+              // Zen: nothing but text on a white page.
+              <TextInput
+                style={[s.zenBody, { color: inkColor, fontSize: fs, lineHeight, textAlign: bodyAlign }]}
+                value={body}
+                onChangeText={onBodyChange}
+                onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
+                placeholder="פשוט לכתוב..."
+                placeholderTextColor={theme.textMuted}
+                multiline
+                editable={!readOnly}
+                textAlignVertical="top"
+              />
+            )}
+          </ScrollView>
+        </TouchableWithoutFeedback>
+
+        {/* Auto-detected links / phone numbers */}
+        {links.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={s.linksRow}
+            contentContainerStyle={{ paddingHorizontal: 14, gap: 8, alignItems: "center" }}
+          >
+            {links.map((l) => (
+              <TouchableOpacity key={l.label} style={s.linkChip} onPress={() => openLink(l)} activeOpacity={0.7}>
+                <Text style={s.linkChipText}>
+                  {l.type === "phone" ? "📞" : "🔗"} {l.label}
+                </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         )}
 
-        {/* Body: checklist / preview / editor */}
-        {note.isChecklist ? (
-          <View style={[s.editorCard, bg !== "transparent" && { backgroundColor: bg }]}>
-            <View style={s.progressWrap}>
-              <Text style={s.progressText}>{checklistDone}/{note.checklist.length} הושלמו</Text>
-              <View style={s.progressBg}>
-                <View style={[s.progressFill, { width: `${checklistPct}%`, backgroundColor: theme.accent }]} />
-              </View>
+        {/* Pro toolbar — slides up, pinned above the keyboard */}
+        {pro && (
+          <Animated.View entering={FadeInUp.duration(220)} exiting={FadeOutDown.duration(160)}>
+            <View style={s.toolbarCard}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={s.toolbar}
+                keyboardShouldPersistTaps="always"
+              >
+                <TBtn label="B" on={() => applyMarker("**")} />
+                <TBtn label="I" on={() => applyMarker("*")} />
+                <TBtn label="U" on={() => applyMarker("__")} />
+                <TBtn label="🖍️" on={() => applyMarker("==")} />
+                <TBtn label="A" labelColor={INK_RED} active={note.inkColor === "red"} on={() => toggleInk("red")} />
+                <TBtn label="A" labelColor={INK_BLUE} active={note.inkColor === "blue"} on={() => toggleInk("blue")} />
+                <View style={s.tsep} />
+                <TBtn label="⇥" active={bodyAlign === "right"} on={() => setAlign("right")} />
+                <TBtn label="↔" active={bodyAlign === "center"} on={() => setAlign("center")} />
+                <TBtn label="⇤" active={bodyAlign === "left"} on={() => setAlign("left")} />
+                <View style={s.tsep} />
+                {!note.isChecklist ? (
+                  <TBtn label="✅" on={convertToChecklist} />
+                ) : (
+                  <TBtn label="📝" active on={() => patchNote({ isChecklist: false })} />
+                )}
+                <TBtn label="🪄" on={insertTemplate} />
+                <View style={s.tsep} />
+                <TBtn label="🧮" on={() => setShowCalc(true)} />
+                <TBtn label="📆" on={() => setShowDates(true)} />
+                <TBtn label="🕐" on={insertTimestamp} />
+                <View style={s.tsep} />
+                {NOTE_BG.filter((b) => ["yellow", "blue", "green", "pink"].includes(b.key)).map((b) => (
+                  <TouchableOpacity
+                    key={b.key}
+                    style={[
+                      s.bgDot,
+                      { backgroundColor: b.color },
+                      note.bg === b.key && { borderColor: theme.accent, borderWidth: 3 },
+                    ]}
+                    onPress={() => patchNote({ bg: note.bg === b.key ? "white" : b.key })}
+                    activeOpacity={0.8}
+                  />
+                ))}
+                <View style={s.tsep} />
+                <TBtn label="A−" on={() => bumpFont(-1)} />
+                <TBtn label="A+" on={() => bumpFont(1)} />
+                <TBtn label="👁️" active={preview} on={() => setPreview((p) => !p)} />
+                <TBtn label={readOnly ? "🔏" : "🖊️"} active={readOnly} on={() => patchNote({ readOnly: !readOnly })} />
+              </ScrollView>
             </View>
-            {note.checklist.map((item) => (
-              <View key={item.id} style={s.checkRow}>
-                <TouchableOpacity style={[s.checkbox, item.done && { backgroundColor: theme.accent, borderColor: theme.accent }]} onPress={() => toggleItem(item.id)}>
-                  {item.done && <Text style={s.checkMark}>✓</Text>}
-                </TouchableOpacity>
-                <TextInput
-                  style={[
-                    s.checkText,
-                    { color: item.done ? theme.textMuted : theme.textPrimary, fontSize: (note.fontSize || 16) * fontScale },
-                    item.done && { textDecorationLine: "line-through" },
-                  ]}
-                  value={item.text}
-                  onChangeText={(t) => editChecklistItem(item.id, t)}
-                  placeholder="פריט..."
-                  placeholderTextColor={theme.textMuted}
-                  editable={!readOnly}
-                  textAlign="auto"
-                />
-              </View>
-            ))}
-            {!readOnly && (
-              <View style={s.checkActions}>
-                <TouchableOpacity style={s.smallAction} onPress={addChecklistItem}>
-                  <Text style={[s.smallActionText, { color: theme.accent }]}>＋ פריט</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={s.smallAction} onPress={clearCompleted}>
-                  <Text style={[s.smallActionText, { color: theme.textSecondary }]}>הורד שהושלמו לתחתית</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        ) : preview ? (
-          <View style={[s.editorCard, bg !== "transparent" && { backgroundColor: bg }]}>
-            <Text style={{ fontSize: (note.fontSize || 16) * fontScale, color: theme.textPrimary, textAlign: "right", lineHeight: (note.fontSize || 16) * fontScale * 1.6 }}>
-              {segments.map((seg, i) => (
-                <Text
-                  key={i}
-                  style={[
-                    seg.bold && { fontFamily: FONTS.bold },
-                    seg.italic && { fontStyle: "italic" },
-                    seg.underline && { textDecorationLine: "underline" },
-                  ]}
-                >
-                  {seg.text}
-                </Text>
-              ))}
-            </Text>
-          </View>
-        ) : (
-          <View style={[s.editorCard, bg !== "transparent" && { backgroundColor: bg }]}>
-            <TextInput
-              style={[s.bodyInput, { color: theme.textPrimary, fontSize: (note.fontSize || 16) * fontScale, lineHeight: (note.fontSize || 16) * fontScale * 1.6 }]}
-              value={body}
-              onChangeText={onBodyChange}
-              onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
-              placeholder="התחל לכתוב... אפשר **מודגש**, *נטוי*, __קו תחתון__, #תגית ותרגיל כמו 50*4="
-              placeholderTextColor={theme.textMuted}
-              multiline
-              editable={!readOnly}
-              textAlign="auto"
-              textAlignVertical="top"
-            />
-          </View>
+          </Animated.View>
         )}
 
-        {/* Counters */}
-        <View style={s.footer}>
-          <Text style={s.footerText}>{counts.words} מילים · {counts.chars} תווים</Text>
+        {/* Bottom status line: date · counters · autosave */}
+        <View style={[s.bottomLine, { paddingBottom: Math.max(insets.bottom, 8), backgroundColor: pro ? PRO_BG : ZEN_BG }]}>
+          <Text style={s.bottomText}>{savedAt ? "נשמר ✓" : "שמירה אוטומטית"}</Text>
+          <Text style={s.bottomText}>
+            {counts.words} מילים · {counts.chars} תווים{sum.count > 0 ? ` · Σ ${sum.total}` : ""}
+          </Text>
+          <Text style={s.bottomText} numberOfLines={1}>📅 {today.formatted}</Text>
         </View>
-
-        {note.hebrewDate && (
-          <View style={s.linkedDate}>
-            <Text style={s.linkedDateText}>🔗 מקושר לתאריך: {note.hebrewDate.formatted}</Text>
-          </View>
-        )}
-      </ScrollView>
-      </TouchableWithoutFeedback>
-
-      {/* Sticky auto-sum bar */}
-      <View style={[s.sumBar, { paddingBottom: (insets.bottom || 0) + 10, borderTopColor: theme.hairline, backgroundColor: theme.surface }]}>
-        <Text style={[s.sumLabel, { color: theme.textMuted }]}>
-          {sum.count > 0 ? `${sum.count} מספרים בהערה` : "אין מספרים בהערה"}
-        </Text>
-        <Text style={[s.sumTotal, { color: theme.gold }]}>Σ סה״כ: {sum.total}</Text>
-      </View>
+      </KeyboardAvoidingView>
 
       {/* Floating calculator */}
       <Modal visible={showCalc} transparent animationType="fade" onRequestClose={() => setShowCalc(false)}>
@@ -548,86 +604,40 @@ export default function NoteEditorScreen({ route, navigation }) {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
-
-      {/* Business templates injector */}
-      <Modal visible={showTemplates} transparent animationType="fade" onRequestClose={() => setShowTemplates(false)}>
-        <TouchableWithoutFeedback onPress={() => setShowTemplates(false)}>
-          <View style={s.calcBackdrop}>
-            <TouchableWithoutFeedback onPress={() => {}}>
-              <View style={s.calcCard}>
-                <Text style={s.calcTitle}>🪄 תבניות עסקיות</Text>
-                {BUSINESS_TEMPLATES.map((tpl) => (
-                  <TouchableOpacity key={tpl.key} style={s.tplRow} onPress={() => appendTemplate(tpl)} activeOpacity={0.8}>
-                    <Text style={s.tplEmoji}>{tpl.emoji}</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.tplLabel}>{tpl.label}</Text>
-                      <Text style={s.tplPreview} numberOfLines={1}>{tpl.text}</Text>
-                    </View>
-                    <Text style={s.tplPlus}>＋</Text>
-                  </TouchableOpacity>
-                ))}
-                <TouchableOpacity style={[s.calcAction, { backgroundColor: theme.surfaceMuted, marginTop: 10 }]} onPress={() => setShowTemplates(false)}>
-                  <Text style={[s.calcActionText, { color: theme.textSecondary }]}>סגור</Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
     </View>
   );
 }
 
-function makeStyles(t, fs) {
+function makeStyles(t, fsScale) {
+  // Kill the browser's default black focus ring on web — the design has no
+  // harsh borders anywhere. No-op on native.
+  const NO_OUTLINE = Platform.OS === "web" ? { outlineStyle: "none", outlineWidth: 0 } : {};
   return StyleSheet.create({
-    header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingBottom: 10, backgroundColor: t.surface, borderBottomWidth: 1, borderBottomColor: t.hairline },
+    header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingBottom: 10, gap: 10 },
     headerActions: { flexDirection: "row", gap: 8 },
-    iconBtn: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: t.surfaceAlt },
-    icon: { fontSize: 22, color: t.textPrimary, fontFamily: FONTS.bold },
-    headerDate: { color: t.textPrimary, fontSize: 15 * fs, fontFamily: FONTS.bold },
-    headerSub: { color: t.textMuted, fontSize: 11 * fs, fontFamily: FONTS.regular, marginTop: 1 },
+    iconBtn: { width: 42, height: 42, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: t.surfaceAlt },
+    icon: { fontSize: 20, color: t.textPrimary, fontFamily: FONTS.bold },
 
-    // One prominent, grouped toolbar card that sits right above the editor.
-    // Explicit white card on the grey (#F4F5F7) screen so it clearly stands out.
-    toolbarCard: {
-      backgroundColor: "#FFFFFF",
-      borderRadius: 25,
-      paddingVertical: 12,
-      paddingHorizontal: 15,
+    modePill: {
+      minHeight: 42,
+      paddingHorizontal: 16,
+      borderRadius: 21,
+      backgroundColor: t.surfaceAlt,
+      alignItems: "center",
+      justifyContent: "center",
       borderWidth: 1,
       borderColor: "#EAEAEA",
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 3,
-      elevation: 2,
-      // NOTE: alignSelf:'center' shrink-wraps this card to the full scroll-content
-      // width (~730px), pushing the rounded pill + borders off-screen. We keep it
-      // stretched to the screen width (minus margins) so the white card boundary
-      // is fully visible and the icons scroll inside it.
-      marginTop: 12,
-      marginBottom: 20,
-      marginHorizontal: 12,
-      gap: 10,
     },
-    // flexGrow + center keeps the row centered when it fits, scrollable when not.
-    toolbar: { flexGrow: 1, justifyContent: "center", alignItems: "center", gap: 10, paddingHorizontal: 2 },
-    tbtn: { minWidth: 42, height: 40, paddingHorizontal: 10, borderRadius: RADIUS_SM, backgroundColor: t.surface, borderWidth: 1, borderColor: t.hairline, alignItems: "center", justifyContent: "center" },
-    tbtnText: { fontSize: 16 * fs, fontFamily: FONTS.bold, textAlign: "center" },
-    tsep: { width: 1, height: 24, backgroundColor: t.hairline, marginHorizontal: 4 },
+    modePillPro: { backgroundColor: t.accent, borderColor: t.accent },
+    modePillText: { fontFamily: FONTS.bold, fontSize: 14 * fsScale, color: t.textSecondary },
 
-    bgDot: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: t.hairline },
+    title: { fontSize: 24 * fsScale, fontFamily: FONTS.semibold, marginBottom: 10, paddingVertical: 4, ...NO_OUTLINE },
 
-    tagPillRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 },
-    tagPill: { backgroundColor: t.accent + "18", borderRadius: 14, paddingHorizontal: 12, paddingVertical: 6 },
-    tagPillText: { color: t.accent, fontSize: 13 * fs, fontFamily: FONTS.bold },
+    // Zen body: bare text on the white page, light weight, roomy line height.
+    zenBody: { flex: 1, minHeight: 460, fontFamily: FONTS.light, paddingBottom: 20, ...NO_OUTLINE },
+    zenChecklistWrap: { paddingVertical: 4 },
 
-    sumBar: { position: "absolute", left: 0, right: 0, bottom: 0, flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingTop: 12, borderTopWidth: 1 },
-    sumLabel: { fontSize: 13 * fs, fontFamily: FONTS.medium },
-    sumTotal: { fontSize: 16 * fs, fontFamily: FONTS.bold },
-
-    title: { fontSize: 22 * fs, fontFamily: FONTS.bold, marginBottom: 12, paddingVertical: 4 },
-    // White editor card — a clear visual boundary for the writing area.
+    // Pro editor: white card on the soft-grey work surface.
     editorCard: {
       backgroundColor: "#FFFFFF",
       padding: 20,
@@ -639,36 +649,75 @@ function makeStyles(t, fs) {
       shadowRadius: 2,
       elevation: 1,
     },
-    bodyInput: { flex: 1, minHeight: 260, textAlignVertical: "top", fontFamily: FONTS.regular },
+    bodyInput: { flex: 1, minHeight: 260, textAlignVertical: "top", fontFamily: FONTS.regular, ...NO_OUTLINE },
+
+    tagPillRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 },
+    tagPill: { backgroundColor: t.accent + "18", borderRadius: 14, paddingHorizontal: 12, paddingVertical: 6 },
+    tagPillText: { color: t.accent, fontSize: 13 * fsScale, fontFamily: FONTS.bold },
 
     mathChip: { backgroundColor: t.accent + "18", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, marginEnd: 8 },
-    mathChipText: { color: t.accent, fontSize: 14 * fs, fontFamily: FONTS.bold },
+    mathChipText: { color: t.accent, fontSize: 14 * fsScale, fontFamily: FONTS.bold },
+
+    // Pro toolbar card (pinned above the keyboard by KeyboardAvoidingView).
+    toolbarCard: {
+      backgroundColor: "#FFFFFF",
+      borderRadius: 25,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderWidth: 1,
+      borderColor: "#EAEAEA",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
+      elevation: 2,
+      marginHorizontal: 12,
+      marginBottom: 8,
+    },
+    toolbar: { flexGrow: 1, justifyContent: "center", alignItems: "center", gap: 8, paddingHorizontal: 2 },
+    tbtn: { minWidth: 44, minHeight: 44, paddingHorizontal: 10, borderRadius: RADIUS_SM, backgroundColor: t.surfaceAlt, borderWidth: 1, borderColor: "#EEF0F3", alignItems: "center", justifyContent: "center" },
+    tbtnText: { fontSize: 17 * fsScale, fontFamily: FONTS.bold, textAlign: "center" },
+    tsep: { width: 1, height: 26, backgroundColor: t.hairline, marginHorizontal: 4 },
+    bgDot: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: t.hairline },
+
+    linksRow: { flexGrow: 0, marginBottom: 6 },
+    linkChip: {
+      minHeight: 40,
+      borderRadius: 20,
+      backgroundColor: t.accent + "10",
+      paddingHorizontal: 14,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    linkChipText: { fontFamily: FONTS.semibold, fontSize: 12 * fsScale, color: t.accent },
+
+    bottomLine: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      borderTopWidth: 1,
+      borderTopColor: "#EEF0F3",
+      gap: 8,
+    },
+    bottomText: { fontFamily: FONTS.regular, fontSize: 11 * fsScale, color: t.textMuted },
 
     progressWrap: { marginBottom: 14 },
-    progressText: { color: t.textSecondary, fontSize: 13 * fs, fontFamily: FONTS.bold, textAlign: "right", marginBottom: 6 },
+    progressText: { color: t.textSecondary, fontSize: 13 * fsScale, fontFamily: FONTS.bold, textAlign: "right", marginBottom: 6 },
     progressBg: { height: 10, borderRadius: 6, backgroundColor: t.surfaceMuted, overflow: "hidden" },
     progressFill: { height: "100%", borderRadius: 6 },
     checkRow: { flexDirection: "row", alignItems: "center", paddingVertical: 7, gap: 10 },
     checkbox: { width: 26, height: 26, borderRadius: 8, borderWidth: 2, borderColor: t.textMuted, alignItems: "center", justifyContent: "center" },
     checkMark: { color: "#FFF", fontSize: 15, fontFamily: FONTS.bold },
-    checkText: { flex: 1, fontFamily: FONTS.regular, paddingVertical: 2 },
+    checkText: { flex: 1, fontFamily: FONTS.regular, paddingVertical: 2, ...NO_OUTLINE },
     checkActions: { flexDirection: "row", justifyContent: "space-between", marginTop: 12, alignItems: "center" },
     smallAction: { paddingVertical: 6 },
-    smallActionText: { fontSize: 13 * fs, fontFamily: FONTS.bold },
-
-    footer: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 12, flexWrap: "wrap", gap: 6 },
-    footerText: { color: t.textMuted, fontSize: 12 * fs, fontFamily: FONTS.medium },
-    linkedDate: { marginTop: 12, backgroundColor: t.accent + "14", borderRadius: RADIUS_SM, padding: 12 },
-    linkedDateText: { color: t.accent, fontSize: 13 * fs, fontFamily: FONTS.bold, textAlign: "right" },
+    smallActionText: { fontSize: 13 * fsScale, fontFamily: FONTS.bold },
 
     calcBackdrop: { flex: 1, backgroundColor: t.overlay, justifyContent: "flex-end" },
     calcCard: { backgroundColor: t.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, ...SHADOW },
     calcTitle: { color: t.textPrimary, fontSize: 17, fontFamily: FONTS.bold, textAlign: "right", marginBottom: 12 },
-    tplRow: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: t.surfaceAlt, borderRadius: RADIUS_SM, padding: 14, marginBottom: 8 },
-    tplEmoji: { fontSize: 24 },
-    tplLabel: { color: t.textPrimary, fontSize: 15 * fs, fontFamily: FONTS.bold, textAlign: "right" },
-    tplPreview: { color: t.textMuted, fontSize: 12 * fs, fontFamily: FONTS.regular, textAlign: "right", marginTop: 2 },
-    tplPlus: { color: t.accent, fontSize: 22, fontFamily: FONTS.bold },
     calcDisplay: { backgroundColor: t.surfaceAlt, borderRadius: RADIUS_SM, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: t.hairline },
     calcExpr: { color: t.textPrimary, fontSize: 24, fontFamily: FONTS.bold, textAlign: "left" },
     calcResult: { color: t.accent, fontSize: 16, fontFamily: FONTS.medium, textAlign: "left", marginTop: 4 },
