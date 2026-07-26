@@ -70,12 +70,38 @@ function normalizeDream(dream) {
     cost: 0,
     price: 0,
     saved: 0,
+    fundedFromBusiness: 0,
     cover: "night",
+    why: "",
+    targetDate: null,
+    locked: false,
+    archived: false,
     tasks: [],
     notes: [],
     milestones: [],
     ...dream,
   };
+}
+
+// Whole days from today until an ISO target date (negative once overdue).
+export function daysUntil(iso) {
+  if (!iso) return null;
+  const target = new Date(iso);
+  if (isNaN(target)) return null;
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  target.setHours(0, 0, 0, 0);
+  return Math.round((target - startOfToday) / 86400000);
+}
+
+// A dream is complete when every milestone is ticked, or — when it has no
+// checklist — once the financial target is fully funded.
+export function isDreamComplete(dream) {
+  if (!dream) return false;
+  const ms = dream.milestones || [];
+  if (ms.length) return ms.every((m) => m.done);
+  const target = Number(dream.target) || 0;
+  return target > 0 && (Number(dream.saved) || 0) >= target;
 }
 
 // Vision-board progress: milestone completion when a checklist exists,
@@ -177,10 +203,15 @@ export function DreamProvider({ children }) {
       current: 0,
       target,
       saved: 0,
+      fundedFromBusiness: 0,
       cover,
       imageUri,
       cost,
       price,
+      why: "",
+      targetDate: null,
+      locked: false,
+      archived: false,
       tasks: [],
       notes: [],
       milestones,
@@ -242,6 +273,41 @@ export function DreamProvider({ children }) {
       })
     );
     if (updated) patchDream(dreamId, { saved: updated.saved, current: updated.current });
+  };
+
+  // Allocate business revenue to a dream. Tracked separately from manual
+  // savings so the board can show how much of the POS take is already
+  // committed and never let the same shekel be allocated twice.
+  const fundFromBusiness = (dreamId, amount) => {
+    if (!(amount > 0)) return;
+    let updated = null;
+    setDreams((prev) =>
+      prev.map((dream) => {
+        if (dream.id !== dreamId) return dream;
+        const saved = (Number(dream.saved) || 0) + amount;
+        updated = {
+          ...dream,
+          saved,
+          fundedFromBusiness: (Number(dream.fundedFromBusiness) || 0) + amount,
+          current: Math.min(dream.target || saved, saved),
+        };
+        return updated;
+      })
+    );
+    if (updated) {
+      patchDream(dreamId, {
+        saved: updated.saved,
+        fundedFromBusiness: updated.fundedFromBusiness,
+        current: updated.current,
+      });
+    }
+  };
+
+  // Generic field patch for the dream's editable metadata (why, target date,
+  // lock, archive, cover…).
+  const updateDreamFields = (dreamId, fields) => {
+    setDreams((prev) => prev.map((d) => (d.id === dreamId ? { ...d, ...fields } : d)));
+    patchDream(dreamId, fields);
   };
 
   const removeDream = (dreamId) => {
@@ -383,6 +449,8 @@ export function DreamProvider({ children }) {
       toggleMilestone,
       addChecklistMilestone,
       addDreamSavings,
+      fundFromBusiness,
+      updateDreamFields,
       addTask,
       toggleTask,
       addNote,
