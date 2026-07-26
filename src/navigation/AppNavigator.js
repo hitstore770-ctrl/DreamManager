@@ -1,4 +1,4 @@
-import { View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
@@ -90,7 +90,17 @@ function MainTabs() {
 }
 
 export default function AppNavigator() {
-  const { user } = useAuth();
+  const { user, authLoading } = useAuth();
+
+  // Hold a plain splash until Firebase reports whether a session exists —
+  // otherwise a returning user sees the login screen flash before the app.
+  if (authLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: UI.bg, alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator color={UI.violet} />
+      </View>
+    );
+  }
 
   return (
     <RootStack.Navigator screenOptions={{ headerShown: false }}>

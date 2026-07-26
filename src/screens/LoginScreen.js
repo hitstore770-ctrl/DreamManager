@@ -1,121 +1,155 @@
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated";
 
+import Bounce from "../components/Bounce";
+import Pulse from "../components/Pulse";
 import { useAuth } from "../context/AuthContext";
-import { BRUTAL_BORDER, BRUTAL_SHADOW, BRUTAL_SHADOW_SM, COLORS, FONTS, RADIUS } from "../utils/theme";
+import { hapticLight } from "../utils/haptics";
+import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
+import { UI, glow } from "../utils/ui";
+
+// The gate. Nothing else in the app renders until Firebase reports a session.
 
 export default function LoginScreen() {
-  const { signInWithGoogle, isAuthenticating } = useAuth();
+  const { signInWithGoogle, isAuthenticating, authError } = useAuth();
 
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <View style={styles.logoBox}>
-          <Text style={styles.logo}>💪</Text>
-        </View>
-        <Text style={styles.title}>יאללה לעבודה</Text>
-        <Text style={styles.subtitle}>
-          הפרויקטים, הכספים והזמן שלך - הכל במקום אחד. בוא נראה כסף.
-        </Text>
+    <View style={s.container}>
+      {/* Ambient colour wash — two soft blobs behind the card. */}
+      <View pointerEvents="none" style={[s.blob, s.blobViolet]} />
+      <View pointerEvents="none" style={[s.blob, s.blobCyan]} />
 
-        <TouchableOpacity
-          style={[styles.googleButton, isAuthenticating && styles.googleButtonDisabled]}
-          onPress={signInWithGoogle}
-          disabled={isAuthenticating}
-          activeOpacity={0.85}
-        >
-          {isAuthenticating ? (
-            <ActivityIndicator color={COLORS.textPrimary} />
-          ) : (
-            <>
-              <View style={styles.googleBadge}>
-                <Text style={styles.googleBadgeText}>G</Text>
-              </View>
-              <Text style={styles.googleButtonText}>התחבר באמצעות גוגל</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
+      <Animated.View entering={FadeInDown.duration(520).springify().damping(16)} style={s.card}>
+        <Pulse style={s.markPulse} max={1.05} duration={1600}>
+          <View style={s.mark}>
+            <Text style={s.markText}>770</Text>
+          </View>
+        </Pulse>
+
+        <Animated.Text entering={FadeIn.delay(180).duration(420)} style={s.title}>
+          DreamManager
+        </Animated.Text>
+        <Animated.Text entering={FadeIn.delay(280).duration(420)} style={s.subtitle}>
+          הקופה, המלאי, הפתקים והחלומות שלך — הכול במקום אחד, מסונכרן בענן.
+        </Animated.Text>
+
+        <Animated.View entering={FadeInUp.delay(380).duration(460).springify().damping(14)} style={{ width: "100%" }}>
+          <Bounce
+            testID="google-signin"
+            style={[s.googleBtn, isAuthenticating && { opacity: 0.7 }]}
+            onPress={() => {
+              hapticLight();
+              signInWithGoogle();
+            }}
+            disabled={isAuthenticating}
+          >
+            {isAuthenticating ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <View style={s.gBadge}>
+                  <Text style={s.gBadgeText}>G</Text>
+                </View>
+                <Text style={s.googleBtnText}>התחבר באמצעות Google</Text>
+              </>
+            )}
+          </Bounce>
+        </Animated.View>
+
+        {!!authError && (
+          <Animated.View entering={FadeIn.duration(240)} style={s.errorBox}>
+            <Text style={s.errorText}>{authError}</Text>
+          </Animated.View>
+        )}
+
+        <Text style={s.legal}>הכניסה מסנכרנת את הנתונים שלך לחשבון Google.</Text>
+      </Animated.View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: UI.bg,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 24,
+    paddingHorizontal: 22,
+    overflow: "hidden",
   },
+
+  blob: { position: "absolute", width: 320, height: 320, borderRadius: 160, opacity: 0.16 },
+  blobViolet: { backgroundColor: UI.violet, top: -90, right: -80 },
+  blobCyan: { backgroundColor: UI.cyan, bottom: -110, left: -90 },
+
   card: {
     width: "100%",
-    maxWidth: 360,
-    padding: 28,
-    borderRadius: RADIUS,
-    backgroundColor: COLORS.card,
+    maxWidth: 380,
+    backgroundColor: UI.surface,
+    borderRadius: UI.radiusLg,
+    paddingVertical: 34,
+    paddingHorizontal: 24,
     alignItems: "center",
-    ...BRUTAL_BORDER,
-    ...BRUTAL_SHADOW,
+    ...glow(UI.violet, 0.14),
   },
-  logoBox: {
-    width: 72,
-    height: 72,
-    borderRadius: RADIUS,
-    backgroundColor: COLORS.mustard,
+
+  markPulse: {
+    borderRadius: 34,
+    shadowColor: UI.violet,
+    shadowOffset: { width: 0, height: 12 },
+    shadowRadius: 26,
+    elevation: 10,
+    marginBottom: 18,
+  },
+  mark: {
+    width: 84,
+    height: 84,
+    borderRadius: 30,
+    backgroundColor: UI.violet,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 18,
-    ...BRUTAL_BORDER,
-    ...BRUTAL_SHADOW_SM,
   },
-  logo: {
-    fontSize: 38,
-  },
-  title: {
-    color: COLORS.textPrimary,
-    fontSize: 32,
-    fontFamily: FONTS.bold,
-  },
+  markText: { fontFamily: FONTS.bold, fontSize: 30, color: "#FFFFFF", letterSpacing: 1 },
+
+  title: { fontFamily: FONTS.bold, fontSize: 25, color: UI.ink, marginBottom: 8 },
   subtitle: {
-    color: COLORS.textSecondary,
-    fontSize: 14,
     fontFamily: FONTS.regular,
+    fontSize: 14,
+    color: UI.inkSoft,
     textAlign: "center",
-    marginTop: 10,
-    marginBottom: 32,
-    lineHeight: 21,
+    lineHeight: 22,
+    marginBottom: 26,
   },
-  googleButton: {
+
+  googleBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    width: "100%",
-    height: 54,
-    borderRadius: RADIUS,
-    backgroundColor: COLORS.white,
-    ...BRUTAL_BORDER,
-    ...BRUTAL_SHADOW_SM,
+    gap: 12,
+    minHeight: 58,
+    borderRadius: 24,
+    backgroundColor: UI.violet,
+    ...glow(UI.violet, 0.38),
   },
-  googleButtonDisabled: {
-    opacity: 0.75,
-  },
-  googleBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: 6,
-    backgroundColor: COLORS.navy,
+  gBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
-    marginEnd: 12,
   },
-  googleBadgeText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontFamily: FONTS.bold,
+  gBadgeText: { fontFamily: FONTS.bold, fontSize: 16, color: UI.violet },
+  googleBtnText: { fontFamily: FONTS.bold, fontSize: 16, color: "#FFFFFF" },
+
+  errorBox: {
+    marginTop: 16,
+    backgroundColor: UI.red + "14",
+    borderRadius: UI.radiusSm,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
-  googleButtonText: {
-    color: COLORS.textPrimary,
-    fontSize: 16,
-    fontFamily: FONTS.bold,
-  },
+  errorText: { fontFamily: FONTS.medium, fontSize: 12.5, color: UI.red, textAlign: "center", lineHeight: 19 },
+
+  legal: { fontFamily: FONTS.regular, fontSize: 11, color: UI.inkMuted, textAlign: "center", marginTop: 18 },
 });
