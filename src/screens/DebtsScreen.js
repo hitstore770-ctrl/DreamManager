@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 
+import Icon from "../components/Icon";
 import { useBusiness } from "../context/BusinessContext";
 import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
 import { shekel, uid } from "../utils/posStore";
@@ -20,9 +21,9 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 // tool suite show up here untouched.
 
 const WHITE = "#FFFFFF";
-const CARD = "#F9FAFC";
+const CARD = "#F4F6F9";
 const INK = "#111827";
-const INK_SOFT = "#4B5563";
+const INK_SOFT = "#6B7280";
 const INK_MUTED = "#9CA3AF";
 const BLUE = "#7C3AED";
 const RED = "#EF4444";
@@ -103,13 +104,13 @@ export default function DebtsScreen() {
         <Text style={[s.summaryValue, { color: totalOutstanding > 0 ? RED : GREEN_DARK }]}>
           {shekel(totalOutstanding)}
         </Text>
-        <Text style={s.summaryLabel}>📒 סה״כ חובות פתוחים</Text>
+        <Text style={s.summaryLabel}>סה״כ חובות פתוחים</Text>
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 14, paddingBottom: 110 }}>
         {sorted.length === 0 ? (
           <View style={s.empty}>
-            <Text style={{ fontSize: 34 }}>📒</Text>
+            <Icon name="book-open" size={34} color="#9CA3AF" />
             <Text style={s.emptyText}>אין לקוחות בהקפה — הוסף עם ה-＋ למטה</Text>
           </View>
         ) : (
@@ -119,7 +120,7 @@ export default function DebtsScreen() {
               <TouchableOpacity key={d.id} style={s.row} onPress={() => openCustomer(d)} activeOpacity={0.7}>
                 <View style={{ alignItems: "flex-start" }}>
                   <Text style={[s.balance, { color: bal > 0 ? RED : GREEN_DARK }]}>
-                    {bal > 0 ? shekel(bal) : "מאופס ✓"}
+                    {bal > 0 ? shekel(bal) : "מאופס"}
                   </Text>
                   {bal > 0 && <Text style={s.balanceCap}>חוב פתוח</Text>}
                 </View>
@@ -128,7 +129,7 @@ export default function DebtsScreen() {
                   <Text style={s.nameSub}>סה״כ נרשם {shekel(d.owed || 0)} · שולם {shekel(d.paid || 0)}</Text>
                 </View>
                 <View style={[s.avatar, { backgroundColor: bal > 0 ? RED + "14" : GREEN_DARK + "14" }]}>
-                  <Text style={{ fontSize: 18 }}>{bal > 0 ? "🧾" : "😊"}</Text>
+                  <Icon name={bal > 0 ? "alert-circle" : "check-circle"} size={19} color={bal > 0 ? RED : GREEN} />
                 </View>
               </TouchableOpacity>
             );
@@ -169,20 +170,23 @@ export default function DebtsScreen() {
                     onPress={settle}
                     activeOpacity={0.8}
                   >
-                    <Text style={s.actionBtnText}>✓ תשלום חוב</Text>
+                    <Icon name="check" size={17} color={WHITE} />
+              <Text style={s.actionBtnText}>תשלום חוב</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[s.actionBtn, { backgroundColor: BLUE }, !(parseFloat(amount) > 0) && { opacity: 0.35 }]}
                     onPress={addDebt}
                     activeOpacity={0.8}
                   >
-                    <Text style={s.actionBtnText}>➕ הוסף חוב</Text>
+                    <Icon name="plus" size={17} color={WHITE} />
+              <Text style={s.actionBtnText}>הוסף חוב</Text>
                   </TouchableOpacity>
                 </View>
                 <Text style={s.hint}>תשלום ללא סכום מאפס את כל החוב · עם סכום — תשלום חלקי</Text>
                 {balanceOf(selected || {}) === 0 && (
                   <TouchableOpacity style={s.removeBtn} onPress={removeCustomer} activeOpacity={0.7}>
-                    <Text style={s.removeBtnText}>🗑️ מחק לקוח</Text>
+                    <Icon name="trash-2" size={15} color={RED} />
+            <Text style={s.removeBtnText}>מחק לקוח</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -232,11 +236,12 @@ export default function DebtsScreen() {
 }
 
 const SHADOW = {
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 8 },
-  shadowOpacity: 0.06,
-  shadowRadius: 18,
-  elevation: 2,
+  // The one card shadow for the whole app — see utils/ui.js.
+  shadowColor: "#7C3AED",
+  shadowOffset: { width: 0, height: 12 },
+  shadowOpacity: 0.08,
+  shadowRadius: 24,
+  elevation: 4,
 };
 
 const s = StyleSheet.create({
@@ -247,7 +252,7 @@ const s = StyleSheet.create({
     marginHorizontal: 14,
     marginTop: 8,
     backgroundColor: CARD,
-    borderRadius: 28,
+    borderRadius: 24,
     paddingHorizontal: 16,
     minHeight: 56,
     ...SHADOW,
@@ -263,7 +268,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     backgroundColor: CARD,
-    borderRadius: 28,
+    borderRadius: 24,
     paddingHorizontal: 12,
     paddingVertical: 10,
     marginBottom: 8,

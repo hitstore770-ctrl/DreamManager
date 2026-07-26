@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
+import Icon from "../components/Icon";
 import { useBusiness } from "../context/BusinessContext";
 import { hapticHeavy, hapticLight } from "../utils/haptics";
 import { shekel, todayKey, uid } from "../utils/posStore";
@@ -14,9 +15,9 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 // without touching the underlying sales history.
 
 const WHITE = "#FFFFFF";
-const CARD = "#F9FAFC";
+const CARD = "#F4F6F9";
 const INK = "#111827";
-const INK_SOFT = "#4B5563";
+const INK_SOFT = "#6B7280";
 const INK_MUTED = "#9CA3AF";
 const BLUE = "#7C3AED";
 const GREEN_DARK = "#10B981";
@@ -66,41 +67,42 @@ export default function ZReportScreen() {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 12 }}>
         {closedToday && !hasActivity && (
           <View style={s.closedBanner}>
-            <Text style={s.closedBannerText}>המשמרת נסגרה ✓ — מכירות חדשות ייספרו למשמרת הבאה</Text>
+            <Text style={s.closedBannerText}>המשמרת נסגרה — מכירות חדשות ייספרו למשמרת הבאה</Text>
           </View>
         )}
 
         {/* Revenue hero */}
         <View style={s.heroCard}>
           <Text style={s.heroValue}>{shekel(stats.revenue)}</Text>
-          <Text style={s.heroLabel}>💰 סה״כ הכנסות {closedToday ? "(מאז סגירה אחרונה)" : "היום"}</Text>
+          <Text style={s.heroLabel}>סה״כ הכנסות {closedToday ? "(מאז סגירה אחרונה)" : "היום"}</Text>
         </View>
 
         {/* Secondary metrics */}
         <View style={s.metricsRow}>
           <View style={s.metricCard}>
             <Text style={s.metricValue}>{stats.txCount}</Text>
-            <Text style={s.metricLabel}>🧺 עסקאות</Text>
+            <Text style={s.metricLabel}>עסקאות</Text>
           </View>
           <View style={s.metricCard}>
             <Text style={s.metricValue} numberOfLines={1}>
               {topItem ? topItem.name : "—"}
             </Text>
             <Text style={s.metricLabel}>
-              {topItem ? `⭐ מוביל · ×${topItem.qty}` : "⭐ מוצר מוביל"}
+              {topItem ? `מוביל · ×${topItem.qty}` : "מוצר מוביל"}
             </Text>
           </View>
         </View>
 
         {stats.dmgUnits > 0 && (
           <View style={s.dmgRow}>
-            <Text style={s.dmgText}>⚠️ פחת/נזק במשמרת: {stats.dmgUnits} יח׳</Text>
+            <Text style={s.dmgText}>פחת/נזק במשמרת: {stats.dmgUnits} יח׳</Text>
           </View>
         )}
 
         {/* Share */}
         <TouchableOpacity style={s.shareBtn} onPress={shareZ} activeOpacity={0.8}>
-          <Text style={s.shareBtnText}>📤 שיתוף דוח Z ל-WhatsApp</Text>
+          <Icon name="share-2" size={17} color={WHITE} />
+          <Text style={s.shareBtnText}>שיתוף דוח Z ל-WhatsApp</Text>
         </TouchableOpacity>
 
         {/* Close history */}
@@ -128,7 +130,8 @@ export default function ZReportScreen() {
           onPress={closeRegister}
           activeOpacity={0.85}
         >
-          <Text style={s.closeBtnText}>🔒 סגור משמרת</Text>
+          <Icon name="lock" size={18} color={WHITE} />
+          <Text style={s.closeBtnText}>סגור משמרת</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -136,11 +139,12 @@ export default function ZReportScreen() {
 }
 
 const SHADOW = {
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 8 },
-  shadowOpacity: 0.06,
-  shadowRadius: 18,
-  elevation: 2,
+  // The one card shadow for the whole app — see utils/ui.js.
+  shadowColor: "#7C3AED",
+  shadowOffset: { width: 0, height: 12 },
+  shadowOpacity: 0.08,
+  shadowRadius: 24,
+  elevation: 4,
 };
 
 const s = StyleSheet.create({
@@ -154,7 +158,7 @@ const s = StyleSheet.create({
 
   heroCard: {
     backgroundColor: CARD,
-    borderRadius: 28,
+    borderRadius: 24,
     alignItems: "center",
     paddingVertical: 26,
     marginBottom: 10,
@@ -167,7 +171,7 @@ const s = StyleSheet.create({
   metricCard: {
     flex: 1,
     backgroundColor: CARD,
-    borderRadius: 28,
+    borderRadius: 24,
     alignItems: "center",
     paddingVertical: 16,
     paddingHorizontal: 10,
@@ -181,7 +185,7 @@ const s = StyleSheet.create({
 
   shareBtn: {
     minHeight: 52,
-    borderRadius: 28,
+    borderRadius: 24,
     backgroundColor: "#25D366",
     alignItems: "center",
     justifyContent: "center",
@@ -212,7 +216,7 @@ const s = StyleSheet.create({
   },
   closeBtn: {
     minHeight: 58,
-    borderRadius: 28,
+    borderRadius: 24,
     backgroundColor: BLUE,
     alignItems: "center",
     justifyContent: "center",

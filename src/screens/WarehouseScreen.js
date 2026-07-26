@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
+import Icon from "../components/Icon";
 import ToolsSheet, { SheetRow, ToolsFab } from "../components/business/ToolsSheet";
 import { useBusiness } from "../context/BusinessContext";
 import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
@@ -10,10 +11,10 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 
 // המחסן — the master inventory. Rows are dense but every touch target is a
 // full-size button: +10 restock, low-stock red flag under LOW_STOCK units,
-// category color tag, cost/sell prices. The ⚙️ FAB opens the Pro Tools sheet.
+// category color tag, cost/sell prices. The tools FAB opens the Pro Tools sheet.
 
 const WHITE = "#FFFFFF";
-const CARD = "#F9FAFC";
+const CARD = "#F4F6F9";
 const INK = "#111827";
 const INK_MUTED = "#9CA3AF";
 const BLUE = "#7C3AED";
@@ -86,9 +87,9 @@ export default function WarehouseScreen({ onGoToPos }) {
       {defectMode && (
         <View style={s.defectBanner}>
           <TouchableOpacity style={s.defectClose} onPress={() => { hapticLight(); setDefectMode(false); }} activeOpacity={0.7}>
-            <Text style={{ fontFamily: FONTS.bold, color: RED, fontSize: 16 }}>✕</Text>
+            <Icon name="x" size={17} color={RED} />
           </TouchableOpacity>
-          <Text style={s.defectText}>מצב פחת פעיל — הקש על מוצר לרישום נזק ⚠️</Text>
+          <Text style={s.defectText}>מצב פחת פעיל — הקש על מוצר לרישום נזק</Text>
         </View>
       )}
 
@@ -163,7 +164,7 @@ export default function WarehouseScreen({ onGoToPos }) {
         {/* Inventory list */}
         {inventory.length === 0 ? (
           <View style={s.empty}>
-            <Text style={{ fontSize: 34 }}>📦</Text>
+            <Icon name="package" size={34} color="#9CA3AF" />
             <Text style={s.emptyText}>המחסן ריק — הוסף מוצר ראשון</Text>
           </View>
         ) : (
@@ -208,30 +209,31 @@ export default function WarehouseScreen({ onGoToPos }) {
 
       <ToolsFab style={{ bottom: 18 }} onPress={() => { hapticLight(); setSheetOpen(true); }} />
 
-      <ToolsSheet visible={sheetOpen} onClose={() => setSheetOpen(false)} title="⚙️ כלים מקצועיים">
-        <SheetRow emoji="🏷️" label="הנחה מהירה %" sub="פועל בקופה — מעבר לקופה" onPress={goPos} />
-        <SheetRow emoji="✂️" label="פיצול תשלום" sub="פועל בקופה — מעבר לקופה" onPress={goPos} />
-        <SheetRow emoji="📝" label="הערה להזמנה" sub="פועל בקופה — מעבר לקופה" onPress={goPos} />
+      <ToolsSheet visible={sheetOpen} onClose={() => setSheetOpen(false)} title="כלים מקצועיים">
+        <SheetRow icon="percent" label="הנחה מהירה %" sub="פועל בקופה — מעבר לקופה" onPress={goPos} />
+        <SheetRow icon="scissors" label="פיצול תשלום" sub="פועל בקופה — מעבר לקופה" onPress={goPos} />
+        <SheetRow icon="edit-3" label="הערה להזמנה" sub="פועל בקופה — מעבר לקופה" onPress={goPos} />
         <SheetRow
-          emoji="⚠️"
+          icon="alert-triangle"
           label={defectMode ? "כבה מצב פחת" : "סימון פריט פגום / פחת"}
           sub="הקשה על מוצר תרשום נזק ותוריד מלאי"
           danger
           active={defectMode}
           onPress={() => { hapticLight(); setDefectMode((v) => !v); setSheetOpen(false); }}
         />
-        <SheetRow emoji="🧾" label="ייצוא דוח Z ל-WhatsApp" sub="סיכום פדיון, עסקאות ופחת להיום" onPress={shareZ} />
+        <SheetRow icon="file-text" label="ייצוא דוח Z ל-WhatsApp" sub="סיכום פדיון, עסקאות ופחת להיום" onPress={shareZ} />
       </ToolsSheet>
     </View>
   );
 }
 
 const SHADOW = {
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 8 },
-  shadowOpacity: 0.06,
-  shadowRadius: 18,
-  elevation: 2,
+  // The one card shadow for the whole app — see utils/ui.js.
+  shadowColor: "#7C3AED",
+  shadowOffset: { width: 0, height: 12 },
+  shadowOpacity: 0.08,
+  shadowRadius: 24,
+  elevation: 4,
 };
 
 const s = StyleSheet.create({
@@ -259,7 +261,7 @@ const s = StyleSheet.create({
   },
   addBtnText: { fontFamily: FONTS.bold, fontSize: 15, color: BLUE },
 
-  formCard: { backgroundColor: CARD, borderRadius: 28, padding: 12, gap: 8, marginBottom: 10, ...SHADOW },
+  formCard: { backgroundColor: CARD, borderRadius: 24, padding: 12, gap: 8, marginBottom: 10, ...SHADOW },
   input: {
     minHeight: 48,
     backgroundColor: WHITE,

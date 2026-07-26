@@ -32,10 +32,12 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 // ---------------------------------------------------------------------------
 
 const WHITE = "#FFFFFF";
-const CARD = "#F9FAFC";
+const CARD = "#F4F6F9";
 const GREEN = "#10B981";
+const UI_VIOLET = "#7C3AED";
+const UI_CYAN = "#06B6D4";
 const INK = "#111827";
-const INK_SOFT = "#4B5563";
+const INK_SOFT = "#6B7280";
 const INK_MUTED = "#9CA3AF";
 const BLUE = "#7C3AED";
 const RED = "#EF4444";
@@ -43,12 +45,12 @@ const RED_SOFT = "#FDEBEB";
 
 // Quick-add products for the print/delivery counter. Prices in ₪.
 const PRODUCTS = [
-  { name: "פחית שתייה", price: 6, emoji: "🥤" },
-  { name: "בקבוק מים", price: 5, emoji: "💧" },
-  { name: "משקה אנרגיה", price: 12, emoji: "⚡" },
-  { name: "קפה קר", price: 10, emoji: "☕" },
-  { name: "חטיף", price: 7, emoji: "🍫" },
-  { name: "מארז 6 פחיות", price: 30, emoji: "📦" },
+  { name: "פחית שתייה", price: 6, icon: "cafe-outline" },
+  { name: "בקבוק מים", price: 5, icon: "water-outline" },
+  { name: "משקה אנרגיה", price: 12, icon: "flash-outline" },
+  { name: "קפה קר", price: 10, icon: "cafe-outline" },
+  { name: "חטיף", price: 7, icon: "nutrition-outline" },
+  { name: "מארז 6 פחיות", price: 30, icon: "cube-outline" },
 ];
 
 // Above this many cart lines the list becomes unusable on a small screen, so
@@ -407,7 +409,7 @@ export default function POSScreen() {
           </View>
           <Text style={s.headerSub}>
             {itemCount > 0 ? `${itemCount} פריטים בסל` : "הסל ריק"}
-            {orderNote ? " · 📝 הערה מצורפת" : ""}
+            {orderNote ? " · הערה מצורפת" : ""}
           </Text>
         </View>
       </View>
@@ -426,14 +428,14 @@ export default function POSScreen() {
             onPress={() => addItem(p.name, p.price)}
             activeOpacity={0.75}
           >
-            <Text style={s.productEmoji}>{p.emoji}</Text>
+            <Icon name={p.icon || "gift-outline"} size={22} color={UI_CYAN} />
             <Text style={s.productName} numberOfLines={1}>{p.name}</Text>
-            <Text style={[s.productPrice, { color: "#A8871F" }]}>{shekel(p.price)}</Text>
+            <Text style={[s.productPrice, { color: "#0E7490" }]}>{shekel(p.price)}</Text>
           </Bounce>
         ))}
         {PRODUCTS.map((p) => (
           <Bounce key={p.name} style={s.productChip} onPress={() => addItem(p.name, p.price)}>
-            <Text style={s.productEmoji}>{p.emoji}</Text>
+            <Icon name={p.icon || "cube-outline"} size={22} color={UI_VIOLET} />
             <Text style={s.productName} numberOfLines={1}>{p.name}</Text>
             <Text style={s.productPrice}>{shekel(p.price)}</Text>
           </Bounce>
@@ -446,10 +448,10 @@ export default function POSScreen() {
         {lastTx && (
           <View style={s.lastTxPill}>
             <TouchableOpacity style={s.lastTxEdit} onPress={editLastTx} activeOpacity={0.7}>
-              <Text style={{ fontSize: 13 }}>✏️</Text>
+              <Icon name="edit-2" size={14} color={UI_VIOLET} />
             </TouchableOpacity>
             <Text style={s.lastTxText}>
-              עסקה אחרונה · 🕐 {lastTx.time} · <Text style={{ fontFamily: FONTS.bold, color: INK }}>{shekel(lastTx.total)}</Text>
+              עסקה אחרונה · {lastTx.time} · <Text style={{ fontFamily: FONTS.bold, color: INK }}>{shekel(lastTx.total)}</Text>
             </Text>
           </View>
         )}
@@ -487,7 +489,7 @@ export default function POSScreen() {
           >
             {cart.length === 0 ? (
               <View style={s.empty}>
-                <Text style={{ fontSize: 34 }}>🧺</Text>
+                <Icon name="shopping-bag" size={34} color={INK_MUTED} />
                 <Text style={s.emptyText}>הסל ריק — הקש על מוצר להוספה</Text>
               </View>
             ) : (
@@ -533,7 +535,7 @@ export default function POSScreen() {
           <TouchableOpacity style={s.undoBtn} onPress={undoClear} activeOpacity={0.7}>
             <Text style={s.undoBtnText}>ביטול</Text>
           </TouchableOpacity>
-          <Text style={s.undoText}>הסל נוקה 🗑️</Text>
+          <Text style={s.undoText}>הסל נוקה</Text>
         </View>
       )}
 
@@ -545,7 +547,7 @@ export default function POSScreen() {
               <Text style={s.cashChipText}>₪{amt}</Text>
             </TouchableOpacity>
           ))}
-          <Text style={s.cashLabel}>💵 מזומן:</Text>
+          <Text style={s.cashLabel}>מזומן:</Text>
         </View>
       )}
 
@@ -571,7 +573,7 @@ export default function POSScreen() {
           <View style={s.cashBackdrop}>
             <TouchableWithoutFeedback onPress={() => {}}>
               <View style={s.cashCard}>
-                <Text style={s.cashTitle}>💵 מחשבון עודף</Text>
+                <Text style={s.cashTitle}>מחשבון עודף</Text>
                 <View style={s.cashPayRow}>
                   <Text style={s.cashPayValue}>{shekel(payable)}</Text>
                   <Text style={s.cashPayLabel}>לתשלום</Text>
@@ -610,7 +612,8 @@ export default function POSScreen() {
                     onPress={chargeWithCash}
                     activeOpacity={0.85}
                   >
-                    <Text style={s.cashChargeText}>💳 חיוב וסיום</Text>
+                    <Icon name="credit-card" size={19} color={WHITE} />
+            <Text style={s.cashChargeText}>חיוב וסיום</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -624,7 +627,7 @@ export default function POSScreen() {
         {sheetView === "menu" && (
           <>
             <SheetRow
-              emoji="🏷️"
+              icon="percent"
               label="הנחה מהירה (% / ₪)"
               sub={
                 discountAmount > 0
@@ -634,22 +637,22 @@ export default function POSScreen() {
               active={discountAmount > 0}
               onPress={() => setSheetView("discount")}
             />
-            <SheetRow emoji="✂️" label="פיצול תשלום" sub="חלוקת הסכום בין משלמים" onPress={() => setSheetView("split")} />
+            <SheetRow icon="scissors" label="פיצול תשלום" sub="חלוקת הסכום בין משלמים" onPress={() => setSheetView("split")} />
             <SheetRow
-              emoji="📝"
+              icon="edit-3"
               label="הערה להזמנה"
-              sub={orderNote ? "הערה מצורפת ✓" : "טקסט חופשי שנשמר עם העסקה"}
+              sub={orderNote ? "הערה מצורפת" : "טקסט חופשי שנשמר עם העסקה"}
               active={!!orderNote}
               onPress={() => setSheetView("note")}
             />
             <SheetRow
-              emoji="⚠️"
+              icon="alert-triangle"
               label="פריט פגום / פחת"
               sub="הסרת יחידה מהסל ורישום נזק"
               danger
               onPress={() => setSheetView("defect")}
             />
-            <SheetRow emoji="🧾" label="ייצוא דוח Z ל-WhatsApp" sub="סיכום פדיון, עסקאות ופחת להיום" onPress={shareZ} />
+            <SheetRow icon="file-text" label="ייצוא דוח Z ל-WhatsApp" sub="סיכום פדיון, עסקאות ופחת להיום" onPress={shareZ} />
           </>
         )}
 
@@ -686,7 +689,7 @@ export default function POSScreen() {
                 textAlign="center"
               />
             </View>
-            <SheetRow emoji="🚫" label="ביטול הנחה" onPress={() => { applyDiscount(0); setDiscountFix(0); }} />
+            <SheetRow icon="slash" label="ביטול הנחה" onPress={() => { applyDiscount(0); setDiscountFix(0); }} />
             <SheetRow emoji="‹" label="חזרה" onPress={() => setSheetView("menu")} />
           </>
         )}
@@ -714,7 +717,7 @@ export default function POSScreen() {
               multiline
               textAlign="right"
             />
-            <SheetRow emoji="✓" label="שמירת ההערה" onPress={() => { hapticLight(); setSheetOpen(false); }} />
+            <SheetRow icon="check" label="שמירת ההערה" onPress={() => { hapticLight(); setSheetOpen(false); }} />
             <SheetRow emoji="‹" label="חזרה" onPress={() => setSheetView("menu")} />
           </>
         )}
@@ -727,7 +730,7 @@ export default function POSScreen() {
               cart.map((line) => (
                 <SheetRow
                   key={line.id}
-                  emoji="⚠️"
+                  icon="alert-triangle"
                   label={line.name}
                   sub={`×${line.qty} · ${shekel(line.price)} — הקשה תרשום יחידה אחת כנזק`}
                   danger
@@ -744,11 +747,12 @@ export default function POSScreen() {
 }
 
 const SHADOW = {
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 8 },
-  shadowOpacity: 0.06,
-  shadowRadius: 18,
-  elevation: 2,
+  // The one card shadow for the whole app — see utils/ui.js.
+  shadowColor: "#7C3AED",
+  shadowOffset: { width: 0, height: 12 },
+  shadowOpacity: 0.08,
+  shadowRadius: 24,
+  elevation: 4,
 };
 
 const s = StyleSheet.create({
@@ -801,7 +805,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     backgroundColor: WHITE,
-    borderRadius: 28,
+    borderRadius: 24,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderWidth: 1,
@@ -841,7 +845,7 @@ const s = StyleSheet.create({
   stepBtn: {
     width: 40,
     height: 40,
-    borderRadius: 28,
+    borderRadius: 24,
     backgroundColor: WHITE,
     alignItems: "center",
     justifyContent: "center",
@@ -854,7 +858,7 @@ const s = StyleSheet.create({
   expressNote: { fontFamily: FONTS.medium, fontSize: 11, color: INK_MUTED, textAlign: "center", marginBottom: 4 },
   entryBox: {
     backgroundColor: CARD,
-    borderRadius: 28,
+    borderRadius: 24,
     paddingVertical: 10,
     alignItems: "center",
     marginBottom: 8,
@@ -995,7 +999,7 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   cashAddChipText: { fontFamily: FONTS.bold, fontSize: 15, color: BLUE },
-  changeBox: { borderRadius: 28, alignItems: "center", paddingVertical: 14, marginBottom: 14 },
+  changeBox: { borderRadius: 24, alignItems: "center", paddingVertical: 14, marginBottom: 14 },
   changeValue: { fontFamily: FONTS.bold, fontSize: 36 },
   changeLabel: { fontFamily: FONTS.semibold, fontSize: 13, marginTop: 2 },
   cashClose: {
@@ -1045,9 +1049,17 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     paddingHorizontal: 16,
+    // Clears the floating tab bar (bottom 14 + height 72), which otherwise
+    // covers the charge button.
+    marginBottom: 92,
+    marginHorizontal: 16,
+    borderRadius: 24,
     backgroundColor: WHITE,
-    borderTopWidth: 1,
-    borderTopColor: "#EEF1F6",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 4,
   },
   totalBlock: { alignItems: "flex-end", minWidth: 110 },
   totalLabel: { fontFamily: FONTS.regular, fontSize: 12, color: INK_MUTED },
@@ -1063,7 +1075,7 @@ const s = StyleSheet.create({
     elevation: 8,
     flex: 1,
     height: 56,
-    borderRadius: 28,
+    borderRadius: 24,
     backgroundColor: GREEN,
     alignItems: "center",
     justifyContent: "center",

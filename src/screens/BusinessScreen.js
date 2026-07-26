@@ -1,12 +1,16 @@
 import { useState } from "react";
-import { I18nManager, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { I18nManager, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, { FadeIn } from "react-native-reanimated";
 
 import Bounce from "../components/Bounce";
+import Card from "../components/Card";
 import Icon from "../components/Icon";
-import { FLUID, SCREEN_IN } from "../utils/motion";
 import { BusinessProvider } from "../context/BusinessContext";
+import { hapticLight } from "../utils/haptics";
+import { FLUID, SCREEN_IN } from "../utils/motion";
+import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
+import { CARD_SHADOW, TYPE, UI } from "../utils/ui";
 import BizDashboardScreen from "./BizDashboardScreen";
 import DebtsScreen from "./DebtsScreen";
 import POSScreen from "./POSScreen";
@@ -14,20 +18,9 @@ import PricingScreen from "./PricingScreen";
 import PromosScreen from "./PromosScreen";
 import WarehouseScreen from "./WarehouseScreen";
 import ZReportScreen from "./ZReportScreen";
-import { hapticLight } from "../utils/haptics";
-import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 
-// "העסק שלי" shell: a pill sub-navigation over 8 business modules — all live:
-// POS, Warehouse, customer tabs, Z-report, promos, pricing and the dashboard
-// (ספקים remains the one scaffold).
-
-const INK_SOFT_PILL = "#4B5563";
-const BLUE_ACCENT = "#7C3AED";
-const WHITE = "#FFFFFF";
-const CARD = "#F9FAFC";
-const INK = "#111827";
-const INK_MUTED = "#9CA3AF";
-const BLUE = "#7C3AED";
+// "העסק שלי" — a pill sub-navigation over eight business modules. All are
+// live except ספקים, which is still a scaffold.
 
 const MODULES = [
   { key: "pos", label: "קופה", icon: "shopping-cart" },
@@ -43,13 +36,15 @@ const MODULES = [
 function ModuleScaffold({ icon, title }) {
   return (
     <View style={s.scaffold}>
-      <View style={s.scaffoldBadge}>
-        <Icon name={icon} size={34} color={BLUE_ACCENT} />
-      </View>
-      <Text style={s.scaffoldTitle}>{title}</Text>
-      <View style={s.scaffoldPill}>
-        <Text style={s.scaffoldPillText}>בבנייה · Phase 3</Text>
-      </View>
+      <Card style={s.scaffoldCard}>
+        <View style={s.scaffoldBadge}>
+          <Icon name={icon} size={34} color={UI.violet} />
+        </View>
+        <Text style={s.scaffoldTitle}>{title}</Text>
+        <View style={s.scaffoldPill}>
+          <Text style={s.scaffoldPillText}>בבנייה · בקרוב</Text>
+        </View>
+      </Card>
     </View>
   );
 }
@@ -58,18 +53,12 @@ function BusinessShell() {
   const insets = useSafeAreaInsets();
   const [module, setModule] = useState("pos");
 
-  const switchTo = (key) => {
-    if (key === module) return;
-    hapticLight();
-    setModule(key);
-  };
-
   const renderModule = () => {
     switch (module) {
       case "pos":
         return <POSScreen />;
       case "inventory":
-        return <WarehouseScreen onGoToPos={() => setModule("pos")} />;
+        return <WarehouseScreen />;
       case "tabs":
         return <DebtsScreen />;
       case "zreport":
@@ -88,31 +77,35 @@ function BusinessShell() {
   };
 
   return (
-    <Animated.View entering={SCREEN_IN} style={{ flex: 1, backgroundColor: WHITE, paddingTop: insets.top + 6 }}>
-      {/* Sub-navigation pills */}
+    <Animated.View entering={SCREEN_IN} style={[s.screen, { paddingTop: insets.top + 8 }]}>
+      {/* Sub-navigation */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={{ flexGrow: 0 }}
+        style={s.pillScroll}
         contentContainerStyle={s.pillRow}
       >
         {MODULES.map((m) => {
-          const active = module === m.key;
+          const active = m.key === module;
           return (
             <Bounce
               key={m.key}
               style={[s.pill, active && s.pillActive]}
-              onPress={() => switchTo(m.key)}
+              scaleTo={0.95}
+              onPress={() => {
+                hapticLight();
+                setModule(m.key);
+              }}
             >
-              <Icon name={m.icon} size={15} color={active ? WHITE : INK_SOFT_PILL} />
-              <Text style={[s.pillText, active && { color: WHITE }]}>{m.label}</Text>
+              <Icon name={m.icon} size={15} color={active ? "#FFFFFF" : UI.inkSoft} />
+              <Text style={[s.pillText, active && { color: "#FFFFFF" }]}>{m.label}</Text>
             </Bounce>
           );
         })}
       </ScrollView>
 
-      {/* Active module with a subtle entrance animation on switch */}
-      <Animated.View key={module} entering={FadeInDown.duration(220)} style={{ flex: 1 }}>
+      {/* Active module */}
+      <Animated.View key={module} entering={FadeIn.duration(240)} layout={FLUID} style={{ flex: 1 }}>
         {renderModule()}
       </Animated.View>
     </Animated.View>
@@ -128,39 +121,46 @@ export default function BusinessScreen() {
 }
 
 const s = StyleSheet.create({
-  pillRow: { paddingHorizontal: 12, paddingVertical: 6, gap: 8, alignItems: "center" },
+  screen: { flex: 1, backgroundColor: UI.bg },
+
+  pillScroll: { flexGrow: 0, marginBottom: 10 },
+  pillRow: { paddingHorizontal: 16, gap: 8, alignItems: "center" },
   pill: {
     flexDirection: I18nManager.isRTL ? "row" : "row-reverse",
     alignItems: "center",
     gap: 7,
-    minHeight: 48,
+    minHeight: 44,
     paddingHorizontal: 16,
-    borderRadius: 24,
-    backgroundColor: CARD,
-    alignItems: "center",
-    justifyContent: "center",
+    borderRadius: 22,
+    backgroundColor: UI.surface,
+    ...CARD_SHADOW,
   },
   pillActive: {
-    backgroundColor: BLUE,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.06,
+    backgroundColor: UI.violet,
+    shadowColor: UI.violet,
+    shadowOpacity: 0.32,
     shadowRadius: 18,
-    elevation: 2,
+    elevation: 6,
   },
-  pillText: { fontFamily: FONTS.semibold, fontSize: 13, color: INK },
+  pillText: { fontFamily: FONTS.semibold, fontSize: 13.5, color: UI.inkSoft },
 
-  scaffold: { flex: 1, alignItems: "center", justifyContent: "center", padding: 30 },
+  scaffold: { flex: 1, alignItems: "center", justifyContent: "center", paddingBottom: 80 },
+  scaffoldCard: { alignItems: "center", paddingVertical: 34, width: "80%" },
   scaffoldBadge: {
-    width: 88,
-    height: 88,
-    borderRadius: 24,
-    backgroundColor: CARD,
+    width: 84,
+    height: 84,
+    borderRadius: 30,
+    backgroundColor: UI.violet + "12",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
+    marginBottom: 18,
   },
-  scaffoldTitle: { fontFamily: FONTS.bold, fontSize: 20, color: INK, marginBottom: 10 },
-  scaffoldPill: { backgroundColor: BLUE + "12", borderRadius: 28, paddingHorizontal: 16, paddingVertical: 8 },
-  scaffoldPillText: { fontFamily: FONTS.bold, fontSize: 13, color: BLUE },
+  scaffoldTitle: { fontFamily: FONTS.bold, fontSize: TYPE.title, color: UI.ink, marginBottom: 12 },
+  scaffoldPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 16,
+    backgroundColor: UI.cyan + "16",
+  },
+  scaffoldPillText: { fontFamily: FONTS.semibold, fontSize: TYPE.caption, color: "#0E7490" },
 });

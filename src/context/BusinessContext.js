@@ -7,8 +7,8 @@ import { usePersistentState } from "../utils/usePersistentState";
 // Seeding happens here — not in the Promos screen — so the POS shows the
 // gold promo chips even if the Promos module was never opened.
 export const DEFAULT_PROMOS = [
-  { id: "promo-night", name: "מארז לילה: 2 חטיפים + פחית", price: 20, emoji: "🌙", active: true },
-  { id: "promo-sixpack", name: "מארז 6 פחיות + חטיף", price: 35, emoji: "📦", active: true },
+  { id: "promo-night", name: "מארז לילה: 2 חטיפים + פחית", price: 20, icon: "moon", active: true },
+  { id: "promo-sixpack", name: "מארז 6 פחיות + חטיף", price: 35, icon: "cube-outline", active: true },
 ];
 
 // Single source of truth for the business data while the "My Business" tab is

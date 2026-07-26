@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from "react-native-reanimated";
 
+import Icon from "../components/Icon";
 import { useBusiness } from "../context/BusinessContext";
 import { monthKey, shekel, todayKey } from "../utils/posStore";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
@@ -11,9 +12,9 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 // from 0 with a small stagger, growing bottom-up.
 
 const WHITE = "#FFFFFF";
-const CARD = "#F9FAFC";
+const CARD = "#F4F6F9";
 const INK = "#111827";
-const INK_SOFT = "#4B5563";
+const INK_SOFT = "#6B7280";
 const INK_MUTED = "#9CA3AF";
 const BLUE = "#7C3AED";
 
@@ -101,7 +102,7 @@ export default function BizDashboardScreen() {
       {/* Monthly revenue hero */}
       <View style={s.heroCard}>
         <Text style={s.heroValue}>{shekel(monthly.revenue)}</Text>
-        <Text style={s.heroLabel}>📅 סה״כ פדיון החודש</Text>
+        <Text style={s.heroLabel}>סה״כ פדיון החודש</Text>
       </View>
 
       {/* Best seller + cash/credit */}
@@ -111,20 +112,20 @@ export default function BizDashboardScreen() {
             {monthly.best ? monthly.best[0] : "—"}
           </Text>
           <Text style={s.statLabel}>
-            {monthly.best ? `⭐ הכי נמכר · ×${monthly.best[1]}` : "⭐ הכי נמכר"}
+            {monthly.best ? `הכי נמכר · ×${monthly.best[1]}` : "הכי נמכר"}
           </Text>
         </View>
         <View style={s.statCard}>
           <Text style={s.statValue}>
             {cashPct === null ? "—" : `${cashPct}% / ${100 - cashPct}%`}
           </Text>
-          <Text style={s.statLabel}>💵 מזומן / אשראי 💳</Text>
+          <Text style={s.statLabel}>מזומן / אשראי</Text>
         </View>
       </View>
 
       {/* 7-day revenue chart */}
       <View style={s.chartCard}>
-        <Text style={s.chartTitle}>📊 פדיון 7 ימים אחרונים</Text>
+        <Text style={s.chartTitle}>פדיון 7 ימים אחרונים</Text>
         <View style={s.chartArea}>
           {days.map((d, i) => (
             <View key={d.key} style={s.barCol}>
@@ -147,17 +148,18 @@ export default function BizDashboardScreen() {
 }
 
 const SHADOW = {
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 8 },
-  shadowOpacity: 0.06,
-  shadowRadius: 18,
-  elevation: 2,
+  // The one card shadow for the whole app — see utils/ui.js.
+  shadowColor: "#7C3AED",
+  shadowOffset: { width: 0, height: 12 },
+  shadowOpacity: 0.08,
+  shadowRadius: 24,
+  elevation: 4,
 };
 
 const s = StyleSheet.create({
   heroCard: {
     backgroundColor: CARD,
-    borderRadius: 28,
+    borderRadius: 24,
     alignItems: "center",
     paddingVertical: 24,
     marginBottom: 10,
@@ -170,7 +172,7 @@ const s = StyleSheet.create({
   statCard: {
     flex: 1,
     backgroundColor: CARD,
-    borderRadius: 28,
+    borderRadius: 24,
     alignItems: "center",
     paddingVertical: 16,
     paddingHorizontal: 10,
@@ -179,7 +181,7 @@ const s = StyleSheet.create({
   statValue: { fontFamily: FONTS.bold, fontSize: 15, color: INK, maxWidth: "100%" },
   statLabel: { fontFamily: FONTS.regular, fontSize: 11, color: INK_MUTED, marginTop: 3 },
 
-  chartCard: { backgroundColor: CARD, borderRadius: 28, padding: 16, ...SHADOW },
+  chartCard: { backgroundColor: CARD, borderRadius: 24, padding: 16, ...SHADOW },
   chartTitle: { fontFamily: FONTS.semibold, fontSize: 14, color: INK_SOFT, textAlign: "right", marginBottom: 12 },
   chartArea: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between" },
   barCol: { flex: 1, alignItems: "center" },

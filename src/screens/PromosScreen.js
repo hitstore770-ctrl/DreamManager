@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
 
+import Icon from "../components/Icon";
 import { useBusiness } from "../context/BusinessContext";
 import { hapticLight, hapticSuccess } from "../utils/haptics";
 import { shekel, uid } from "../utils/posStore";
@@ -11,9 +12,9 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 // rail. The two starter bundles are seeded by BusinessProvider.
 
 const WHITE = "#FFFFFF";
-const CARD = "#F9FAFC";
+const CARD = "#F4F6F9";
 const INK = "#111827";
-const INK_SOFT = "#4B5563";
+const INK_SOFT = "#6B7280";
 const INK_MUTED = "#9CA3AF";
 const BLUE = "#7C3AED";
 const GOLD = "#06B6D4";
@@ -38,7 +39,7 @@ export default function PromosScreen() {
     const v = parseFloat(price);
     if (!n || !(v > 0)) return;
     hapticSuccess();
-    setPromos((prev) => [...(prev || []), { id: uid(), name: n, price: v, emoji: "🎁", active: true }]);
+    setPromos((prev) => [...(prev || []), { id: uid(), name: n, price: v, icon: "gift-outline", active: true }]);
     setName("");
     setPrice("");
     setShowForm(false);
@@ -51,7 +52,7 @@ export default function PromosScreen() {
     >
       <View style={s.banner}>
         <Text style={s.bannerText}>
-          🎯 מבצעים פעילים מופיעים כצ׳יפ זהב בקופה · פעילים כעת: {activeCount}
+          מבצעים פעילים מופיעים כצ׳יפ זהב בקופה · פעילים כעת: {activeCount}
         </Text>
       </View>
 
@@ -118,11 +119,12 @@ export default function PromosScreen() {
 }
 
 const SHADOW = {
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 8 },
-  shadowOpacity: 0.06,
-  shadowRadius: 18,
-  elevation: 2,
+  // The one card shadow for the whole app — see utils/ui.js.
+  shadowColor: "#7C3AED",
+  shadowOffset: { width: 0, height: 12 },
+  shadowOpacity: 0.08,
+  shadowRadius: 24,
+  elevation: 4,
 };
 
 const s = StyleSheet.create({
@@ -134,7 +136,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     backgroundColor: CARD,
-    borderRadius: 28,
+    borderRadius: 24,
     paddingHorizontal: 12,
     paddingVertical: 12,
     marginBottom: 8,
@@ -155,7 +157,7 @@ const s = StyleSheet.create({
   },
   addBtnText: { fontFamily: FONTS.bold, fontSize: 15, color: BLUE },
 
-  formCard: { backgroundColor: CARD, borderRadius: 28, padding: 12, gap: 8, marginTop: 4, ...SHADOW },
+  formCard: { backgroundColor: CARD, borderRadius: 24, padding: 12, gap: 8, marginTop: 4, ...SHADOW },
   input: {
     minHeight: 48,
     backgroundColor: WHITE,

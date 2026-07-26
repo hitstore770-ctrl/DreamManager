@@ -1,15 +1,16 @@
 import { Modal, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 
+import Icon from "../Icon";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
 
-// Shared Pro-Tools bottom sheet + floating ⚙️ button used by the POS and
+// Shared Pro-Tools bottom sheet + floating button used by the POS and
 // Warehouse modules. The sheet itself is dumb — each screen composes its own
 // rows/sub-views inside it.
 
 const WHITE = "#FFFFFF";
-const CARD = "#F9FAFC";
+const CARD = "#F4F6F9";
 const INK = "#111827";
-const INK_SOFT = "#4B5563";
+const INK_SOFT = "#6B7280";
 const INK_MUTED = "#9CA3AF";
 const BLUE = "#7C3AED";
 const RED = "#EF4444";
@@ -17,12 +18,12 @@ const RED = "#EF4444";
 export function ToolsFab({ onPress, style }) {
   return (
     <TouchableOpacity style={[s.fab, style]} onPress={onPress} activeOpacity={0.85}>
-      <Text style={{ fontSize: 24 }}>⚙️</Text>
+      <Icon name="sliders" size={22} color="#FFFFFF" />
     </TouchableOpacity>
   );
 }
 
-export function SheetRow({ emoji, label, sub, onPress, danger, active, disabled }) {
+export function SheetRow({ icon, label, sub, onPress, danger, active, disabled }) {
   return (
     <TouchableOpacity
       style={[s.row, active && s.rowActive, disabled && { opacity: 0.45 }]}
@@ -36,7 +37,7 @@ export function SheetRow({ emoji, label, sub, onPress, danger, active, disabled 
         {!!sub && <Text style={s.rowSub}>{sub}</Text>}
       </View>
       <View style={s.rowBadge}>
-        <Text style={{ fontSize: 20 }}>{emoji}</Text>
+        <Icon name={icon || "circle"} size={19} color={danger ? "#EF4444" : "#7C3AED"} />
       </View>
     </TouchableOpacity>
   );
@@ -67,7 +68,7 @@ const s = StyleSheet.create({
     zIndex: 30,
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: 24,
     backgroundColor: WHITE,
     alignItems: "center",
     justifyContent: "center",

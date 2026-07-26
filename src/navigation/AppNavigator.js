@@ -9,18 +9,19 @@ import NoteEditorScreen from "../screens/NoteEditorScreen";
 import NotesHubScreen from "../screens/NotesHubScreen";
 import BusinessScreen from "../screens/BusinessScreen";
 import DreamsScreen from "../screens/DreamsScreen";
-import ToolsScreen from "../screens/ToolsScreen";
 import SettingsScreen from "../screens/SettingsScreen";
+import ToolsScreen from "../screens/ToolsScreen";
 import { FONTS } from "../utils/theme";
 import { UI, glow } from "../utils/ui";
 
 const RootStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// iOS-style bottom tab bar. Five tabs, Notes (פתקים) is the center/default.
-// Declared left→right as Tools/Dreams/Notes/Business/Settings so the natural
-// RTL reading (rightmost first) is: הגדרות · העסק שלי · פתקים · חלומות · כלים.
-// Feather line icons — one thin stroke weight across the whole bar.
+// Five tabs, Notes (פתקים) centre and default. Declared left→right as
+// Tools/Dreams/Notes/Business/Settings so the natural RTL reading — rightmost
+// first — is: הגדרות · העסק שלי · פתקים · חלומות · כלים.
+//
+// Feather line icons only; the bar carries no emoji.
 const TAB_ICON = {
   Notes: "edit-3",
   Dreams: "star",
@@ -36,6 +37,7 @@ const TAB_LABEL = {
   Settings: "הגדרות",
 };
 
+// The active tab's icon sits in a tinted violet chip.
 const ACTIVE_CHIP = {
   minWidth: 46,
   height: 30,
@@ -54,8 +56,8 @@ function MainTabs() {
         headerShown: false,
         tabBarActiveTintColor: UI.violet,
         tabBarInactiveTintColor: UI.inkMuted,
-        // Floating glass bar: detached from the edges, translucent, and lit by
-        // a violet halo instead of a hairline.
+        // Floating glass bar: detached from the edges, translucent, lit by a
+        // violet halo instead of a hairline.
         tabBarStyle: {
           position: "absolute",
           left: 14,
@@ -72,7 +74,6 @@ function MainTabs() {
         tabBarItemStyle: { borderRadius: UI.radiusSm },
         tabBarLabelStyle: { fontFamily: FONTS.medium, fontSize: 10.5, marginTop: 3 },
         tabBarIcon: ({ focused }) => (
-          // The active tab sits in a vibrant tinted chip.
           <View style={focused ? ACTIVE_CHIP : INACTIVE_CHIP}>
             <Icon name={TAB_ICON[route.name]} size={21} color={focused ? UI.violet : UI.inkMuted} />
           </View>
@@ -103,12 +104,16 @@ export default function AppNavigator() {
   }
 
   return (
-    <RootStack.Navigator screenOptions={{ headerShown: false }}>
+    <RootStack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
       {user ? (
         <>
           <RootStack.Screen name="Main" component={MainTabs} />
           {/* The note editor opens full-screen over the tab bar. */}
-          <RootStack.Screen name="NoteEditor" component={NoteEditorScreen} />
+          <RootStack.Screen
+            name="NoteEditor"
+            component={NoteEditorScreen}
+            options={{ animation: "slide_from_bottom" }}
+          />
         </>
       ) : (
         <RootStack.Screen name="Login" component={LoginScreen} />
