@@ -9,7 +9,8 @@ import NoteEditorScreen from "../screens/NoteEditorScreen";
 import NotesHubScreen from "../screens/NotesHubScreen";
 import BusinessScreen from "../screens/BusinessScreen";
 import DreamsScreen from "../screens/DreamsScreen";
-import { SettingsPlaceholder, ToolsPlaceholder } from "../screens/TabPlaceholders";
+import ToolsScreen from "../screens/ToolsScreen";
+import { SettingsPlaceholder } from "../screens/TabPlaceholders";
 import { FONTS } from "../utils/theme";
 
 const RootStack = createNativeStackNavigator();
@@ -58,7 +59,7 @@ function MainTabs() {
         tabBarLabel: TAB_LABEL[route.name],
       })}
     >
-      <Tab.Screen name="Tools" component={ToolsPlaceholder} />
+      <Tab.Screen name="Tools" component={ToolsScreen} />
       <Tab.Screen name="Dreams" component={DreamsScreen} />
       <Tab.Screen name="Notes" component={NotesHubScreen} />
       <Tab.Screen name="Business" component={BusinessScreen} />

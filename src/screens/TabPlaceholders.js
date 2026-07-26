@@ -24,9 +24,6 @@ function Placeholder({ emoji, title, subtitle }) {
   );
 }
 
-export function ToolsPlaceholder() {
-  return <Placeholder emoji="🧰" title="כלים" subtitle="כלי העבודה המהירים יופיעו כאן" />;
-}
 export function SettingsPlaceholder() {
   return <Placeholder emoji="⚙️" title="הגדרות" subtitle="ההעדפות והאבטחה יופיעו כאן" />;
 }
