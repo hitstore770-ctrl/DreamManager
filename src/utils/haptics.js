@@ -11,10 +11,20 @@ export function hapticLight() {
   }
 }
 
-// Success buzz — used when a note is deleted.
+// Success buzz — successful checkout / save.
 export function hapticSuccess() {
   try {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+  } catch {
+    /* no-op on web */
+  }
+}
+
+// Warning buzz — destructive actions: removing an item, clearing the cart,
+// logging damage.
+export function hapticWarning() {
+  try {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
   } catch {
     /* no-op on web */
   }

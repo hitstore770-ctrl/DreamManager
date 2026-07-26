@@ -3,7 +3,7 @@ import { ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View 
 
 import ToolsSheet, { SheetRow, ToolsFab } from "../components/business/ToolsSheet";
 import { useBusiness } from "../context/BusinessContext";
-import { hapticLight, hapticSuccess } from "../utils/haptics";
+import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
 import { CATEGORIES, LOW_STOCK, applyDamage, catOf, shekel, uid } from "../utils/posStore";
 import { buildZReportText } from "../utils/zReport";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
@@ -59,7 +59,7 @@ export default function WarehouseScreen({ onGoToPos }) {
   // Defect mode: tapping a row logs one damaged unit (stock −1 + loss record).
   const rowTap = (item) => {
     if (!defectMode) return;
-    hapticLight();
+    hapticWarning();
     const { inventory: updated, sale } = applyDamage(inventory, item.id, 1);
     setInventory(updated);
     if (sale) setSales((prev) => [...prev, sale]);
