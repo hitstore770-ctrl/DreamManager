@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { ScrollView, Swipeable } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 import PinLock from "../components/PinLock";
 import { useNotes } from "../context/NotesContext";
@@ -28,11 +29,32 @@ import { NOTES_FONTS as FONTS, NOTES_SHADOW as SHADOW_SM, NOTES_SHADOW_LG as SHA
 import { RADIUS, RADIUS_SM } from "../utils/theme";
 import { usePersistentState } from "../utils/usePersistentState";
 
+// Hub surface: white cards on soft grey, per the Phase 2 spec.
+const HUB_BG = "#F4F5F7";
+
 // Rough reading-time estimate at ~200 words/min (min 1 minute).
 function readTime(note) {
   const text = note.isChecklist ? checklistToText(note.checklist) : note.body || "";
   const words = text.trim() ? text.trim().split(/\s+/).length : 0;
   return Math.max(1, Math.round(words / 200));
+}
+
+// Compact "last updated" stamp: time today, date otherwise.
+function fmtUpdated(ts) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  const now = new Date();
+  return d.toDateString() === now.toDateString()
+    ? d.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })
+    : `${d.getDate()}.${d.getMonth() + 1}`;
+}
+
+// Stable per-tag pill color derived from the tag text.
+const TAG_COLORS = ["#3E7BD6", "#1E9E58", "#B05AC4", "#D4952C", "#E8635A"];
+function tagColor(tag) {
+  let h = 0;
+  for (let i = 0; i < tag.length; i++) h = (h * 31 + tag.charCodeAt(i)) >>> 0;
+  return TAG_COLORS[h % TAG_COLORS.length];
 }
 
 // ── The eight scaffolded tools (functional where cheap, informative preview
@@ -92,6 +114,30 @@ export default function NotesHubScreen({ navigation }) {
     // pinned first, then most recently updated
     return list.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (b.updatedAt || 0) - (a.updatedAt || 0));
   }, [notes, query, activeTag]);
+
+  // Two-column masonry: distribute cards into the currently shorter column
+  // (estimated by preview length), preserving the pinned-first order.
+  const columns = useMemo(() => {
+    const left = [];
+    const right = [];
+    let hl = 0;
+    let hr = 0;
+    filtered.forEach((n, i) => {
+      const textLen = n.locked
+        ? 20
+        : (n.isChecklist ? checklistToText(n.checklist) : n.body || "").length;
+      const est = 92 + Math.min(70, textLen / 2) + ((n.tags || []).length ? 26 : 0);
+      const item = { note: n, index: i };
+      if (hl <= hr) {
+        left.push(item);
+        hl += est;
+      } else {
+        right.push(item);
+        hr += est;
+      }
+    });
+    return [left, right];
+  }, [filtered]);
 
   const openNote = (id) => {
     haptic("light");
@@ -177,7 +223,7 @@ export default function NotesHubScreen({ navigation }) {
   const s = makeStyles(theme, fontScale);
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background }}>
+    <View style={{ flex: 1, backgroundColor: HUB_BG }}>
       {/* Header */}
       <View style={[s.header, { paddingTop: insets.top + 12 }]}>
         <Text style={s.title}>🗒️ פתקים</Text>
@@ -205,7 +251,12 @@ export default function NotesHubScreen({ navigation }) {
 
       {/* Tag filter */}
       {allTags.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tagRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={s.tagRowScroll}
+          contentContainerStyle={s.tagRow}
+        >
           <TouchableOpacity style={[s.tag, !activeTag && { backgroundColor: theme.accent }]} onPress={() => setActiveTag(null)}>
             <Text style={[s.tagText, { color: !activeTag ? "#FFF" : theme.textSecondary }]}>הכל</Text>
           </TouchableOpacity>
@@ -217,19 +268,26 @@ export default function NotesHubScreen({ navigation }) {
         </ScrollView>
       )}
 
-      {/* Notes list — premium swipeable cards */}
-      <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 100 }} showsVerticalScrollIndicator={false}>
-        {filtered.map((n) => (
-          <NoteCard
-            key={n.id}
-            note={n}
-            theme={theme}
-            styles={s}
-            onOpen={() => (n.locked ? setPinNote(n) : openNote(n.id))}
-            onLong={() => setActionNote(n)}
-            onDelete={() => deleteNote(n.id)}
-          />
-        ))}
+      {/* Notes — two-column masonry of white cards on soft grey */}
+      <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 100 }} showsVerticalScrollIndicator={false}>
+        <View style={{ flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
+          {columns.map((col, ci) => (
+            <View key={ci} style={{ flex: 1, gap: 10 }}>
+              {col.map(({ note: n, index }) => (
+                <NoteCard
+                  key={n.id}
+                  note={n}
+                  index={index}
+                  theme={theme}
+                  styles={s}
+                  onOpen={() => (n.locked ? setPinNote(n) : openNote(n.id))}
+                  onLong={() => setActionNote(n)}
+                  onDelete={() => deleteNote(n.id)}
+                />
+              ))}
+            </View>
+          ))}
+        </View>
         {filtered.length === 0 && (
           <Text style={s.empty}>{query ? "לא נמצאו הערות" : "אין הערות עדיין. הקש על ＋ ליצירת הערה חדשה."}</Text>
         )}
@@ -332,12 +390,13 @@ export default function NotesHubScreen({ navigation }) {
   );
 }
 
-// A premium iOS-style pastel note card. Swipe left reveals a red trash action
-// that deletes the note (with a success haptic, fired by onDelete).
-function NoteCard({ note, theme, styles, onOpen, onLong, onDelete }) {
+// A white masonry note card (pastel-tinted when the note chose a color).
+// Swipe left reveals a red trash action; entrance fades in with a light
+// stagger so navigating back from the editor feels seamless.
+function NoteCard({ note, index, theme, styles, onOpen, onLong, onDelete }) {
   const bg = noteBg(note.bg, theme.scheme === "dark");
   const preview = note.locked
-    ? "🔒 הערה נעולה  •••••••••••"
+    ? "🔒 הערה נעולה  ***"
     : note.isChecklist
       ? checklistToText(note.checklist).slice(0, 140)
       : (note.body || "").slice(0, 140) || "הערה ריקה";
@@ -351,39 +410,48 @@ function NoteCard({ note, theme, styles, onOpen, onLong, onDelete }) {
   );
 
   return (
-    <Swipeable
-      renderRightActions={renderRightActions}
-      onSwipeableOpen={() => onDelete()}
-      overshootRight={false}
-      friction={2}
-      rightThreshold={44}
-    >
-      <TouchableOpacity
-        style={[styles.card, { backgroundColor: bg }]}
-        activeOpacity={0.85}
-        onPress={onOpen}
-        onLongPress={onLong}
+    <Animated.View entering={FadeInDown.delay(Math.min(index * 40, 320)).duration(240)}>
+      <Swipeable
+        renderRightActions={renderRightActions}
+        onSwipeableOpen={() => onDelete()}
+        overshootRight={false}
+        friction={2}
+        rightThreshold={44}
       >
-        <View style={styles.cardTop}>
-          {note.pinned && <Text style={styles.pin}>📌</Text>}
-          <Text style={[styles.cardTitle, { color: theme.textPrimary }]} numberOfLines={1}>
-            {note.title || "ללא כותרת"}
+        <TouchableOpacity
+          style={[styles.card, { backgroundColor: bg }]}
+          activeOpacity={0.85}
+          onPress={onOpen}
+          onLongPress={onLong}
+        >
+          <View style={styles.cardTop}>
+            {note.pinned && <Text style={styles.pin}>📌</Text>}
+            <Text style={[styles.cardTitle, { color: theme.textPrimary }]} numberOfLines={1}>
+              {note.title || "ללא כותרת"}
+            </Text>
+          </View>
+          <Text style={[styles.cardPreview, { color: theme.textSecondary }]} numberOfLines={2}>
+            {preview}
           </Text>
-        </View>
-        <Text style={[styles.cardPreview, { color: theme.textSecondary }]} numberOfLines={2}>
-          {preview}
-        </Text>
-        <View style={styles.cardFoot}>
-          <Text style={styles.readTime}>⏱️ {mins} דק׳ קריאה</Text>
-          {note.isChecklist && (
-            <Text style={styles.badge}>✅ {note.checklist.filter((i) => i.done).length}/{note.checklist.length}</Text>
+          {(note.tags || []).length > 0 && (
+            <View style={styles.cardTags}>
+              {(note.tags || []).slice(0, 3).map((t) => (
+                <View key={t} style={[styles.tagPill, { backgroundColor: tagColor(t) + "1C" }]}>
+                  <Text style={[styles.tagPillText, { color: tagColor(t) }]}>#{t}</Text>
+                </View>
+              ))}
+            </View>
           )}
-          {(note.tags || []).slice(0, 2).map((t) => (
-            <Text key={t} style={[styles.badge, { color: theme.accent }]}>#{t}</Text>
-          ))}
-        </View>
-      </TouchableOpacity>
-    </Swipeable>
+          <View style={styles.cardFoot}>
+            <Text style={styles.readTime}>🕐 {fmtUpdated(note.updatedAt)}</Text>
+            <Text style={styles.readTime}>⏱️ {mins} דק׳</Text>
+            {note.isChecklist && (
+              <Text style={styles.badge}>✅ {note.checklist.filter((i) => i.done).length}/{note.checklist.length}</Text>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Swipeable>
+    </Animated.View>
   );
 }
 
@@ -431,25 +499,30 @@ function makeStyles(t, fs) {
     title: { color: t.textPrimary, fontSize: 20 * fs, fontFamily: FONTS.bold },
     searchWrap: { paddingHorizontal: 14, marginBottom: 12 },
     search: { backgroundColor: t.surface, borderRadius: RADIUS, paddingVertical: 13, paddingHorizontal: 18, color: t.textPrimary, fontFamily: FONTS.regular, fontSize: 15, borderWidth: 1, borderColor: t.hairline, ...SHADOW_SM },
-    tagRow: { paddingHorizontal: 14, gap: 8, paddingBottom: 8 },
-    tag: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16, backgroundColor: t.surface, borderWidth: 1, borderColor: t.hairline },
+    // flexGrow:0 + centered items — without them the horizontal ScrollView
+    // stretches the filter chips into full-height bars.
+    tagRowScroll: { flexGrow: 0, marginBottom: 8 },
+    tagRow: { paddingHorizontal: 14, gap: 8, alignItems: "center" },
+    tag: { height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: t.surface, borderWidth: 1, borderColor: t.hairline, alignItems: "center", justifyContent: "center" },
     tagText: { fontSize: 13 * fs, fontFamily: FONTS.semibold },
     grid: { flexDirection: "row", flexWrap: "wrap" },
-    // Premium iOS list cards
-    card: { borderRadius: RADIUS, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: t.hairline, ...SHADOW_SM },
-    cardTop: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
-    pin: { fontSize: 14 },
-    cardTitle: { flex: 1, fontSize: 16 * fs, fontFamily: FONTS.semibold, textAlign: "right" },
-    cardPreview: { fontSize: 14 * fs, fontFamily: FONTS.light, textAlign: "right", lineHeight: 21 * fs },
-    cardFoot: { flexDirection: "row", gap: 10, marginTop: 10, flexWrap: "wrap", alignItems: "center" },
-    readTime: { fontSize: 12 * fs, fontFamily: FONTS.regular, color: t.textMuted },
+    // White masonry cards on the soft-grey hub background.
+    card: { backgroundColor: "#FFFFFF", borderRadius: RADIUS, padding: 14, borderWidth: 1, borderColor: t.hairline, ...SHADOW_SM },
+    cardTop: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 5 },
+    pin: { fontSize: 13 },
+    cardTitle: { flex: 1, fontSize: 15 * fs, fontFamily: FONTS.semibold, textAlign: "right" },
+    cardPreview: { fontSize: 13 * fs, fontFamily: FONTS.light, textAlign: "right", lineHeight: 20 * fs },
+    cardTags: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 8 },
+    tagPill: { borderRadius: 11, paddingHorizontal: 9, paddingVertical: 3 },
+    tagPillText: { fontSize: 11 * fs, fontFamily: FONTS.bold },
+    cardFoot: { flexDirection: "row", gap: 8, marginTop: 9, flexWrap: "wrap", alignItems: "center" },
+    readTime: { fontSize: 11 * fs, fontFamily: FONTS.regular, color: t.textMuted },
     badge: { fontSize: 11 * fs, fontFamily: FONTS.semibold, color: t.textMuted },
     deleteAction: {
       backgroundColor: t.danger,
       justifyContent: "center",
       alignItems: "center",
-      width: 92,
-      marginBottom: 12,
+      width: 72,
       borderRadius: RADIUS,
     },
     deleteIcon: { fontSize: 22 },

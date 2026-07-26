@@ -90,7 +90,11 @@ export function scanInlineMath(text) {
 // Sum every standalone number found in the text (for the auto-sum footer).
 export function autoSum(text) {
   if (!text) return { count: 0, total: 0 };
-  const nums = (text.match(/-?\d+(?:\.\d+)?/g) || []).map(Number).filter((n) => isFinite(n));
+  // Digits glued to letters are labels, not amounts (A5/A4 paper sizes, 4K,
+  // רכב2) — drop those runs before summing so a template's "A5" can't add 5
+  // to the total.
+  const cleaned = text.replace(/\p{L}+\d[\d.]*/gu, " ").replace(/\d[\d.]*\p{L}+/gu, " ");
+  const nums = (cleaned.match(/-?\d+(?:\.\d+)?/g) || []).map(Number).filter((n) => isFinite(n));
   const total = nums.reduce((a, b) => a + b, 0);
   return { count: nums.length, total: Math.round(total * 1e6) / 1e6 };
 }

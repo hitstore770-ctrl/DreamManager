@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Keyboard,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -42,8 +43,28 @@ const HIGHLIGHT_BG = "#FFF3B0";
 const INK_RED = "#D32F2F";
 const INK_BLUE = "#1565C0";
 
-// Injected verbatim by the Smart Templates toolbar button.
-const TEMPLATE_TEXT = "הזמנת הדפסת מסמכים ומדבקות A5: _______";
+// Smart business templates — injected verbatim at the cursor position.
+// Template 1 is strictly standard document/A5-sticker prints (no sublimation).
+const SMART_TEMPLATES = [
+  {
+    key: "print",
+    emoji: "🖨️",
+    label: "הדפסת מסמכים ומדבקות A5",
+    text: "הזמנת הדפסת מסמכים ומדבקות A5: לקוח: ___ | כמות: ___ | סה״כ לתשלום: ___",
+  },
+  {
+    key: "delivery",
+    emoji: "🛴",
+    label: "משלוח קורקינט",
+    text: "משלוח קורקינט: יעד: ___ | שעת יציאה: ___ | סטטוס: ממתין",
+  },
+  {
+    key: "meeting",
+    emoji: "📋",
+    label: "סיכום פגישה / רעיון",
+    text: "סיכום פגישה/רעיון: ",
+  },
+];
 
 export default function NoteEditorScreen({ route, navigation }) {
   const { fontScale, haptic } = useSettings();
@@ -66,6 +87,7 @@ export default function NoteEditorScreen({ route, navigation }) {
   // Panels
   const [showCalc, setShowCalc] = useState(false);
   const [showDates, setShowDates] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
 
   // Floating calculator state
   const [calcExpr, setCalcExpr] = useState("");
@@ -98,12 +120,17 @@ export default function NoteEditorScreen({ route, navigation }) {
     return () => saveTimer.current && clearTimeout(saveTimer.current);
   }, [title, body]);
 
-  // Flush on unmount so nothing is lost.
+  // Flush on unmount so nothing is lost — including tags, otherwise leaving
+  // the editor before the 3s debounce fires drops the note's #tag pills.
   useEffect(() => {
     return () => {
       if (initedRef.current) {
         setNotes((prev) =>
-          prev.map((n) => (n.id === noteId ? { ...n, title, body, updatedAt: Date.now() } : n))
+          prev.map((n) =>
+            n.id === noteId
+              ? { ...n, title, body, tags: extractTags(`${title} ${body}`), updatedAt: Date.now() }
+              : n
+          )
         );
       }
     };
@@ -206,20 +233,57 @@ export default function NoteEditorScreen({ route, navigation }) {
     const now = new Date();
     insertAtCursor(`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")} `);
   };
-  const insertTemplate = () => {
-    insertAtCursor(body && !body.endsWith("\n") ? `\n${TEMPLATE_TEXT}\n` : `${TEMPLATE_TEXT}\n`);
+  // Inject a business template verbatim at the cursor, on its own line.
+  const insertTemplate = (tpl) => {
+    setShowTemplates(false);
+    const needsBreak = body && !body.endsWith("\n");
+    insertAtCursor(`${needsBreak ? "\n" : ""}${tpl.text}\n`);
+  };
+
+  // Auto-Sum block: total every number in the note and append it at the end.
+  // Phone numbers / links are excluded so contact details never inflate the
+  // total. Re-running replaces the previous סה״כ line instead of stacking.
+  const appendSumBlock = () => {
+    if (readOnly) return;
+    haptic("light");
+    const stripped = body.replace(/^\s*סה״כ:.*$/gm, "").trimEnd();
+    const line = `סה״כ: ${sum.total}`;
+    const next = stripped ? `${stripped}\n\n${line}` : line;
+    setBody(next);
+    setSelection({ start: next.length, end: next.length });
+  };
+
+  const noteAsText = () => {
+    const content = note.isChecklist
+      ? note.checklist.map((i) => `${i.done ? "✓" : "•"} ${i.text}`).join("\n")
+      : body;
+    return `📝 ${title || "הערה"}\n\n${content}`;
   };
 
   const shareNote = async () => {
     haptic("light");
-    const content = note.isChecklist
-      ? note.checklist.map((i) => `${i.done ? "✓" : "•"} ${i.text}`).join("\n")
-      : body;
     try {
-      await Share.share({ message: `📝 ${title || "הערה"}\n\n${content}` });
+      await Share.share({ message: noteAsText() });
     } catch {
       /* user cancelled */
     }
+  };
+
+  // One-click WhatsApp: hand the exact note text to WhatsApp's share URL, and
+  // fall back to the system share sheet when WhatsApp isn't installed.
+  const sendToWhatsApp = async () => {
+    haptic("light");
+    const url = `whatsapp://send?text=${encodeURIComponent(noteAsText())}`;
+    try {
+      const ok = await Linking.canOpenURL(url);
+      if (ok) {
+        await Linking.openURL(url);
+        return;
+      }
+    } catch {
+      /* fall through to the share sheet */
+    }
+    shareNote();
   };
 
   // ---- Floating calculator ------------------------------------------------
@@ -495,7 +559,16 @@ export default function NoteEditorScreen({ route, navigation }) {
                 ) : (
                   <TBtn label="📝" active on={() => patchNote({ isChecklist: false })} />
                 )}
-                <TBtn label="🪄" on={insertTemplate} />
+                <TBtn label="🪄" on={() => setShowTemplates(true)} />
+                <View style={s.tsep} />
+                {/* Advanced pro tools: WhatsApp · lock · auto-sum block */}
+                <TBtn label="💬" on={sendToWhatsApp} />
+                <TBtn
+                  label={note.locked ? "🔒" : "🔓"}
+                  active={note.locked}
+                  on={() => { hapticLight(); patchNote({ locked: !note.locked }); }}
+                />
+                <TBtn label="Σ" on={appendSumBlock} />
                 <View style={s.tsep} />
                 <TBtn label="🧮" on={() => setShowCalc(true)} />
                 <TBtn label="📆" on={() => setShowDates(true)} />
@@ -580,6 +653,35 @@ export default function NoteEditorScreen({ route, navigation }) {
                     <Text style={[s.calcActionText, { color: "#FFF" }]}>הדבק סרט חישוב</Text>
                   </TouchableOpacity>
                 </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Smart business templates — injected at the cursor */}
+      <Modal visible={showTemplates} transparent animationType="fade" onRequestClose={() => setShowTemplates(false)}>
+        <TouchableWithoutFeedback onPress={() => setShowTemplates(false)}>
+          <View style={s.calcBackdrop}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={s.calcCard}>
+                <Text style={s.calcTitle}>🪄 תבניות עסקיות</Text>
+                {SMART_TEMPLATES.map((tpl) => (
+                  <TouchableOpacity key={tpl.key} style={s.tplRow} onPress={() => insertTemplate(tpl)} activeOpacity={0.8}>
+                    <Text style={s.tplPlus}>＋</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.tplLabel}>{tpl.label}</Text>
+                      <Text style={s.tplPreview} numberOfLines={1}>{tpl.text}</Text>
+                    </View>
+                    <Text style={s.tplEmoji}>{tpl.emoji}</Text>
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity
+                  style={[s.calcAction, { backgroundColor: theme.surfaceMuted, marginTop: 6 }]}
+                  onPress={() => setShowTemplates(false)}
+                >
+                  <Text style={[s.calcActionText, { color: theme.textSecondary }]}>סגור</Text>
+                </TouchableOpacity>
               </View>
             </TouchableWithoutFeedback>
           </View>
@@ -718,6 +820,11 @@ function makeStyles(t, fsScale) {
     calcBackdrop: { flex: 1, backgroundColor: t.overlay, justifyContent: "flex-end" },
     calcCard: { backgroundColor: t.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, ...SHADOW },
     calcTitle: { color: t.textPrimary, fontSize: 17, fontFamily: FONTS.bold, textAlign: "right", marginBottom: 12 },
+    tplRow: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: t.surfaceAlt, borderRadius: RADIUS_SM, padding: 14, marginBottom: 8, minHeight: 56 },
+    tplEmoji: { fontSize: 24 },
+    tplLabel: { color: t.textPrimary, fontSize: 15 * fsScale, fontFamily: FONTS.bold, textAlign: "right" },
+    tplPreview: { color: t.textMuted, fontSize: 12 * fsScale, fontFamily: FONTS.regular, textAlign: "right", marginTop: 2 },
+    tplPlus: { color: t.accent, fontSize: 22, fontFamily: FONTS.bold },
     calcDisplay: { backgroundColor: t.surfaceAlt, borderRadius: RADIUS_SM, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: t.hairline },
     calcExpr: { color: t.textPrimary, fontSize: 24, fontFamily: FONTS.bold, textAlign: "left" },
     calcResult: { color: t.accent, fontSize: 16, fontFamily: FONTS.medium, textAlign: "left", marginTop: 4 },
