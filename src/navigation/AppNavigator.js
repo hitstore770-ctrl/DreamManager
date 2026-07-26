@@ -7,7 +7,7 @@ import { useSettings } from "../context/SettingsContext";
 import LoginScreen from "../screens/LoginScreen";
 import NoteEditorScreen from "../screens/NoteEditorScreen";
 import NotesHubScreen from "../screens/NotesHubScreen";
-import POSScreen from "../screens/POSScreen";
+import BusinessScreen from "../screens/BusinessScreen";
 import {
   DreamsPlaceholder,
   SettingsPlaceholder,
@@ -64,7 +64,7 @@ function MainTabs() {
       <Tab.Screen name="Tools" component={ToolsPlaceholder} />
       <Tab.Screen name="Dreams" component={DreamsPlaceholder} />
       <Tab.Screen name="Notes" component={NotesHubScreen} />
-      <Tab.Screen name="Business" component={POSScreen} />
+      <Tab.Screen name="Business" component={BusinessScreen} />
       <Tab.Screen name="Settings" component={SettingsPlaceholder} />
     </Tab.Navigator>
   );

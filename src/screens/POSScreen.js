@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
+import ToolsSheet, { SheetRow, ToolsFab } from "../components/business/ToolsSheet";
+import { useBusiness } from "../context/BusinessContext";
 import { hapticLight, hapticSuccess } from "../utils/haptics";
 import { monthKey, shekel, todayKey, uid } from "../utils/posStore";
-import { STORAGE_KEYS } from "../utils/storageKeys";
 import { usePersistentState } from "../utils/usePersistentState";
+import { buildZReportText } from "../utils/zReport";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 
 // ---------------------------------------------------------------------------
@@ -43,23 +44,30 @@ const nowHHMM = () => {
 };
 
 export default function POSScreen() {
-  const insets = useSafeAreaInsets();
-
-  // Cart + last transaction survive app restarts (robust against mid-sale
-  // crashes on the counter phone).
+  // Sales ledger is shared with the other business modules via context; only
+  // the cart + last transaction are POS-private (persisted so a mid-sale
+  // crash on the counter phone loses nothing).
+  const { sales, setSales } = useBusiness();
   const [cart, setCart, cartLoaded] = usePersistentState("@dreammanager/pos-cart", []);
   const [lastTx, setLastTx] = usePersistentState("@dreammanager/pos-last-tx", null);
-  const [sales, setSales] = usePersistentState(STORAGE_KEYS.posSales, []);
 
   // Express keypad entry buffer ("34.5") + manual keypad toggle.
   const [entry, setEntry] = useState("");
   const [keypadManual, setKeypadManual] = useState(false);
+
+  // Pro tools: order-level discount %, free-text order note, tools sheet.
+  const [discountPct, setDiscountPct] = useState(0);
+  const [orderNote, setOrderNote] = useState("");
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetView, setSheetView] = useState("menu"); // menu|discount|split|note|defect
 
   const total = useMemo(
     () => cart.reduce((sum, i) => sum + i.price * i.qty, 0),
     [cart]
   );
   const itemCount = useMemo(() => cart.reduce((n, i) => n + i.qty, 0), [cart]);
+  const discountAmount = Math.round(total * discountPct) / 100;
+  const payable = total - discountAmount;
   const expressAuto = cart.length > EXPRESS_THRESHOLD;
   const expressMode = expressAuto || keypadManual;
 
@@ -116,27 +124,44 @@ export default function POSScreen() {
     hapticSuccess();
     const txId = uid();
     const ts = Date.now();
+    const base = { ts, day: todayKey(), month: monthKey(), itemId: null, category: "print", cost: 0, kind: "sale", eventId: txId };
     const records = cart.map((i) => ({
+      ...base,
       id: uid(),
-      ts,
-      day: todayKey(),
-      month: monthKey(),
-      itemId: null,
       name: i.name,
-      category: "print",
       qty: i.qty,
       price: i.price,
-      cost: 0,
       total: i.price * i.qty,
       profit: i.price * i.qty,
-      kind: "sale",
-      eventId: txId,
     }));
+    // Order-level discount lands in the ledger as its own negative line, so
+    // the Z-report and dashboard reconcile to what was actually charged.
+    if (discountPct > 0 && discountAmount > 0) {
+      records.push({
+        ...base,
+        id: uid(),
+        name: `הנחה ${discountPct}%`,
+        qty: 1,
+        price: -discountAmount,
+        total: -discountAmount,
+        profit: -discountAmount,
+      });
+    }
     setSales((prev) => [...prev, ...records]);
-    setLastTx({ id: txId, time: nowHHMM(), total, count: itemCount, items: cart });
+    setLastTx({
+      id: txId,
+      time: nowHHMM(),
+      total: payable,
+      count: itemCount,
+      items: cart,
+      discountPct,
+      note: orderNote,
+    });
     setCart([]);
     setEntry("");
     setKeypadManual(false);
+    setDiscountPct(0);
+    setOrderNote("");
   };
 
   // Edit = pull the sale back into the cart for adjustment and remove its
@@ -146,15 +171,71 @@ export default function POSScreen() {
     hapticLight();
     setSales((prev) => prev.filter((r) => r.eventId !== lastTx.id));
     setCart(lastTx.items);
+    setDiscountPct(lastTx.discountPct || 0);
+    setOrderNote(lastTx.note || "");
     setLastTx(null);
+  };
+
+  // ---- Pro tools sheet ----------------------------------------------------
+  const openSheet = () => {
+    hapticLight();
+    setSheetView("menu");
+    setSheetOpen(true);
+  };
+
+  const applyDiscount = (pct) => {
+    hapticLight();
+    setDiscountPct(pct);
+    setSheetOpen(false);
+  };
+
+  // Remove one unit of a cart line as defective: it leaves the bill and a
+  // zero-revenue damage record is logged so the loss shows up in the Z-report.
+  const markDefective = (line) => {
+    hapticLight();
+    setCart((prev) =>
+      prev
+        .map((i) => (i.id === line.id ? { ...i, qty: i.qty - 1 } : i))
+        .filter((i) => i.qty > 0)
+    );
+    setSales((prev) => [
+      ...prev,
+      {
+        id: uid(),
+        ts: Date.now(),
+        day: todayKey(),
+        month: monthKey(),
+        itemId: null,
+        name: line.name,
+        category: "print",
+        qty: 1,
+        price: 0,
+        cost: 0,
+        total: 0,
+        profit: 0,
+        kind: "damage",
+        eventId: null,
+      },
+    ]);
+    setSheetOpen(false);
+  };
+
+  const shareZ = async () => {
+    hapticLight();
+    setSheetOpen(false);
+    try {
+      await Share.share({ message: buildZReportText(sales) });
+    } catch {
+      /* user cancelled */
+    }
   };
 
   if (!cartLoaded) return <View style={{ flex: 1, backgroundColor: WHITE }} />;
 
   return (
     <View style={{ flex: 1, backgroundColor: WHITE }}>
-      {/* Compact header */}
-      <View style={[s.header, { paddingTop: insets.top + 8 }]}>
+      {/* Compact header (top inset handled by the Business shell) */}
+      <View style={s.header}>
         <TouchableOpacity
           style={[s.keypadToggle, expressMode && { backgroundColor: BLUE }]}
           onPress={() => {
@@ -169,6 +250,7 @@ export default function POSScreen() {
           <Text style={s.headerTitle}>קופה 💼</Text>
           <Text style={s.headerSub}>
             {itemCount > 0 ? `${itemCount} פריטים בסל` : "הסל ריק"}
+            {orderNote ? " · 📝 הערה מצורפת" : ""}
           </Text>
         </View>
       </View>
@@ -244,11 +326,21 @@ export default function POSScreen() {
                 <View key={item.id} style={s.cartRow}>
                   {/* Stepper (left) */}
                   <View style={s.stepper}>
-                    <TouchableOpacity style={s.stepBtn} onPress={() => bumpQty(item.id, -1)} activeOpacity={0.6}>
+                    <TouchableOpacity
+                      style={s.stepBtn}
+                      hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                      onPress={() => bumpQty(item.id, -1)}
+                      activeOpacity={0.6}
+                    >
                       <Text style={s.stepBtnText}>−</Text>
                     </TouchableOpacity>
                     <Text style={s.qty}>{item.qty}</Text>
-                    <TouchableOpacity style={s.stepBtn} onPress={() => bumpQty(item.id, 1)} activeOpacity={0.6}>
+                    <TouchableOpacity
+                      style={s.stepBtn}
+                      hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                      onPress={() => bumpQty(item.id, 1)}
+                      activeOpacity={0.6}
+                    >
                       <Text style={s.stepBtnText}>＋</Text>
                     </TouchableOpacity>
                   </View>
@@ -276,10 +368,111 @@ export default function POSScreen() {
           <Text style={s.chargeBtnText}>💳 חיוב</Text>
         </TouchableOpacity>
         <View style={s.totalBlock}>
-          <Text style={s.totalLabel}>סה״כ לתשלום</Text>
-          <Text style={s.totalValue}>{shekel(total)}</Text>
+          <Text style={s.totalLabel}>
+            {discountPct > 0 ? `הנחה ${discountPct}% · ‎-${shekel(discountAmount)}` : "סה״כ לתשלום"}
+          </Text>
+          <Text style={s.totalValue}>{shekel(payable)}</Text>
         </View>
       </View>
+
+      {/* Pro tools */}
+      <ToolsFab style={{ bottom: "17%" }} onPress={openSheet} />
+      <ToolsSheet visible={sheetOpen} onClose={() => setSheetOpen(false)} title="⚙️ כלים מקצועיים">
+        {sheetView === "menu" && (
+          <>
+            <SheetRow
+              emoji="🏷️"
+              label="הנחה מהירה %"
+              sub={discountPct ? `פעילה: ${discountPct}% (‎-${shekel(discountAmount)})` : "אחוז הנחה על כל הסל"}
+              active={discountPct > 0}
+              onPress={() => setSheetView("discount")}
+            />
+            <SheetRow emoji="✂️" label="פיצול תשלום" sub="חלוקת הסכום בין משלמים" onPress={() => setSheetView("split")} />
+            <SheetRow
+              emoji="📝"
+              label="הערה להזמנה"
+              sub={orderNote ? "הערה מצורפת ✓" : "טקסט חופשי שנשמר עם העסקה"}
+              active={!!orderNote}
+              onPress={() => setSheetView("note")}
+            />
+            <SheetRow
+              emoji="⚠️"
+              label="פריט פגום / פחת"
+              sub="הסרת יחידה מהסל ורישום נזק"
+              danger
+              onPress={() => setSheetView("defect")}
+            />
+            <SheetRow emoji="🧾" label="ייצוא דוח Z ל-WhatsApp" sub="סיכום פדיון, עסקאות ופחת להיום" onPress={shareZ} />
+          </>
+        )}
+
+        {sheetView === "discount" && (
+          <>
+            <View style={s.discountRow}>
+              {[5, 10, 15, 20].map((p) => (
+                <TouchableOpacity
+                  key={p}
+                  style={[s.discountChip, discountPct === p && { backgroundColor: BLUE }]}
+                  onPress={() => applyDiscount(p)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[s.discountChipText, discountPct === p && { color: WHITE }]}>{p}%</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <SheetRow emoji="🚫" label="ביטול הנחה" onPress={() => applyDiscount(0)} />
+            <SheetRow emoji="‹" label="חזרה" onPress={() => setSheetView("menu")} />
+          </>
+        )}
+
+        {sheetView === "split" && (
+          <>
+            {[2, 3, 4].map((n) => (
+              <View key={n} style={s.splitRow}>
+                <Text style={s.splitValue}>{shekel(Math.ceil((payable / n) * 100) / 100)}</Text>
+                <Text style={s.splitLabel}>{n} משלמים · כל אחד</Text>
+              </View>
+            ))}
+            <SheetRow emoji="‹" label="חזרה" onPress={() => setSheetView("menu")} />
+          </>
+        )}
+
+        {sheetView === "note" && (
+          <>
+            <TextInput
+              style={s.noteInput}
+              value={orderNote}
+              onChangeText={setOrderNote}
+              placeholder="למשל: לקוח מגיע ב-14:00, לארוז מראש"
+              placeholderTextColor={INK_MUTED}
+              multiline
+              textAlign="right"
+            />
+            <SheetRow emoji="✓" label="שמירת ההערה" onPress={() => { hapticLight(); setSheetOpen(false); }} />
+            <SheetRow emoji="‹" label="חזרה" onPress={() => setSheetView("menu")} />
+          </>
+        )}
+
+        {sheetView === "defect" && (
+          <>
+            {cart.length === 0 ? (
+              <Text style={s.defectEmpty}>הסל ריק — אין פריטים לסימון</Text>
+            ) : (
+              cart.map((line) => (
+                <SheetRow
+                  key={line.id}
+                  emoji="⚠️"
+                  label={line.name}
+                  sub={`×${line.qty} · ${shekel(line.price)} — הקשה תרשום יחידה אחת כנזק`}
+                  danger
+                  onPress={() => markDefective(line)}
+                />
+              ))
+            )}
+            <SheetRow emoji="‹" label="חזרה" onPress={() => setSheetView("menu")} />
+          </>
+        )}
+      </ToolsSheet>
     </View>
   );
 }
@@ -297,15 +490,16 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
+    paddingTop: 6,
     paddingBottom: 8,
     backgroundColor: WHITE,
   },
   headerTitle: { fontFamily: FONTS.bold, fontSize: 20, color: INK },
   headerSub: { fontFamily: FONTS.regular, fontSize: 12, color: INK_MUTED, marginTop: 1 },
   keypadToggle: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    minWidth: 48,
+    minHeight: 48,
+    borderRadius: 14,
     backgroundColor: CARD,
     alignItems: "center",
     justifyContent: "center",
@@ -369,17 +563,19 @@ const s = StyleSheet.create({
   itemName: { fontFamily: FONTS.semibold, fontSize: 14, color: INK },
   itemUnit: { fontFamily: FONTS.regular, fontSize: 11, color: INK_MUTED, marginTop: 1 },
   lineTotal: { fontFamily: FONTS.bold, fontSize: 14, color: INK, minWidth: 54, textAlign: "center" },
-  stepper: { flexDirection: "row", alignItems: "center", gap: 6 },
+  stepper: { flexDirection: "row", alignItems: "center", gap: 4 },
+  // 40px visual + hitSlop 4 in JSX = 48px effective touch target without
+  // blowing up the dense row height.
   stepBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: WHITE,
     alignItems: "center",
     justifyContent: "center",
     ...SHADOW,
   },
-  stepBtnText: { fontFamily: FONTS.bold, fontSize: 16, color: BLUE, lineHeight: 20 },
+  stepBtnText: { fontFamily: FONTS.bold, fontSize: 18, color: BLUE, lineHeight: 22 },
   qty: { fontFamily: FONTS.bold, fontSize: 15, color: INK, minWidth: 20, textAlign: "center" },
 
   keypadWrap: { flex: 1, paddingHorizontal: 14, paddingTop: 6, justifyContent: "flex-end", paddingBottom: 8 },
@@ -392,28 +588,65 @@ const s = StyleSheet.create({
     marginBottom: 8,
     ...SHADOW,
   },
-  entryValue: { fontFamily: FONTS.bold, fontSize: 28, color: INK },
+  entryValue: { fontFamily: FONTS.bold, fontSize: 34, color: INK },
   entryHint: { fontFamily: FONTS.regular, fontSize: 11, color: INK_MUTED, marginTop: 1 },
-  keyGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 6 },
+  // Big keys + big digits: mistype-resistant on small foldable screens.
+  keyGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 8 },
   key: {
     flexBasis: "32%",
-    height: 50,
-    borderRadius: 12,
+    minHeight: 56,
+    borderRadius: 14,
     backgroundColor: CARD,
     alignItems: "center",
     justifyContent: "center",
     ...SHADOW,
   },
-  keyText: { fontFamily: FONTS.semibold, fontSize: 20, color: INK },
+  keyText: { fontFamily: FONTS.semibold, fontSize: 24, color: INK },
   appendBtn: {
     marginTop: 8,
-    height: 46,
+    minHeight: 52,
     borderRadius: 14,
     backgroundColor: BLUE,
     alignItems: "center",
     justifyContent: "center",
   },
-  appendBtnText: { fontFamily: FONTS.bold, fontSize: 15, color: WHITE },
+  appendBtnText: { fontFamily: FONTS.bold, fontSize: 16, color: WHITE },
+
+  // Pro tools sheet sub-views
+  discountRow: { flexDirection: "row", gap: 8, marginBottom: 8 },
+  discountChip: {
+    flex: 1,
+    minHeight: 52,
+    borderRadius: 14,
+    backgroundColor: CARD,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  discountChipText: { fontFamily: FONTS.bold, fontSize: 17, color: BLUE },
+  splitRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    minHeight: 52,
+    backgroundColor: CARD,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    marginBottom: 8,
+  },
+  splitLabel: { fontFamily: FONTS.medium, fontSize: 14, color: INK_SOFT },
+  splitValue: { fontFamily: FONTS.bold, fontSize: 17, color: INK },
+  noteInput: {
+    minHeight: 84,
+    backgroundColor: CARD,
+    borderRadius: 14,
+    padding: 12,
+    fontFamily: FONTS.regular,
+    fontSize: 14,
+    color: INK,
+    textAlignVertical: "top",
+    marginBottom: 8,
+  },
+  defectEmpty: { fontFamily: FONTS.regular, fontSize: 13, color: INK_MUTED, textAlign: "center", paddingVertical: 16 },
 
   chargeBar: {
     height: "15%",
