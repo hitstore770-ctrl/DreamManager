@@ -7,31 +7,31 @@ import { useSettings } from "../context/SettingsContext";
 import LoginScreen from "../screens/LoginScreen";
 import NoteEditorScreen from "../screens/NoteEditorScreen";
 import NotesHubScreen from "../screens/NotesHubScreen";
+import POSScreen from "../screens/POSScreen";
 import {
-  BusinessPlaceholder,
   DreamsPlaceholder,
   SettingsPlaceholder,
-  TasksPlaceholder,
+  ToolsPlaceholder,
 } from "../screens/TabPlaceholders";
 import { FONTS } from "../utils/theme";
 
 const RootStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// iOS-style bottom tab bar. Five tabs, Notes (פתקים) is the default. Emoji
-// icons + Heebo labels, accent tint when active, hairline top border — themed
-// from the global settings so it follows light/dark + accent.
+// iOS-style bottom tab bar. Five tabs, Notes (פתקים) is the center/default.
+// Declared left→right as Tools/Dreams/Notes/Business/Settings so the natural
+// RTL reading (rightmost first) is: הגדרות · העסק שלי · פתקים · חלומות · כלים.
 const TAB_ICON = {
   Notes: "🗒️",
   Dreams: "✨",
-  Tasks: "✅",
+  Tools: "🧰",
   Business: "💼",
   Settings: "⚙️",
 };
 const TAB_LABEL = {
   Notes: "פתקים",
   Dreams: "חלומות",
-  Tasks: "משימות",
+  Tools: "כלים",
   Business: "העסק שלי",
   Settings: "הגדרות",
 };
@@ -61,10 +61,10 @@ function MainTabs() {
         tabBarLabel: TAB_LABEL[route.name],
       })}
     >
-      <Tab.Screen name="Notes" component={NotesHubScreen} />
+      <Tab.Screen name="Tools" component={ToolsPlaceholder} />
       <Tab.Screen name="Dreams" component={DreamsPlaceholder} />
-      <Tab.Screen name="Tasks" component={TasksPlaceholder} />
-      <Tab.Screen name="Business" component={BusinessPlaceholder} />
+      <Tab.Screen name="Notes" component={NotesHubScreen} />
+      <Tab.Screen name="Business" component={POSScreen} />
       <Tab.Screen name="Settings" component={SettingsPlaceholder} />
     </Tab.Navigator>
   );

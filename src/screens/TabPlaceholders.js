@@ -27,11 +27,8 @@ function Placeholder({ emoji, title, subtitle }) {
 export function DreamsPlaceholder() {
   return <Placeholder emoji="✨" title="חלומות" subtitle="היעדים והחלומות שלך יופיעו כאן" />;
 }
-export function TasksPlaceholder() {
-  return <Placeholder emoji="✅" title="משימות" subtitle="ניהול המשימות שלך יופיע כאן" />;
-}
-export function BusinessPlaceholder() {
-  return <Placeholder emoji="💼" title="העסק שלי" subtitle="כלי הקופה, המלאי והדו״חות יופיעו כאן" />;
+export function ToolsPlaceholder() {
+  return <Placeholder emoji="🧰" title="כלים" subtitle="כלי העבודה המהירים יופיעו כאן" />;
 }
 export function SettingsPlaceholder() {
   return <Placeholder emoji="⚙️" title="הגדרות" subtitle="ההעדפות והאבטחה יופיעו כאן" />;
