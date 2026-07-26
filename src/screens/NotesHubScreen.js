@@ -270,7 +270,9 @@ export default function NotesHubScreen({ navigation }) {
 
       {/* Notes — two-column masonry of white cards on soft grey */}
       <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 100 }} showsVerticalScrollIndicator={false}>
-        <View style={{ flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
+        {/* Newest/pinned note must read top-right; native RTL flips `row`
+            already, web (isRTL false) needs the explicit reverse. */}
+        <View style={[s.masonry, !I18nManager.isRTL && { flexDirection: "row-reverse" }]}>
           {columns.map((col, ci) => (
             <View key={ci} style={{ flex: 1, gap: 10 }}>
               {col.map(({ note: n, index }) => (
@@ -506,6 +508,7 @@ function makeStyles(t, fs) {
     tag: { height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: t.surface, borderWidth: 1, borderColor: t.hairline, alignItems: "center", justifyContent: "center" },
     tagText: { fontSize: 13 * fs, fontFamily: FONTS.semibold },
     grid: { flexDirection: "row", flexWrap: "wrap" },
+    masonry: { flexDirection: "row", gap: 10, alignItems: "flex-start" },
     // White masonry cards on the soft-grey hub background.
     card: { backgroundColor: "#FFFFFF", borderRadius: RADIUS, padding: 14, borderWidth: 1, borderColor: t.hairline, ...SHADOW_SM },
     cardTop: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 5 },

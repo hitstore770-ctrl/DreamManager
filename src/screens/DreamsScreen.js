@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  I18nManager,
   Image,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -11,9 +15,10 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import Animated, { FadeInDown, FadeInUp, LinearTransition } from "react-native-reanimated";
 
 import Celebration from "../components/dreams/Celebration";
+import HabitChain from "../components/dreams/HabitChain";
 import ProgressBar from "../components/dreams/ProgressBar";
 import { CoverGradient, Scrim } from "../components/dreams/Scrim";
 import PinLock from "../components/PinLock";
@@ -72,6 +77,9 @@ export default function DreamsScreen({ navigation }) {
     addDreamSavings,
     fundFromBusiness,
     updateDreamFields,
+    toggleHabitDay,
+    addObstacle,
+    removeObstacle,
   } = useDreams();
   const { setNotes } = useNotes();
 
@@ -86,6 +94,8 @@ export default function DreamsScreen({ navigation }) {
   const [savingInput, setSavingInput] = useState("");
   const [fundInput, setFundInput] = useState("");
   const [whyDraft, setWhyDraft] = useState("");
+  const [obstacleIf, setObstacleIf] = useState("");
+  const [obstacleThen, setObstacleThen] = useState("");
   const [pinDream, setPinDream] = useState(null); // locked dream awaiting PIN
   const [celebrating, setCelebrating] = useState(null);
   const [toast, setToast] = useState(null);
@@ -102,7 +112,15 @@ export default function DreamsScreen({ navigation }) {
   };
 
   const open = dreams.find((d) => d.id === openId) || null;
-  const board = useMemo(() => dreams.filter((d) => !d.archived), [dreams]);
+  // Paused dreams sink to the bottom of the board but stay visible.
+  const board = useMemo(
+    () =>
+      dreams
+        .filter((d) => !d.archived)
+        .slice()
+        .sort((a, b) => (a.paused ? 1 : 0) - (b.paused ? 1 : 0)),
+    [dreams]
+  );
   const archived = useMemo(() => dreams.filter((d) => d.archived), [dreams]);
 
   // ---- Business revenue available to allocate ------------------------------
@@ -226,6 +244,39 @@ export default function DreamsScreen({ navigation }) {
     flash("נוצר פתק חדש בטאב פתקים 📝");
   };
 
+  const togglePause = () => {
+    if (!open) return;
+    hapticLight();
+    updateDreamFields(open.id, { paused: !open.paused });
+    flash(open.paused ? "החלום הופשר ▶️" : "החלום הוקפא ❄️");
+  };
+
+  const addObstacleRow = () => {
+    if (!open) return;
+    const ifText = obstacleIf.trim();
+    const thenText = obstacleThen.trim();
+    if (!ifText || !thenText) return;
+    hapticLight();
+    addObstacle(open.id, ifText, thenText);
+    setObstacleIf("");
+    setObstacleThen("");
+  };
+
+  // Compile the vision into one clean shareable line.
+  const shareVision = async () => {
+    if (!open) return;
+    hapticLight();
+    const next = (open.milestones || []).find((m) => !m.done);
+    const message = `החלום שלי: ${open.title} | התקדמות: ${dreamProgress(open)}% | יעד הבא: ${
+      next ? next.title : "הושלם! 🎉"
+    }`;
+    try {
+      await Share.share({ message });
+    } catch {
+      /* user cancelled */
+    }
+  };
+
   const archiveDream = (dream) => {
     hapticSuccess();
     updateDreamFields(dream.id, { archived: true });
@@ -307,7 +358,10 @@ export default function DreamsScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 110 }}
         >
-          <View style={{ flexDirection: "row", gap: 12, alignItems: "flex-start" }}>
+          {/* The board must read top-right first (Hebrew), so the first column
+              has to sit on the right. Native RTL already flips `row`; on web
+              I18nManager.isRTL is false and it doesn't, so reverse there. */}
+          <View style={[s.masonry, !I18nManager.isRTL && { flexDirection: "row-reverse" }]}>
             {columns.map((col, ci) => (
               <View key={ci} style={{ flex: 1, gap: 12 }}>
                 {col.map(({ dream, height, index }) => (
@@ -335,6 +389,10 @@ export default function DreamsScreen({ navigation }) {
 
       {/* ---- Dream details ---- */}
       <Modal visible={!!open} transparent animationType="slide" onRequestClose={() => setOpenId(null)}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
         <TouchableWithoutFeedback onPress={() => setOpenId(null)}>
           <View style={s.backdrop}>
             <TouchableWithoutFeedback onPress={() => {}}>
@@ -357,9 +415,19 @@ export default function DreamsScreen({ navigation }) {
 
                     {/* Quick actions */}
                     <View style={s.quickRow}>
+                      <TouchableOpacity style={s.quickBtn} onPress={shareVision} activeOpacity={0.75}>
+                        <Text style={s.quickEmoji}>📤</Text>
+                        <Text style={s.quickText}>שתף</Text>
+                      </TouchableOpacity>
                       <TouchableOpacity style={s.quickBtn} onPress={sendToNotes} activeOpacity={0.75}>
                         <Text style={s.quickEmoji}>📝</Text>
                         <Text style={s.quickText}>לפתקים</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[s.quickBtn, open.paused && s.quickBtnOn]} onPress={togglePause} activeOpacity={0.75}>
+                        <Text style={s.quickEmoji}>{open.paused ? "▶️" : "❄️"}</Text>
+                        <Text style={[s.quickText, open.paused && { color: GOLD }]}>
+                          {open.paused ? "הפשר" : "הקפא"}
+                        </Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={[s.quickBtn, open.locked && s.quickBtnOn]} onPress={toggleVault} activeOpacity={0.75}>
                         <Text style={s.quickEmoji}>{open.locked ? "🔒" : "🔓"}</Text>
@@ -371,7 +439,24 @@ export default function DreamsScreen({ navigation }) {
                       </TouchableOpacity>
                     </View>
 
-                    <ScrollView style={{ maxHeight: 372 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                    <ScrollView
+                      style={{ maxHeight: 372 }}
+                      showsVerticalScrollIndicator={false}
+                      keyboardShouldPersistTaps="handled"
+                      contentContainerStyle={{ paddingBottom: 100 }}
+                    >
+                      {/* Habit chain */}
+                      <Text style={s.sectionTitle}>🔥 הרגל יומי</Text>
+                      <HabitChain
+                        habitDays={open.habitDays || {}}
+                        onToggle={(dayKey) => {
+                          const was = !!(open.habitDays || {})[dayKey];
+                          if (was) hapticLight();
+                          else hapticSuccess();
+                          toggleHabitDay(open.id, dayKey);
+                        }}
+                      />
+
                       {/* Financial target + funding */}
                       <View style={s.finCard}>
                         <View style={s.finRow}>
@@ -535,6 +620,58 @@ export default function DreamsScreen({ navigation }) {
                         />
                       </View>
 
+                      {/* Obstacle mapper — If/Then planning */}
+                      <Text style={s.sectionTitle}>🧗 מכשולים ופתרונות</Text>
+                      {(open.obstacles || []).length === 0 && (
+                        <Text style={s.hint}>מה עלול לעצור אותך? תכנן מראש את התגובה.</Text>
+                      )}
+                      {(open.obstacles || []).map((o) => (
+                        <Animated.View key={o.id} layout={LinearTransition.springify()} style={s.obsRow}>
+                          <TouchableOpacity
+                            style={s.obsRemove}
+                            onPress={() => { hapticLight(); removeObstacle(open.id, o.id); }}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={s.obsRemoveText}>✕</Text>
+                          </TouchableOpacity>
+                          <View style={{ flex: 1 }}>
+                            <Text style={s.obsIf}>
+                              <Text style={s.obsTag}>אם </Text>
+                              {o.ifText}
+                            </Text>
+                            <Text style={s.obsThen}>
+                              <Text style={[s.obsTag, { color: "#1E9E58" }]}>אז </Text>
+                              {o.thenText}
+                            </Text>
+                          </View>
+                        </Animated.View>
+                      ))}
+                      <Animated.View layout={LinearTransition.springify()} style={s.obsForm}>
+                        <TextInput
+                          style={s.obsInput}
+                          value={obstacleIf}
+                          onChangeText={setObstacleIf}
+                          placeholder="אם... (המכשול)"
+                          placeholderTextColor={INK_MUTED}
+                          textAlign="right"
+                        />
+                        <TextInput
+                          style={s.obsInput}
+                          value={obstacleThen}
+                          onChangeText={setObstacleThen}
+                          placeholder="אז... (הפתרון)"
+                          placeholderTextColor={INK_MUTED}
+                          textAlign="right"
+                        />
+                        <TouchableOpacity
+                          style={[s.obsAddBtn, !(obstacleIf.trim() && obstacleThen.trim()) && { opacity: 0.35 }]}
+                          onPress={addObstacleRow}
+                          activeOpacity={0.85}
+                        >
+                          <Text style={s.obsAddBtnText}>＋ הוסף מכשול ופתרון</Text>
+                        </TouchableOpacity>
+                      </Animated.View>
+
                       <TouchableOpacity
                         style={s.deleteBtn}
                         onPress={() => { hapticLight(); removeDream(open.id); setOpenId(null); }}
@@ -549,6 +686,7 @@ export default function DreamsScreen({ navigation }) {
             </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ---- Create ---- */}
@@ -663,10 +801,15 @@ function DreamCard({ dream, height, index, onPress }) {
   const days = daysUntil(dream.targetDate);
   const countdown = countdownLabel(days);
   const locked = !!dream.locked;
+  const paused = !!dream.paused;
 
   return (
     <Animated.View entering={FadeInDown.delay(Math.min(index * 80, 480)).duration(420)}>
-      <TouchableOpacity style={[s.card, { height }]} onPress={onPress} activeOpacity={0.88}>
+      <TouchableOpacity
+        style={[s.card, { height }, paused && s.cardPaused]}
+        onPress={onPress}
+        activeOpacity={0.88}
+      >
         {dream.imageUri ? (
           <Image source={{ uri: dream.imageUri }} style={StyleSheet.absoluteFill} resizeMode="cover" blurRadius={locked ? 18 : 0} />
         ) : (
@@ -674,8 +817,17 @@ function DreamCard({ dream, height, index, onPress }) {
         )}
         <Scrim strength={locked ? 0.92 : 0.78} />
         {locked && <View style={s.vaultVeil} />}
+        {/* Desaturate a paused dream: a grey wash over the cover reads as
+            "on hold" without needing a native color-matrix filter. */}
+        {paused && !locked && <View style={s.pausedVeil} />}
 
-        {countdown && !locked && (
+        {paused && !locked && (
+          <View style={s.pausedBadge}>
+            <Text style={s.pausedBadgeText}>❄️ מוקפא</Text>
+          </View>
+        )}
+
+        {countdown && !locked && !paused && (
           <View style={[s.countdown, days < 0 && { backgroundColor: "rgba(225,72,72,0.9)" }]}>
             <Text style={s.countdownText}>{countdown}</Text>
           </View>
@@ -744,6 +896,7 @@ const s = StyleSheet.create({
   walletLabel: { fontFamily: FONTS.semibold, fontSize: 13, color: INK_SOFT },
   walletValue: { fontFamily: FONTS.bold, fontSize: 18, color: GOLD },
 
+  masonry: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
   skeletonWrap: { flexDirection: "row", flexWrap: "wrap", gap: 12, padding: 12, justifyContent: "space-between" },
   skeleton: { backgroundColor: "#ECEFF3", borderRadius: 20 },
 
@@ -758,6 +911,19 @@ const s = StyleSheet.create({
   cardMetaRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6 },
   cardPct: { fontFamily: FONTS.bold, fontSize: 13, color: GOLD },
   cardMeta: { fontFamily: FONTS.regular, fontSize: 11, color: "rgba(255,255,255,0.82)" },
+
+  cardPaused: { opacity: 0.72 },
+  pausedVeil: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(122,130,140,0.5)" },
+  pausedBadge: {
+    position: "absolute",
+    top: 10,
+    alignSelf: "center",
+    backgroundColor: "rgba(255,255,255,0.9)",
+    borderRadius: 13,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  pausedBadgeText: { fontFamily: FONTS.bold, fontSize: 11, color: INK_SOFT },
 
   vaultVeil: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(10,14,20,0.55)" },
   lockedBody: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", gap: 4 },
@@ -868,6 +1034,33 @@ const s = StyleSheet.create({
   msInput: { flex: 1, minHeight: 48, backgroundColor: CARD, borderRadius: 12, paddingHorizontal: 12, fontFamily: FONTS.regular, fontSize: 14, color: INK },
   msAddBtn: { width: 48, minHeight: 48, borderRadius: 12, backgroundColor: BLUE, alignItems: "center", justifyContent: "center" },
   msAddBtnText: { fontFamily: FONTS.bold, fontSize: 22, color: WHITE },
+
+  obsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: CARD,
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 8,
+  },
+  obsIf: { fontFamily: FONTS.medium, fontSize: 13, color: INK, textAlign: "right" },
+  obsThen: { fontFamily: FONTS.medium, fontSize: 13, color: INK_SOFT, textAlign: "right", marginTop: 3 },
+  obsTag: { fontFamily: FONTS.bold, color: RED },
+  obsRemove: { width: 34, height: 34, borderRadius: 17, backgroundColor: WHITE, alignItems: "center", justifyContent: "center" },
+  obsRemoveText: { fontFamily: FONTS.bold, fontSize: 14, color: INK_MUTED },
+  obsForm: { gap: 8, marginBottom: 14 },
+  obsInput: {
+    minHeight: 48,
+    backgroundColor: CARD,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    fontFamily: FONTS.regular,
+    fontSize: 14,
+    color: INK,
+  },
+  obsAddBtn: { minHeight: 48, borderRadius: 12, backgroundColor: BLUE, alignItems: "center", justifyContent: "center" },
+  obsAddBtnText: { fontFamily: FONTS.bold, fontSize: 14, color: WHITE },
 
   deleteBtn: { minHeight: 48, alignItems: "center", justifyContent: "center", marginBottom: 6 },
   deleteBtnText: { fontFamily: FONTS.semibold, fontSize: 13, color: RED },

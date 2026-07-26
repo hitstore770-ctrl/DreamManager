@@ -76,11 +76,44 @@ function normalizeDream(dream) {
     targetDate: null,
     locked: false,
     archived: false,
+    paused: false,
+    habitDays: {}, // { "YYYY-MM-DD": true }
+    obstacles: [], // [{ id, ifText, thenText }]
     tasks: [],
     notes: [],
     milestones: [],
     ...dream,
   };
+}
+
+// The seven dates of the current week, Sunday→Saturday, for the habit chain.
+export function weekDays(now = new Date()) {
+  const sunday = new Date(now);
+  sunday.setHours(0, 0, 0, 0);
+  sunday.setDate(sunday.getDate() - sunday.getDay());
+  const letters = ["א", "ב", "ג", "ד", "ה", "ו", "ש"];
+  return letters.map((letter, i) => {
+    const d = new Date(sunday);
+    d.setDate(sunday.getDate() + i);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return { key, letter, date: d, isToday: d.toDateString() === new Date().toDateString(), isFuture: d > new Date() };
+  });
+}
+
+// Consecutive completed days ending today (or yesterday, so an unmarked
+// today doesn't read as a broken chain mid-morning).
+export function habitStreak(habitDays = {}) {
+  const fmt = (d) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const cursor = new Date();
+  cursor.setHours(0, 0, 0, 0);
+  if (!habitDays[fmt(cursor)]) cursor.setDate(cursor.getDate() - 1);
+  let streak = 0;
+  while (habitDays[fmt(cursor)]) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
 }
 
 // Whole days from today until an ISO target date (negative once overdue).
@@ -212,6 +245,9 @@ export function DreamProvider({ children }) {
       targetDate: null,
       locked: false,
       archived: false,
+      paused: false,
+      habitDays: {},
+      obstacles: [],
       tasks: [],
       notes: [],
       milestones,
@@ -303,8 +339,50 @@ export function DreamProvider({ children }) {
     }
   };
 
+  // Habit chain: flip one day of the dream's daily-habit calendar.
+  const toggleHabitDay = (dreamId, dayKey) => {
+    let updated = null;
+    setDreams((prev) =>
+      prev.map((dream) => {
+        if (dream.id !== dreamId) return dream;
+        const habitDays = { ...(dream.habitDays || {}) };
+        if (habitDays[dayKey]) delete habitDays[dayKey];
+        else habitDays[dayKey] = true;
+        updated = { ...dream, habitDays };
+        return updated;
+      })
+    );
+    if (updated) patchDream(dreamId, { habitDays: updated.habitDays });
+  };
+
+  // If/Then obstacle planning.
+  const addObstacle = (dreamId, ifText, thenText) => {
+    const row = { id: Date.now().toString(), ifText, thenText };
+    let updated = null;
+    setDreams((prev) =>
+      prev.map((dream) => {
+        if (dream.id !== dreamId) return dream;
+        updated = [...(dream.obstacles || []), row];
+        return { ...dream, obstacles: updated };
+      })
+    );
+    if (updated) patchDream(dreamId, { obstacles: updated });
+  };
+
+  const removeObstacle = (dreamId, obstacleId) => {
+    let updated = null;
+    setDreams((prev) =>
+      prev.map((dream) => {
+        if (dream.id !== dreamId) return dream;
+        updated = (dream.obstacles || []).filter((o) => o.id !== obstacleId);
+        return { ...dream, obstacles: updated };
+      })
+    );
+    if (updated) patchDream(dreamId, { obstacles: updated });
+  };
+
   // Generic field patch for the dream's editable metadata (why, target date,
-  // lock, archive, cover…).
+  // lock, archive, pause, cover…).
   const updateDreamFields = (dreamId, fields) => {
     setDreams((prev) => prev.map((d) => (d.id === dreamId ? { ...d, ...fields } : d)));
     patchDream(dreamId, fields);
@@ -451,6 +529,9 @@ export function DreamProvider({ children }) {
       addDreamSavings,
       fundFromBusiness,
       updateDreamFields,
+      toggleHabitDay,
+      addObstacle,
+      removeObstacle,
       addTask,
       toggleTask,
       addNote,
