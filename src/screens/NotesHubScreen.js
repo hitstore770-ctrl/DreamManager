@@ -83,7 +83,7 @@ const TEMPLATES = [
 ];
 
 export default function NotesHubScreen({ navigation }) {
-  const { fontScale, haptic } = useSettings();
+  const { fontScale, haptic, compactMode: compact } = useSettings();
   const theme = NOTES_THEME; // 770JLM Modern Light — scoped to the Notes Hub
   const insets = useSafeAreaInsets();
 
@@ -269,7 +269,7 @@ export default function NotesHubScreen({ navigation }) {
       )}
 
       {/* Notes — two-column masonry of white cards on soft grey */}
-      <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 100 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ padding: compact ? 6 : 12, paddingBottom: insets.bottom + 100 }} showsVerticalScrollIndicator={false}>
         {/* Newest/pinned note must read top-right; native RTL flips `row`
             already, web (isRTL false) needs the explicit reverse. */}
         <View style={[s.masonry, !I18nManager.isRTL && { flexDirection: "row-reverse" }]}>

@@ -24,6 +24,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { MINI_APPS } from "../components/tools/MiniApps";
+import { useSettings } from "../context/SettingsContext";
 import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
 import { ALL_TOOLS, IMPLEMENTED, TOOL_CATEGORIES, TOOL_COUNT, toolById } from "../utils/toolsCatalog";
 import { STORAGE_KEYS } from "../utils/storageKeys";
@@ -44,6 +45,7 @@ const GOLD = "#D4AF37";
 
 export default function ToolsScreen() {
   const insets = useSafeAreaInsets();
+  const { compactMode: compact } = useSettings();
   const [query, setQuery] = useState("");
   const [openSections, setOpenSections] = useState({ vending: true });
   const [activeTool, setActiveTool] = useState(null);
@@ -176,7 +178,7 @@ export default function ToolsScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 100 }}
+        contentContainerStyle={{ padding: compact ? 6 : 12, paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >

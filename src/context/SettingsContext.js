@@ -41,6 +41,14 @@ export const DEFAULT_SETTINGS = {
 
   // --- Data & privacy ---
   cloudBackup: false, // mirror a snapshot to Firestore on change
+
+  // --- Notifications ---
+  lowStockAlerts: true, // warn when an inventory item drops below its floor
+  dailyZReminder: false, // nightly nudge to close the register
+
+  // --- Appearance ---
+  themeMode: "light", // 'light' | 'dark' | 'system' — stored, not yet painted
+  compactMode: false, // tighter list padding for tall/narrow screens
   imageCacheToken: 0, // bumped by "clear image cache" to force a re-fetch
   layoutBounds: false, // dev-only: outline the settings layout
 };

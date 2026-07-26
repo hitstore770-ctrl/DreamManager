@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   I18nManager,
+  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -63,6 +64,18 @@ const CURRENCIES = [
   { key: "€", label: "€ אירו" },
 ];
 
+// Business support line for the WhatsApp deep link, international format with
+// no "+" (e.g. "9725XXXXXXXX"). Left blank on purpose: with no number WhatsApp
+// opens its contact picker with the message ready, which is better than
+// deep-linking a number that might belong to someone else.
+const SUPPORT_PHONE = "";
+
+const THEME_MODES = [
+  { key: "light", label: "בהיר" },
+  { key: "dark", label: "כהה" },
+  { key: "system", label: "מערכת" },
+];
+
 const HAPTIC_LEVELS = [
   { key: "light", label: "עדין" },
   { key: "medium", label: "בינוני" },
@@ -104,6 +117,7 @@ export default function SettingsScreen() {
 
   const hapticsOn = settings.haptics !== "off";
   const bounds = settings.devMode && settings.layoutBounds ? s.bounds : null;
+  const compact = !!settings.compactMode;
 
 
   const flash = useCallback((msg) => {
@@ -439,6 +453,61 @@ export default function SettingsScreen() {
     }
   };
 
+  // --- About & support ----------------------------------------------------
+  const contactSupport = async () => {
+    hapticLight();
+    const text = encodeURIComponent("היי, צריך עזרה עם המערכת...");
+    const web = `https://wa.me/${SUPPORT_PHONE}?text=${text}`;
+    // The whatsapp:// scheme resolves on a device but not in a browser, so the
+    // web build goes straight to wa.me.
+    if (Platform.OS !== "web") {
+      const app = SUPPORT_PHONE
+        ? `whatsapp://send?phone=${SUPPORT_PHONE}&text=${text}`
+        : `whatsapp://send?text=${text}`;
+      try {
+        if (await Linking.canOpenURL(app)) {
+          await Linking.openURL(app);
+          return;
+        }
+      } catch {
+        // WhatsApp is not installed — fall through to the web endpoint.
+      }
+    }
+    try {
+      await Linking.openURL(web);
+    } catch {
+      hapticWarning();
+      flash("לא ניתן לפתוח את וואטסאפ");
+    }
+  };
+
+  const shareApp = async () => {
+    hapticLight();
+    const message = [
+      "DreamManager — מערכת ניהול לעסק קטן 💼",
+      "קופה, מלאי, הקפות, דוחות, פתקים, חלומות ו-121 כלים — הכול במקום אחד.",
+      "",
+      APP_VERSION,
+    ].join("\n");
+    try {
+      await Share.share({ message, title: "DreamManager" });
+    } catch {
+      try {
+        await Clipboard.setStringAsync(message);
+        flash("ההזמנה הועתקה ללוח");
+      } catch {
+        hapticWarning();
+        flash("השיתוף נכשל");
+      }
+    }
+  };
+
+  const comingSoon = (what) => {
+    hapticWarning();
+    Alert.alert("בקרוב");
+    flash(`${what} — בקרוב`);
+  };
+
   // --- Developer ------------------------------------------------------------
   const injectDummySales = async () => {
     hapticLight();
@@ -511,21 +580,21 @@ export default function SettingsScreen() {
 
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 110 }}
+        contentContainerStyle={{ padding: compact ? 6 : 12, paddingBottom: insets.bottom + 120 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         {/* ---------- Developer Options (hidden until unlocked) ---------- */}
         {settings.devMode && (
-          <Animated.View entering={FadeInDown.duration(260)} layout={LinearTransition.springify()}>
+          <Section index={0}>
             <Group title="Developer Options 🛠️" accent={GOLD}>
-              <InfoRow label="פלטפורמה" value={diagnostics.platform} bounds={bounds} />
-              <InfoRow label="כיוון פריסה" value={diagnostics.rtl} bounds={bounds} />
-              <InfoRow label="קטלוג כלים" value={diagnostics.tools} bounds={bounds} />
-              <InfoRow label="אחסון מקומי" value={diagnostics.keys} bounds={bounds} />
-              <InfoRow label="מזהה משתמש" value={diagnostics.user} bounds={bounds} />
-              <ActionRow label="העתק דוח אבחון" hint="כל הנתונים שלמעלה כטקסט" icon="📋" bounds={bounds} onPress={copyDiagnostics} />
-              <ActionRow label="רענן מדידת אחסון" icon="🔄" bounds={bounds} onPress={() => { hapticLight(); measureStorage(); flash("נמדד מחדש"); }} />
+              <InfoRow label="פלטפורמה" value={diagnostics.platform} icon="📱" bounds={bounds} compact={compact} />
+              <InfoRow label="כיוון פריסה" value={diagnostics.rtl} icon="↔️" bounds={bounds} compact={compact} />
+              <InfoRow label="קטלוג כלים" value={diagnostics.tools} icon="🧰" bounds={bounds} compact={compact} />
+              <InfoRow label="אחסון מקומי" value={diagnostics.keys} icon="💽" bounds={bounds} compact={compact} />
+              <InfoRow label="מזהה משתמש" value={diagnostics.user} icon="🆔" bounds={bounds} compact={compact} />
+              <ActionRow label="העתק דוח אבחון" hint="כל הנתונים שלמעלה כטקסט" icon="📋" bounds={bounds} compact={compact} onPress={copyDiagnostics} />
+              <ActionRow label="רענן מדידת אחסון" icon="🔄" bounds={bounds} compact={compact} onPress={() => { hapticLight(); measureStorage(); flash("נמדד מחדש"); }} />
               <ActionRow
                 label="הזרקת נתוני מכירות לבדיקה"
                 hint="מוסיף שבוע של מכירות דמה ל-posSales"
@@ -536,6 +605,8 @@ export default function SettingsScreen() {
               <SwitchRow
                 label="הצגת גבולות עיצוב"
                 hint="מסמן כל שורה ופקד במסך ההגדרות"
+                icon="📐"
+                compact={compact}
                 value={!!settings.layoutBounds}
                 bounds={bounds}
                 onValueChange={(v) => { hapticLight(); update({ layoutBounds: v }); }}
@@ -568,10 +639,11 @@ export default function SettingsScreen() {
                 }}
               />
             </Group>
-          </Animated.View>
+          </Section>
         )}
 
         {/* ---------- Profile ---------- */}
+        <Section index={1}>
         <Group title="פרופיל אישי" icon="👤">
           <View style={s.fieldRow}>
             <Text style={s.rowLabel}>שם משתמש</Text>
@@ -585,14 +657,16 @@ export default function SettingsScreen() {
               maxLength={24}
             />
           </View>
-          <InfoRow label="חשבון" value={user?.email || "—"} bounds={bounds} />
-          <ActionRow label="התנתקות" icon="🚪" danger last onPress={() => { hapticWarning(); logout(); }} />
+          <InfoRow label="חשבון" value={user?.email || "—"} icon="✉️" bounds={bounds} compact={compact} />
+          <ActionRow label="התנתקות" icon="🚪" danger last compact={compact} bounds={bounds}  onPress={() => { hapticWarning(); logout(); }} />
         </Group>
+        </Section>
 
         {/* ---------- Business ---------- */}
+        <Section index={2}>
         <Group title="הגדרות עסק וקופה" icon="🏪">
           <View style={s.stackRow}>
-            <Text style={s.rowLabel}>סביבת עבודה</Text>
+            <Text style={s.rowLabel}>🗂️  סביבת עבודה</Text>
             <Text style={s.rowHint}>{WORKSPACES.find((w) => w.key === settings.workspace)?.hint}</Text>
             <Segment
               options={WORKSPACES.map((w) => ({ key: w.key, label: w.label }))}
@@ -603,17 +677,27 @@ export default function SettingsScreen() {
           <SwitchRow
             label="צלילי קופה"
             hint="קליק מכני בכל פעולה בקופה"
+            icon="🔊"
+            compact={compact}
+            bounds={bounds}
             value={settings.sounds}
             onValueChange={(v) => { hapticLight(); update({ sounds: v }); }}
           />
           <SwitchRow
             label="מצב חשאי"
             hint="הסתרת כל הסכומים הכספיים (•••••)"
+            icon="🕶️"
+            compact={compact}
             value={settings.stealth}
             bounds={bounds}
             onValueChange={(v) => { hapticLight(); update({ stealth: v }); }}
           />
-          <View style={[s.row, bounds]}>
+          <View style={[s.row, compact && s.rowCompact, bounds]}>
+            <Text style={s.rowIcon}>🧾</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={s.rowLabel}>מע״מ ברירת מחדל</Text>
+              <Text style={s.rowHint}>משמש את מחשבוני התמחור והייבוא (%)</Text>
+            </View>
             <TextInput
               testID="vat-input"
               style={[s.inlineInput, bounds]}
@@ -625,21 +709,20 @@ export default function SettingsScreen() {
               textAlign="right"
               maxLength={5}
             />
-            <View style={{ flex: 1 }}>
-              <Text style={s.rowLabel}>מע״מ ברירת מחדל</Text>
-              <Text style={s.rowHint}>משמש את מחשבוני התמחור והייבוא (%)</Text>
-            </View>
           </View>
           <Divider />
           <SwitchRow
             label="ניקוי עגלה אוטומטי בסיום חיוב"
             hint="כבוי — הסל נשאר על המסך אחרי חיוב"
+            icon="🧹"
+            compact={compact}
+            bounds={bounds}
             value={settings.autoClearCart}
             bounds={bounds}
             onValueChange={(v) => { hapticLight(); update({ autoClearCart: v }); }}
           />
           <View style={[s.stackRow, bounds]}>
-            <Text style={s.rowLabel}>הודעת תחתית קבלה</Text>
+            <Text style={s.rowLabel}>🧾  הודעת תחתית קבלה</Text>
             <TextInput
               testID="footer-input"
               style={[s.nameInput, bounds]}
@@ -653,7 +736,7 @@ export default function SettingsScreen() {
           </View>
           <Divider />
           <View style={[s.stackRow, bounds]}>
-            <Text style={s.rowLabel}>סמל מטבע</Text>
+            <Text style={s.rowLabel}>💱  סמל מטבע</Text>
             <Text style={s.rowHint}>מוחל על כל הסכומים באפליקציה</Text>
             <Segment
               options={CURRENCIES}
@@ -664,7 +747,7 @@ export default function SettingsScreen() {
           </View>
           <Divider />
           <View style={[s.stackRow, bounds, !hapticsOn && { opacity: 0.45 }]}>
-            <Text style={s.rowLabel}>עוצמת רטט</Text>
+            <Text style={s.rowLabel}>📳  עוצמת רטט</Text>
             <Text style={s.rowHint}>
               {hapticsOn ? "חוזק המשוב בכל לחיצה באפליקציה" : "מושבת — הפעל ״משוב הפטי״ בקבוצת מערכת"}
             </Text>
@@ -681,13 +764,71 @@ export default function SettingsScreen() {
             />
           </View>
         </Group>
+        </Section>
+
+        {/* ---------- Notifications ---------- */}
+        <Section index={3}>
+        <Group title="התראות" icon="🔔">
+          <SwitchRow
+            label="התראות מלאי נמוך"
+            hint="התרעה כשפריט במחסן יורד מתחת ל-5 יחידות"
+            icon="📉"
+            value={settings.lowStockAlerts}
+            compact={compact}
+            bounds={bounds}
+            onValueChange={(v) => { hapticLight(); update({ lowStockAlerts: v }); }}
+          />
+          <SwitchRow
+            label="תזכורת דוח Z יומי"
+            hint="תזכורת בסוף היום לסגור את המשמרת"
+            icon="🧾"
+            value={settings.dailyZReminder}
+            last
+            compact={compact}
+            bounds={bounds}
+            onValueChange={(v) => { hapticLight(); update({ dailyZReminder: v }); }}
+          />
+        </Group>
+        </Section>
+
+        {/* ---------- Appearance ---------- */}
+        <Section index={4}>
+        <Group title="תצוגה" icon="🎨">
+          <View style={[s.stackRow, bounds]}>
+            <Text style={s.rowLabel}>🌙  ערכת נושא</Text>
+            <Text style={s.rowHint}>
+              {settings.themeMode === "light"
+                ? "בהיר — 770JLM Light"
+                : "נשמר להעדפות; המסכים עדיין נצבעים בהיר"}
+            </Text>
+            <Segment
+              options={THEME_MODES}
+              value={settings.themeMode}
+              bounds={bounds}
+              onChange={(k) => { hapticLight(); update({ themeMode: k }); }}
+            />
+          </View>
+          <Divider />
+          <SwitchRow
+            label="תצוגה צפופה"
+            hint="פחות ריווח ברשימות — יותר תוכן על מסך צר"
+            icon="📏"
+            value={compact}
+            last
+            compact={compact}
+            bounds={bounds}
+            onValueChange={(v) => { hapticLight(); update({ compactMode: v }); }}
+          />
+        </Group>
+        </Section>
 
         {/* ---------- Data & backup ---------- */}
-        <Group title="גיבוי ואחסון" icon="💾">
+        <Section index={5}>
+        <Group title="גיבוי, נתונים ופרטיות" icon="💾">
           <View style={s.stackRow}>
             <View style={s.storageHead}>
               <Text style={s.storageTotal}>{fmtBytes(storage.total)}</Text>
-              <Text style={s.rowLabel}>נפח בשימוש</Text>
+              <Text style={s.rowLabel}>💽  נפח בשימוש</Text>
             </View>
             {storage.rows.slice(0, 4).map((r) => {
               const pct = storage.total ? Math.round((r.bytes / storage.total) * 100) : 0;
@@ -705,8 +846,8 @@ export default function SettingsScreen() {
             })}
             {storage.rows.length === 0 && <Text style={s.rowHint}>אין עדיין נתונים מקומיים.</Text>}
           </View>
-          <ActionRow label="ייצוא גיבוי" hint="שיתוף כל הנתונים כקובץ JSON" icon="📤" bounds={bounds} onPress={exportBackup} />
-          <ActionRow label="העתק גיבוי ללוח" icon="📋" bounds={bounds} onPress={copyBackup} />
+          <ActionRow label="ייצוא גיבוי" hint="שיתוף כל הנתונים כקובץ JSON" icon="📤" bounds={bounds} compact={compact} onPress={exportBackup} />
+          <ActionRow label="העתק גיבוי ללוח" icon="📋" bounds={bounds} compact={compact} onPress={copyBackup} />
           <ActionRow
             label="ייצוא דוחות Z"
             hint="כל שורות המכירה כקובץ CSV"
@@ -716,16 +857,21 @@ export default function SettingsScreen() {
           />
           <SwitchRow
             label="סנכרון נתונים לענן"
+            icon="☁️"
+            compact={compact}
             hint={syncState ? syncState.text : "שולח עותק של הנתונים ל-Firestore"}
             value={settings.cloudBackup}
             bounds={bounds}
             onValueChange={toggleCloudBackup}
           />
-          <ActionRow label="ניקוי מטמון תמונות" hint="טוען מחדש את כריכות החלומות" icon="🖼️" bounds={bounds} onPress={clearImageCache} />
-          <ActionRow label="ארכוב דוחות מעל 90 יום" hint="מנקה מכירות ישנות" icon="🗄️" last bounds={bounds} onPress={archiveOldReports} />
+          <ActionRow label="ניקוי מטמון תמונות" hint="טוען מחדש את כריכות החלומות" icon="🖼️" bounds={bounds} compact={compact} onPress={clearImageCache} />
+          <ActionRow label="ארכוב דוחות מעל 90 יום" hint="מנקה מכירות ישנות" icon="🗄️" last bounds={bounds} compact={compact} onPress={archiveOldReports} />
         </Group>
 
+        </Section>
+
         {/* ---------- Danger zone ---------- */}
+        <Section index={6}>
         <Group title="אזור סכנה" icon="⚠️" accent={RED}>
           <View style={s.dangerWrap}>
             <Text style={s.dangerText}>
@@ -733,21 +879,25 @@ export default function SettingsScreen() {
               להגדרות היצרן.
             </Text>
             <TouchableOpacity testID="factory-reset" style={[s.dangerBtn, bounds]} onPress={factoryReset} activeOpacity={0.85}>
-              <Text style={s.dangerBtnText}>איפוס אפליקציה מוחלט</Text>
+              <Text style={s.dangerBtnText}>⚠️  איפוס אפליקציה מוחלט</Text>
             </TouchableOpacity>
           </View>
         </Group>
+        </Section>
 
         {/* ---------- System ---------- */}
+        <Section index={7}>
         <Group title="מערכת" icon="🔧">
           <SwitchRow
             label="משוב הפטי"
             hint="רטט בלחיצות ובפעולות בכל האפליקציה"
+            icon="📳"
+            compact={compact}
             value={hapticsOn}
             bounds={bounds}
             onValueChange={toggleHaptics}
           />
-          <InfoRow label="עוצמת רטט" value={HAPTIC_LEVELS.find((l) => l.key === settings.haptics)?.label || "כבוי"} bounds={bounds} />
+          <InfoRow label="עוצמת רטט" value={HAPTIC_LEVELS.find((l) => l.key === settings.haptics)?.label || "כבוי"} icon="📶" bounds={bounds} compact={compact} />
           <ActionRow
             label="נעילת קוד"
             hint={settings.pin ? "פעיל — נדרש קוד בכל פתיחה" : "כבוי"}
@@ -763,8 +913,26 @@ export default function SettingsScreen() {
               }
             }}
           />
-          <InfoRow label="שפה וכיוון" value={`עברית · ${diagnostics.rtl}`} last bounds={bounds} />
+          <InfoRow label="שפה וכיוון" value={`עברית · ${diagnostics.rtl}`} icon="🌐" last bounds={bounds} compact={compact} />
         </Group>
+        </Section>
+
+        {/* ---------- About & support ---------- */}
+        <Section index={8}>
+        <Group title="אודות ותמיכה" icon="💬">
+          <ActionRow
+            label="צור קשר בוואטסאפ"
+            hint="נפתח עם הודעה מוכנה"
+            icon="💬"
+            compact={compact}
+            bounds={bounds}
+            onPress={contactSupport}
+          />
+          <ActionRow label="שתף מערכת" hint="הזמנה קצרה לשליחה" icon="📤" compact={compact} bounds={bounds}  onPress={shareApp} />
+          <ActionRow label="תנאי שימוש" icon="📜" compact={compact} bounds={bounds}  onPress={() => comingSoon("תנאי שימוש")} />
+          <ActionRow label="מדיניות פרטיות" icon="🔏" last compact={compact} bounds={bounds}  onPress={() => comingSoon("מדיניות פרטיות")} />
+        </Group>
+        </Section>
 
         {/* ---------- Version / easter egg ---------- */}
         <TouchableOpacity
@@ -835,6 +1003,15 @@ export default function SettingsScreen() {
  * Grouped-list building blocks
  * ----------------------------------------------------------------------- */
 
+// Sections stagger in when the tab mounts.
+function Section({ index = 0, children }) {
+  return (
+    <Animated.View entering={FadeInDown.delay(index * 70).duration(340)} layout={LinearTransition.springify()}>
+      {children}
+    </Animated.View>
+  );
+}
+
 function Group({ title, icon, accent, children, bounds }) {
   return (
     <View style={[s.group, bounds]}>
@@ -852,22 +1029,28 @@ function Divider({ last }) {
   return <View style={s.divider} />;
 }
 
-function InfoRow({ label, value, last, bounds }) {
+function InfoRow({ label, value, icon, last, bounds, compact }) {
   return (
     <>
-      <View style={[s.row, bounds]}>
-        <Text style={s.rowValue} numberOfLines={1}>{value}</Text>
+      <View style={[s.row, compact && s.rowCompact, bounds]}>
+        <Text style={s.rowIcon}>{icon || "•"}</Text>
         <Text style={s.rowLabel}>{label}</Text>
+        <Text style={s.rowValue} numberOfLines={1}>{value}</Text>
       </View>
       <Divider last={last} />
     </>
   );
 }
 
-function SwitchRow({ label, hint, value, onValueChange, disabled, last, bounds }) {
+function SwitchRow({ label, hint, icon, value, onValueChange, disabled, last, bounds, compact }) {
   return (
     <>
-      <View style={[s.row, bounds, disabled && { opacity: 0.45 }]}>
+      <View style={[s.row, compact && s.rowCompact, bounds, disabled && { opacity: 0.45 }]}>
+        <Text style={s.rowIcon}>{icon || "•"}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={s.rowLabel}>{label}</Text>
+          {!!hint && <Text style={s.rowHint}>{hint}</Text>}
+        </View>
         <Switch
           value={value}
           onValueChange={onValueChange}
@@ -879,20 +1062,21 @@ function SwitchRow({ label, hint, value, onValueChange, disabled, last, bounds }
           // defaults it to teal; thumbColor alone only styles the off state.
           {...WEB_SWITCH_THUMB}
         />
-        <View style={{ flex: 1 }}>
-          <Text style={s.rowLabel}>{label}</Text>
-          {!!hint && <Text style={s.rowHint}>{hint}</Text>}
-        </View>
       </View>
       <Divider last={last} />
     </>
   );
 }
 
-function ActionRow({ label, hint, icon, onPress, danger, actionLabel, last, bounds }) {
+function ActionRow({ label, hint, icon, onPress, danger, actionLabel, last, bounds, compact }) {
   return (
     <>
-      <TouchableOpacity style={[s.row, bounds]} onPress={onPress} activeOpacity={0.65}>
+      <TouchableOpacity style={[s.row, compact && s.rowCompact, bounds]} onPress={onPress} activeOpacity={0.65}>
+        <Text style={s.rowIcon}>{icon || "•"}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={[s.rowLabel, danger && { color: RED }]}>{label}</Text>
+          {!!hint && <Text style={s.rowHint}>{hint}</Text>}
+        </View>
         {actionLabel ? (
           <View style={[s.actionPill, danger && { backgroundColor: RED + "18" }]}>
             <Text style={[s.actionPillText, danger && { color: RED }]}>{actionLabel}</Text>
@@ -900,11 +1084,6 @@ function ActionRow({ label, hint, icon, onPress, danger, actionLabel, last, boun
         ) : (
           <Text style={s.chevron}>‹</Text>
         )}
-        <View style={{ flex: 1 }}>
-          <Text style={[s.rowLabel, danger && { color: RED }]}>{label}</Text>
-          {!!hint && <Text style={s.rowHint}>{hint}</Text>}
-        </View>
-        {!!icon && <Text style={s.rowIcon}>{icon}</Text>}
       </TouchableOpacity>
       <Divider last={last} />
     </>
@@ -934,11 +1113,17 @@ const SHADOW = {
   shadowOffset: { width: 0, height: 2 },
   shadowOpacity: 0.05,
   shadowRadius: 3,
-  elevation: 2,
+  elevation: 1,
 };
 
 const s = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 10, gap: 10 },
+  header: {
+    flexDirection: I18nManager.isRTL ? "row" : "row-reverse",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    gap: 10,
+  },
   title: { fontFamily: FONTS.bold, fontSize: 22, color: INK, textAlign: "right" },
   subtitle: { fontFamily: FONTS.regular, fontSize: 12, color: INK_MUTED, textAlign: "right", marginTop: 2 },
   devPill: {
@@ -965,14 +1150,18 @@ const s = StyleSheet.create({
   groupCard: { backgroundColor: WHITE, borderRadius: 16, overflow: "hidden", ...SHADOW },
   divider: { height: 1, backgroundColor: HAIRLINE, marginStart: 16 },
 
+  // I18nManager.isRTL is false on web, so a plain "row" would mirror the whole
+  // list in the preview. Reversing there keeps the icon on the reading-start
+  // (right) edge on both platforms.
   row: {
-    flexDirection: "row",
+    flexDirection: I18nManager.isRTL ? "row" : "row-reverse",
     alignItems: "center",
     gap: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     minHeight: 56,
   },
+  rowCompact: { paddingVertical: 7, minHeight: 44 },
   rowLabel: { fontFamily: FONTS.semibold, fontSize: 14.5, color: INK, textAlign: "right" },
   rowHint: { fontFamily: FONTS.regular, fontSize: 11.5, color: INK_MUTED, textAlign: "right", marginTop: 3, lineHeight: 17 },
   rowValue: { fontFamily: FONTS.medium, fontSize: 13, color: INK_MUTED, maxWidth: "55%" },
@@ -992,16 +1181,32 @@ const s = StyleSheet.create({
   },
 
   stackRow: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14, gap: 8 },
-  segment: { flexDirection: "row", backgroundColor: BG, borderRadius: 13, padding: 4, gap: 4, marginTop: 4 },
+  segment: {
+    flexDirection: I18nManager.isRTL ? "row" : "row-reverse",
+    backgroundColor: BG,
+    borderRadius: 13,
+    padding: 4,
+    gap: 4,
+    marginTop: 4,
+  },
   segmentBtn: { flex: 1, minHeight: 42, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   segmentText: { fontFamily: FONTS.semibold, fontSize: 12.5, color: INK_SOFT },
 
   actionPill: { minHeight: 34, paddingHorizontal: 14, borderRadius: 17, backgroundColor: BG, alignItems: "center", justifyContent: "center" },
   actionPillText: { fontFamily: FONTS.bold, fontSize: 12.5, color: BLUE },
 
-  storageHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  storageHead: {
+    flexDirection: I18nManager.isRTL ? "row" : "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   storageTotal: { fontFamily: FONTS.bold, fontSize: 16, color: BLUE },
-  storageRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  storageRow: {
+    flexDirection: I18nManager.isRTL ? "row" : "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
   storageKey: { flex: 1, fontFamily: FONTS.medium, fontSize: 12, color: INK_SOFT, textAlign: "right" },
   storageBytes: { fontFamily: FONTS.regular, fontSize: 11, color: INK_MUTED },
   barBg: { height: 6, borderRadius: 3, backgroundColor: BG, marginTop: 5, overflow: "hidden" },

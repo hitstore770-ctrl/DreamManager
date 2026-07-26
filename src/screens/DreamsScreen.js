@@ -68,7 +68,7 @@ function countdownLabel(days) {
 }
 
 export default function DreamsScreen({ navigation }) {
-  const { imageCacheToken } = useSettings();
+  const { imageCacheToken, compactMode: compact } = useSettings();
   const insets = useSafeAreaInsets();
   const {
     dreams,
@@ -359,7 +359,7 @@ export default function DreamsScreen({ navigation }) {
           onScroll={onScroll}
           scrollEventThrottle={64}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 110 }}
+          contentContainerStyle={{ padding: compact ? 6 : 12, paddingBottom: insets.bottom + 110 }}
         >
           {/* The board must read top-right first (Hebrew), so the first column
               has to sit on the right. Native RTL already flips `row`; on web
