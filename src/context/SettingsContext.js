@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Vibration } from "react-native";
 
+import { setHapticsEnabled } from "../utils/haptics";
 import { FONT_SCALES, makeTheme } from "../utils/theme";
 
 // Global, persisted app preferences — the single source of truth for the new
@@ -27,6 +28,8 @@ const DEFAULT_SETTINGS = {
   workspace: "default",
   pin: null, // 4-digit string or null (no lock)
   automation: [], // [{ id, metric, op, threshold, label }]
+  userName: "", // shown in the Settings profile group
+  devMode: false, // unlocked by tapping the version line seven times
 };
 
 const SettingsContext = createContext(undefined);
@@ -65,6 +68,12 @@ export function SettingsProvider({ children }) {
     },
     []
   );
+
+  // Mirror the haptics preference into the haptics module so every call site
+  // across the app (which imports the plain functions) honours the switch.
+  useEffect(() => {
+    setHapticsEnabled(settings.haptics !== "off");
+  }, [settings.haptics]);
 
   // --- Derived theme + typography ------------------------------------------
   const theme = useMemo(

@@ -1,9 +1,13 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useEffect, useState } from "react";
+import * as Clipboard from "expo-clipboard";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  I18nManager,
   Modal,
+  Platform,
   ScrollView,
+  Share,
   StyleSheet,
   Switch,
   Text,
@@ -12,54 +16,159 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, { FadeInDown, FadeInUp, LinearTransition } from "react-native-reanimated";
 
 import PinLock from "../components/PinLock";
 import { useAuth } from "../context/AuthContext";
 import { WORKSPACES, useSettings } from "../context/SettingsContext";
-import { STORAGE_KEYS } from "../utils/storageKeys";
+import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
 import { todayKey } from "../utils/posStore";
-import { ACCENTS, FONTS, RADIUS, RADIUS_SM, SHADOW_SM } from "../utils/theme";
+import { STORAGE_KEYS } from "../utils/storageKeys";
+import { IMPLEMENTED, TOOL_COUNT } from "../utils/toolsCatalog";
+import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 
-const FONT_OPTS = [
-  { key: "small", label: "קטן" },
-  { key: "medium", label: "בינוני" },
-  { key: "large", label: "גדול" },
-];
+// הגדרות — an iOS-style grouped settings list on the 770JLM Light Modern
+// surface. Tapping the version line seven times in a row unlocks a developer
+// group that renders above everything else.
 
-export default function SettingsScreen({ navigation }) {
-  const settings = useSettings();
-  const { theme, fontScale, update, haptic } = settings;
-  const { logout } = useAuth();
+const WHITE = "#FFFFFF";
+const BG = "#F4F5F7";
+const INK = "#1A1D21";
+const INK_SOFT = "#5A6470";
+const INK_MUTED = "#9AA4B0";
+const BLUE = "#003366";
+const GOLD = "#D4AF37";
+const RED = "#E14848";
+const HAIRLINE = "#ECEEF1";
+
+const APP_VERSION = "Version 1.0.0 (Build 770) - Made in Beitar Illit";
+const TAPS_TO_UNLOCK = 7;
+// Taps further apart than this restart the count, so it takes a deliberate
+// burst rather than seven idle presses over a minute.
+const TAP_WINDOW_MS = 900;
+
+const NO_OUTLINE = Platform.OS === "web" ? { outlineStyle: "none", outlineWidth: 0 } : {};
+const WEB_SWITCH_THUMB = Platform.OS === "web" ? { activeThumbColor: WHITE } : {};
+
+const fmtBytes = (n) => (n >= 1024 ? `${(n / 1024).toFixed(1)} KB` : `${n} B`);
+
+export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
+  const settings = useSettings();
+  const { update } = settings;
+  const { user, logout } = useAuth();
+  const scrollRef = useRef(null);
 
+  const [name, setName] = useState(settings.userName || "");
   const [pinModal, setPinModal] = useState(false);
-  const [storage, setStorage] = useState({ total: 0, rows: [] });
-  const [ruleForm, setRuleForm] = useState({ metric: "stock", op: "lt", threshold: "" });
+  const [wipeModal, setWipeModal] = useState(false);
+  const [storage, setStorage] = useState({ total: 0, count: 0, rows: [] });
+  // Snapshot of every app key, captured alongside the size measurement. Held
+  // in state so the export handlers can serialise it synchronously — see
+  // buildBackup below.
+  const [snapshot, setSnapshot] = useState(null);
+  const [toast, setToast] = useState(null);
+  const toastTimer = useRef(null);
 
-  const s = makeStyles(theme, fontScale);
+  const hapticsOn = settings.haptics !== "off";
 
-  // --- Storage health ------------------------------------------------------
-  const measureStorage = async () => {
+  const flash = useCallback((msg) => {
+    setToast(msg);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 2600);
+  }, []);
+  useEffect(() => () => toastTimer.current && clearTimeout(toastTimer.current), []);
+
+  // Keep the local input in sync if the stored name changes elsewhere.
+  useEffect(() => {
+    setName(settings.userName || "");
+  }, [settings.userName]);
+
+  // --- Storage health -------------------------------------------------------
+  const measureStorage = useCallback(async () => {
     try {
       const keys = await AsyncStorage.getAllKeys();
-      const pairs = await AsyncStorage.multiGet(keys);
+      // v3 renamed the batch APIs: getMany/setMany/removeMany, and it returns
+      // an object rather than v2's array of [key, value] pairs.
+      const values = await AsyncStorage.getMany(keys);
       let total = 0;
-      const rows = pairs
+      const data = {};
+      const rows = Object.entries(values)
         .map(([k, v]) => {
           const bytes = (v || "").length;
           total += bytes;
+          if (k.startsWith("@dreammanager/")) {
+            try {
+              data[k] = JSON.parse(v);
+            } catch {
+              data[k] = v;
+            }
+          }
           return { key: k.replace("@dreammanager/", ""), bytes };
         })
-        .sort((a, b) => b.bytes - a.bytes)
-        .slice(0, 6);
-      setStorage({ total, rows });
+        .sort((a, b) => b.bytes - a.bytes);
+      setStorage({ total, count: keys.length, rows });
+      setSnapshot(data);
     } catch {
-      setStorage({ total: 0, rows: [] });
+      setStorage({ total: 0, count: 0, rows: [] });
+      setSnapshot(null);
     }
-  };
+  }, []);
   useEffect(() => {
     measureStorage();
-  }, []);
+  }, [measureStorage]);
+
+  // --- Version tap → developer mode ----------------------------------------
+  const taps = useRef(0);
+  const lastTap = useRef(0);
+
+  const onVersionPress = () => {
+    const now = Date.now();
+    taps.current = now - lastTap.current < TAP_WINDOW_MS ? taps.current + 1 : 1;
+    lastTap.current = now;
+
+    if (taps.current < TAPS_TO_UNLOCK) {
+      // Stay silent for the first couple of taps so it still feels hidden.
+      if (taps.current >= 3) {
+        hapticLight();
+        flash(`עוד ${TAPS_TO_UNLOCK - taps.current} לחיצות…`);
+      }
+      return;
+    }
+
+    taps.current = 0;
+    const unlocked = !settings.devMode;
+    update({ devMode: unlocked });
+
+    if (unlocked) {
+      hapticSuccess();
+      // Alert is a no-op on react-native-web, so the toast carries the same
+      // message on every platform.
+      Alert.alert("Developer Mode Unlocked!", "אפשרויות המפתח נוספו לראש מסך ההגדרות.");
+      flash("🛠️ Developer Mode Unlocked!");
+      measureStorage();
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+    } else {
+      hapticWarning();
+      Alert.alert("Developer Mode Locked", "אפשרויות המפתח הוסתרו.");
+      flash("🔒 מצב מפתח ננעל");
+    }
+  };
+
+  // --- Actions --------------------------------------------------------------
+  const saveName = (text) => {
+    setName(text);
+    update({ userName: text });
+  };
+
+  const toggleHaptics = (on) => {
+    // Fire the confirmation tap before switching off, so turning it off still
+    // produces one last piece of feedback.
+    if (!on) hapticLight();
+    update({ haptics: on ? "light" : "off" });
+    if (on) setTimeout(hapticSuccess, 0);
+    flash(on ? "רטט הופעל" : "רטט כובה");
+  };
 
   const archiveOldReports = async () => {
     try {
@@ -80,274 +189,275 @@ export default function SettingsScreen({ navigation }) {
         JSON.stringify(locked.filter((d) => d >= cutoffKey))
       );
 
-      haptic("success");
+      hapticSuccess();
       await measureStorage();
-      Alert.alert("הועבר לארכיון", removed > 0 ? `${removed} רשומות ישנות (מעל 90 יום) נמחקו.` : "אין רשומות ישנות לארכוב.");
+      flash(removed > 0 ? `${removed} רשומות ישנות הועברו לארכיון` : "אין רשומות מעל 90 יום");
     } catch {
-      Alert.alert("שגיאה", "לא ניתן לארכב כרגע.");
+      hapticWarning();
+      flash("הארכוב נכשל");
     }
   };
 
-  const fmtBytes = (n) => (n > 1024 ? `${(n / 1024).toFixed(1)} KB` : `${n} B`);
+  // Serialised synchronously from the snapshot: browsers only honour a
+  // clipboard write while the user gesture is still "active", and awaiting
+  // AsyncStorage first drops out of that window, so the write is rejected.
+  const buildBackup = () =>
+    JSON.stringify(
+      { app: "DreamManager", version: APP_VERSION, exportedAt: new Date().toISOString(), data: snapshot || {} },
+      null,
+      2
+    );
 
-  const addRule = () => {
-    const th = Number(ruleForm.threshold);
-    if (!th) return;
-    const metricLabel = ruleForm.metric === "stock" ? "מלאי" : "מזומן";
-    const opLabel = ruleForm.op === "lt" ? "קטן מ־" : "גדול מ־";
-    settings.addRule({
-      metric: ruleForm.metric,
-      op: ruleForm.op,
-      threshold: th,
-      label: `אם ${metricLabel} ${opLabel}${th} → צור תזכורת`,
-    });
-    setRuleForm({ metric: "stock", op: "lt", threshold: "" });
-    haptic("light");
+  const exportBackup = async () => {
+    hapticLight();
+    const json = buildBackup();
+    try {
+      await Share.share({ message: json, title: "גיבוי DreamManager" });
+      return;
+    } catch {
+      // Sharing is unavailable on this platform — fall back to the clipboard.
+    }
+    try {
+      await Clipboard.setStringAsync(json);
+      flash("הגיבוי הועתק ללוח");
+    } catch {
+      hapticWarning();
+      flash("ייצוא הגיבוי נכשל");
+    }
   };
 
-  const Section = ({ icon, title, children }) => (
-    <View style={s.section}>
-      <Text style={s.sectionTitle}>{icon}  {title}</Text>
-      <View style={s.sectionCard}>{children}</View>
-    </View>
+  const copyBackup = async () => {
+    hapticLight();
+    try {
+      await Clipboard.setStringAsync(buildBackup());
+      flash(`הגיבוי הועתק ללוח · ${storage.count} מפתחות`);
+    } catch {
+      hapticWarning();
+      flash("ההעתקה נכשלה");
+    }
+  };
+
+  const diagnostics = useMemo(
+    () => ({
+      // Platform.Version is a meaningless "0.0.0" on web.
+      platform: [Platform.OS, Platform.Version && Platform.Version !== "0.0.0" ? Platform.Version : null]
+        .filter(Boolean)
+        .join(" "),
+      rtl: I18nManager.isRTL ? "RTL" : "LTR",
+      tools: `${TOOL_COUNT} · ${IMPLEMENTED.size} פעילים`,
+      keys: `${storage.count} מפתחות · ${fmtBytes(storage.total)}`,
+      user: user?.uid || "—",
+    }),
+    [storage.count, storage.total, user?.uid]
   );
 
-  const Row = ({ label, hint, right, last }) => (
-    <View style={[s.row, !last && s.rowBorder]}>
-      <View style={{ flex: 1 }}>
-        <Text style={s.rowLabel}>{label}</Text>
-        {hint ? <Text style={s.rowHint}>{hint}</Text> : null}
-      </View>
-      {right}
-    </View>
-  );
+  const copyDiagnostics = async () => {
+    hapticLight();
+    const text = [
+      APP_VERSION,
+      `platform: ${diagnostics.platform}`,
+      `direction: ${diagnostics.rtl}`,
+      `tools: ${diagnostics.tools}`,
+      `storage: ${diagnostics.keys}`,
+      `uid: ${diagnostics.user}`,
+      ...storage.rows.map((r) => `  ${r.key}: ${fmtBytes(r.bytes)}`),
+    ].join("\n");
+    try {
+      await Clipboard.setStringAsync(text);
+      flash("דוח האבחון הועתק");
+    } catch {
+      flash("ההעתקה נכשלה");
+    }
+  };
 
-  const Segmented = ({ options, value, onChange }) => (
-    <View style={s.segment}>
-      {options.map((o) => {
-        const active = value === o.key;
-        return (
-          <TouchableOpacity
-            key={o.key}
-            style={[s.segBtn, active && { backgroundColor: theme.accent }]}
-            activeOpacity={0.8}
-            onPress={() => {
-              haptic("light");
-              onChange(o.key);
-            }}
-          >
-            <Text style={[s.segText, { color: active ? "#FFF" : theme.textSecondary }]}>{o.label}</Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
+  const wipeAll = async () => {
+    setWipeModal(false);
+    try {
+      const keys = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith("@dreammanager/"));
+      await AsyncStorage.removeMany(keys);
+      hapticWarning();
+      await measureStorage();
+      flash(`${keys.length} מפתחות נמחקו — הפעל מחדש את האפליקציה`);
+    } catch {
+      flash("המחיקה נכשלה");
+    }
+  };
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background }}>
+    <View style={{ flex: 1, backgroundColor: BG }}>
       <View style={[s.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity style={s.menuBtn} onPress={() => navigation.openDrawer()} activeOpacity={0.7}>
-          <Text style={s.menuIcon}>☰</Text>
-        </TouchableOpacity>
-        <Text style={s.headerTitle}>⚙️ הגדרות</Text>
-        <View style={s.menuBtn} />
+        <View style={{ flex: 1 }}>
+          <Text style={s.title}>⚙️ הגדרות</Text>
+          <Text style={s.subtitle}>
+            {settings.userName ? `שלום, ${settings.userName}` : "העדפות, גיבוי ומערכת"}
+          </Text>
+        </View>
+        {settings.devMode && (
+          <Animated.View entering={FadeInDown.duration(220)} style={s.devPill}>
+            <Text style={s.devPillText}>🛠️ DEV</Text>
+          </Animated.View>
+        )}
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
-        {/* UI CUSTOMIZATION */}
-        <Section icon="🎨" title="עיצוב ותצוגה">
-          <Row
-            label="מצב כהה"
-            hint="החלף בין ערכת נושא בהירה לכהה"
-            right={
-              <Switch
-                value={theme.scheme === "dark"}
-                onValueChange={(v) => update({ scheme: v ? "dark" : "light" })}
-                trackColor={{ true: theme.accent }}
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 110 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* ---------- Developer Options (hidden until unlocked) ---------- */}
+        {settings.devMode && (
+          <Animated.View entering={FadeInDown.duration(260)} layout={LinearTransition.springify()}>
+            <Group title="Developer Options 🛠️" accent={GOLD}>
+              <InfoRow label="פלטפורמה" value={diagnostics.platform} />
+              <InfoRow label="כיוון פריסה" value={diagnostics.rtl} />
+              <InfoRow label="קטלוג כלים" value={diagnostics.tools} />
+              <InfoRow label="אחסון מקומי" value={diagnostics.keys} />
+              <InfoRow label="מזהה משתמש" value={diagnostics.user} />
+              <ActionRow label="העתק דוח אבחון" hint="כל הנתונים שלמעלה כטקסט" icon="📋" onPress={copyDiagnostics} />
+              <ActionRow label="רענן מדידת אחסון" icon="🔄" onPress={() => { hapticLight(); measureStorage(); flash("נמדד מחדש"); }} />
+              <ActionRow
+                label="מחק את כל הנתונים המקומיים"
+                hint="פעולה בלתי הפיכה"
+                icon="🧨"
+                danger
+                onPress={() => { hapticWarning(); setWipeModal(true); }}
               />
-            }
-          />
-          <Row label="צבע הדגשה" hint="הצבע הראשי של האפליקציה" right={null} />
-          <View style={s.swatchRow}>
-            {ACCENTS.map((a) => (
-              <TouchableOpacity
-                key={a.key}
-                style={[s.swatch, { backgroundColor: a.color }, settings.accentKey === a.key && s.swatchActive]}
-                activeOpacity={0.8}
+              <ActionRow
+                label="נעל מצב מפתח"
+                icon="🔒"
+                last
                 onPress={() => {
-                  haptic("light");
-                  update({ accentKey: a.key });
+                  hapticWarning();
+                  update({ devMode: false });
+                  flash("🔒 מצב מפתח ננעל");
                 }}
-              >
-                {settings.accentKey === a.key && <Text style={s.swatchCheck}>✓</Text>}
-              </TouchableOpacity>
-            ))}
-          </View>
-          <Row
-            label="גודל טקסט"
-            last
-            right={<Segmented options={FONT_OPTS} value={settings.fontScaleKey} onChange={(k) => update({ fontScaleKey: k })} />}
-          />
-        </Section>
+              />
+            </Group>
+          </Animated.View>
+        )}
 
-        {/* WORKSPACES */}
-        <Section icon="🗂️" title="סביבות עבודה">
-          <Row
-            label="מצב תפריט"
-            hint="שנה את סדר הקטגוריות בתפריט הצד"
-            last
-            right={null}
-          />
-          <View style={{ marginTop: 4 }}>
-            <Segmented
+        {/* ---------- Profile ---------- */}
+        <Group title="פרופיל אישי" icon="👤">
+          <View style={s.fieldRow}>
+            <Text style={s.rowLabel}>שם משתמש</Text>
+            <TextInput
+              style={s.nameInput}
+              value={name}
+              onChangeText={saveName}
+              placeholder="איך לקרוא לך?"
+              placeholderTextColor={INK_MUTED}
+              textAlign="right"
+              maxLength={24}
+            />
+          </View>
+          <InfoRow label="חשבון" value={user?.email || "—"} />
+          <ActionRow label="התנתקות" icon="🚪" danger last onPress={() => { hapticWarning(); logout(); }} />
+        </Group>
+
+        {/* ---------- Business ---------- */}
+        <Group title="הגדרות עסק וקופה" icon="🏪">
+          <View style={s.stackRow}>
+            <Text style={s.rowLabel}>סביבת עבודה</Text>
+            <Text style={s.rowHint}>{WORKSPACES.find((w) => w.key === settings.workspace)?.hint}</Text>
+            <Segment
               options={WORKSPACES.map((w) => ({ key: w.key, label: w.label }))}
               value={settings.workspace}
-              onChange={(k) => update({ workspace: k })}
+              onChange={(k) => { hapticLight(); update({ workspace: k }); }}
             />
-            <Text style={s.rowHint}>{WORKSPACES.find((w) => w.key === settings.workspace)?.hint}</Text>
           </View>
-        </Section>
+          <SwitchRow
+            label="צלילי קופה"
+            hint="קליק מכני בכל פעולה בקופה"
+            value={settings.sounds}
+            onValueChange={(v) => { hapticLight(); update({ sounds: v }); }}
+          />
+          <SwitchRow
+            label="מצב חשאי"
+            hint="הסתרת כל הסכומים הכספיים (•••••)"
+            value={settings.stealth}
+            last
+            onValueChange={(v) => { hapticLight(); update({ stealth: v }); }}
+          />
+        </Group>
 
-        {/* SECURITY & STEALTH */}
-        <Section icon="🔐" title="אבטחה ופרטיות">
-          <Row
+        {/* ---------- Data & backup ---------- */}
+        <Group title="גיבוי ואחסון" icon="💾">
+          <View style={s.stackRow}>
+            <View style={s.storageHead}>
+              <Text style={s.storageTotal}>{fmtBytes(storage.total)}</Text>
+              <Text style={s.rowLabel}>נפח בשימוש</Text>
+            </View>
+            {storage.rows.slice(0, 4).map((r) => {
+              const pct = storage.total ? Math.round((r.bytes / storage.total) * 100) : 0;
+              return (
+                <View key={r.key} style={{ marginTop: 10 }}>
+                  <View style={s.storageRow}>
+                    <Text style={s.storageBytes}>{fmtBytes(r.bytes)}</Text>
+                    <Text style={s.storageKey} numberOfLines={1}>{r.key}</Text>
+                  </View>
+                  <View style={s.barBg}>
+                    <View style={[s.barFill, { width: `${pct}%` }]} />
+                  </View>
+                </View>
+              );
+            })}
+            {storage.rows.length === 0 && <Text style={s.rowHint}>אין עדיין נתונים מקומיים.</Text>}
+          </View>
+          <ActionRow label="ייצוא גיבוי" hint="שיתוף כל הנתונים כקובץ JSON" icon="📤" onPress={exportBackup} />
+          <ActionRow label="העתק גיבוי ללוח" icon="📋" onPress={copyBackup} />
+          <ActionRow label="ארכוב דוחות מעל 90 יום" hint="מנקה מכירות ישנות" icon="🗄️" last onPress={archiveOldReports} />
+        </Group>
+
+        {/* ---------- System ---------- */}
+        <Group title="מערכת" icon="🔧">
+          <SwitchRow
+            label="משוב הפטי"
+            hint="רטט בלחיצות ובפעולות בכל האפליקציה"
+            value={hapticsOn}
+            onValueChange={toggleHaptics}
+          />
+          <SwitchRow
+            label="רטט חזק"
+            hint="עוצמת רטט מוגברת"
+            value={settings.haptics === "heavy"}
+            disabled={!hapticsOn}
+            onValueChange={(v) => { hapticLight(); update({ haptics: v ? "heavy" : "light" }); }}
+          />
+          <ActionRow
             label="נעילת קוד"
             hint={settings.pin ? "פעיל — נדרש קוד בכל פתיחה" : "כבוי"}
-            right={
-              settings.pin ? (
-                <TouchableOpacity
-                  style={[s.smallBtn, { backgroundColor: theme.danger + "22" }]}
-                  onPress={() => {
-                    update({ pin: null });
-                    haptic("light");
-                  }}
-                >
-                  <Text style={[s.smallBtnText, { color: theme.danger }]}>הסר</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity style={[s.smallBtn, { backgroundColor: theme.accent }]} onPress={() => setPinModal(true)}>
-                  <Text style={[s.smallBtnText, { color: "#FFF" }]}>הגדר</Text>
-                </TouchableOpacity>
-              )
-            }
+            icon={settings.pin ? "🔐" : "🔓"}
+            actionLabel={settings.pin ? "הסר" : "הגדר"}
+            onPress={() => {
+              hapticLight();
+              if (settings.pin) {
+                update({ pin: null });
+                flash("נעילת הקוד הוסרה");
+              } else {
+                setPinModal(true);
+              }
+            }}
           />
-          <Row
-            label="מצב חשאי"
-            hint="הסתר את כל הסכומים הכספיים (•••••)"
-            last
-            right={
-              <Switch
-                value={settings.stealth}
-                onValueChange={(v) => update({ stealth: v })}
-                trackColor={{ true: theme.accent }}
-              />
-            }
-          />
-        </Section>
+          <InfoRow label="שפה וכיוון" value={`עברית · ${diagnostics.rtl}`} last />
+        </Group>
 
-        {/* AUDIO & HAPTICS */}
-        <Section icon="🔊" title="צליל ותחושה">
-          <Row
-            label="צלילי קופה"
-            hint="צליל מכני בכל פעולה מול השקט"
-            right={
-              <Switch value={settings.sounds} onValueChange={(v) => update({ sounds: v })} trackColor={{ true: theme.accent }} />
-            }
-          />
-          <Row
-            label="עוצמת רטט"
-            last
-            right={
-              <Segmented
-                options={[
-                  { key: "off", label: "כבוי" },
-                  { key: "light", label: "עדין" },
-                  { key: "heavy", label: "חזק" },
-                ]}
-                value={settings.haptics}
-                onChange={(k) => update({ haptics: k })}
-              />
-            }
-          />
-        </Section>
-
-        {/* AUTOMATION */}
-        <Section icon="🤖" title="מנוע אוטומציה">
-          <Text style={s.autoIntro}>חוקי ״אם / אז״ פשוטים</Text>
-          {settings.automation.map((r) => (
-            <View key={r.id} style={s.ruleRow}>
-              <TouchableOpacity onPress={() => settings.removeRule(r.id)}>
-                <Text style={{ color: theme.danger, fontFamily: FONTS.bold, fontSize: 18 }}>✕</Text>
-              </TouchableOpacity>
-              <Text style={s.ruleText}>{r.label}</Text>
-            </View>
-          ))}
-          {settings.automation.length === 0 && <Text style={s.rowHint}>אין חוקים עדיין.</Text>}
-
-          <View style={s.ruleBuilder}>
-            <View style={s.ruleBuilderRow}>
-              <Segmented
-                options={[
-                  { key: "stock", label: "מלאי" },
-                  { key: "cash", label: "מזומן" },
-                ]}
-                value={ruleForm.metric}
-                onChange={(k) => setRuleForm((f) => ({ ...f, metric: k }))}
-              />
-            </View>
-            <View style={s.ruleBuilderRow}>
-              <Segmented
-                options={[
-                  { key: "lt", label: "קטן מ־" },
-                  { key: "gt", label: "גדול מ־" },
-                ]}
-                value={ruleForm.op}
-                onChange={(k) => setRuleForm((f) => ({ ...f, op: k }))}
-              />
-            </View>
-            <View style={s.ruleAddRow}>
-              <TextInput
-                style={s.ruleInput}
-                value={ruleForm.threshold}
-                onChangeText={(t) => setRuleForm((f) => ({ ...f, threshold: t.replace(/[^0-9]/g, "") }))}
-                placeholder="ערך סף"
-                placeholderTextColor={theme.textMuted}
-                keyboardType="numeric"
-                textAlign="right"
-              />
-              <TouchableOpacity style={[s.addRuleBtn, { backgroundColor: theme.accent }]} onPress={addRule}>
-                <Text style={s.addRuleText}>הוסף חוק</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Section>
-
-        {/* STORAGE HEALTH */}
-        <Section icon="💾" title="בריאות האחסון">
-          <Text style={s.storageTotal}>סה״כ בשימוש: {fmtBytes(storage.total)}</Text>
-          {storage.rows.map((r) => {
-            const pct = storage.total ? Math.round((r.bytes / storage.total) * 100) : 0;
-            return (
-              <View key={r.key} style={{ marginTop: 10 }}>
-                <View style={s.storageRow}>
-                  <Text style={s.storageKey} numberOfLines={1}>{r.key}</Text>
-                  <Text style={s.storageBytes}>{fmtBytes(r.bytes)}</Text>
-                </View>
-                <View style={s.storageBarBg}>
-                  <View style={[s.storageBarFill, { width: `${pct}%`, backgroundColor: theme.accent }]} />
-                </View>
-              </View>
-            );
-          })}
-          <TouchableOpacity style={[s.archiveBtn, { borderColor: theme.accent }]} onPress={archiveOldReports} activeOpacity={0.8}>
-            <Text style={[s.archiveText, { color: theme.accent }]}>🗄️  ארכוב דו״חות Z מעל 90 יום</Text>
-          </TouchableOpacity>
-        </Section>
-
-        <TouchableOpacity style={[s.logout, { borderColor: theme.danger }]} onPress={logout} activeOpacity={0.8}>
-          <Text style={[s.logoutText, { color: theme.danger }]}>התנתקות</Text>
+        {/* ---------- Version / easter egg ---------- */}
+        <TouchableOpacity
+          testID="version-line"
+          style={s.versionWrap}
+          onPress={onVersionPress}
+          activeOpacity={0.6}
+        >
+          <Text style={s.versionText}>{APP_VERSION}</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {toast && (
+        <Animated.View entering={FadeInUp.duration(200)} style={[s.toast, { bottom: insets.bottom + 90 }]}>
+          <Text style={s.toastText}>{toast}</Text>
+        </Animated.View>
+      )}
 
       {/* PIN set overlay */}
       <Modal visible={pinModal} animationType="slide" onRequestClose={() => setPinModal(false)}>
@@ -357,62 +467,231 @@ export default function SettingsScreen({ navigation }) {
           onSet={(pin) => {
             update({ pin });
             setPinModal(false);
-            Alert.alert("הוגדר", "נעילת הקוד הופעלה.");
+            hapticSuccess();
+            flash("נעילת הקוד הופעלה");
           }}
         />
+      </Modal>
+
+      {/* Wipe confirmation — a real dialog rather than Alert buttons, which
+          react-native-web ignores. */}
+      <Modal visible={wipeModal} transparent animationType="fade" onRequestClose={() => setWipeModal(false)}>
+        <View style={s.backdrop}>
+          <View style={s.dialog}>
+            <Text style={s.dialogTitle}>🧨 למחוק את כל הנתונים?</Text>
+            <Text style={s.dialogBody}>
+              כל המכירות, המלאי, ההקפות, הפתקים, החלומות וההעדפות יימחקו מהמכשיר. אין דרך לשחזר בלי גיבוי.
+            </Text>
+            <TouchableOpacity style={[s.dialogBtn, { backgroundColor: RED }]} onPress={wipeAll} activeOpacity={0.85}>
+              <Text style={s.dialogBtnText}>כן, מחק הכל</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.dialogBtn, { backgroundColor: BG }]}
+              onPress={() => setWipeModal(false)}
+              activeOpacity={0.85}
+            >
+              <Text style={[s.dialogBtnText, { color: INK_SOFT }]}>ביטול</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </View>
   );
 }
 
-function makeStyles(t, fs) {
-  return StyleSheet.create({
-    header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 12 },
-    menuBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: t.surface, alignItems: "center", justifyContent: "center", ...SHADOW_SM },
-    menuIcon: { fontSize: 20, color: t.textPrimary, fontFamily: FONTS.bold },
-    headerTitle: { color: t.textPrimary, fontSize: 18 * fs, fontFamily: FONTS.bold },
+/* --------------------------------------------------------------------------
+ * Grouped-list building blocks
+ * ----------------------------------------------------------------------- */
 
-    section: { marginBottom: 22 },
-    sectionTitle: { color: t.textSecondary, fontSize: 14 * fs, fontFamily: FONTS.bold, textAlign: "right", marginBottom: 8, marginHorizontal: 4 },
-    sectionCard: { backgroundColor: t.surface, borderRadius: RADIUS, padding: 16, ...SHADOW_SM },
-
-    row: { flexDirection: "row", alignItems: "center", paddingVertical: 12 },
-    rowBorder: { borderBottomWidth: 1, borderBottomColor: t.hairline },
-    rowLabel: { color: t.textPrimary, fontSize: 15 * fs, fontFamily: FONTS.medium, textAlign: "right" },
-    rowHint: { color: t.textMuted, fontSize: 12 * fs, fontFamily: FONTS.regular, textAlign: "right", marginTop: 3 },
-
-    swatchRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: t.hairline },
-    swatch: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
-    swatchActive: { borderWidth: 3, borderColor: t.textPrimary },
-    swatchCheck: { color: "#FFF", fontFamily: FONTS.bold, fontSize: 16 },
-
-    segment: { flexDirection: "row", backgroundColor: t.surfaceMuted, borderRadius: RADIUS_SM, padding: 3, gap: 3 },
-    segBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: RADIUS_SM - 2 },
-    segText: { fontSize: 13 * fs, fontFamily: FONTS.bold },
-
-    smallBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: RADIUS_SM },
-    smallBtnText: { fontSize: 13 * fs, fontFamily: FONTS.bold },
-
-    autoIntro: { color: t.textSecondary, fontSize: 13 * fs, fontFamily: FONTS.medium, textAlign: "right", marginBottom: 8 },
-    ruleRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: t.hairline },
-    ruleText: { flex: 1, color: t.textPrimary, fontSize: 13 * fs, fontFamily: FONTS.medium, textAlign: "right" },
-    ruleBuilder: { marginTop: 12, gap: 10 },
-    ruleBuilderRow: { alignItems: "flex-end" },
-    ruleAddRow: { flexDirection: "row", gap: 10, alignItems: "center" },
-    ruleInput: { flex: 1, backgroundColor: t.surfaceAlt, borderRadius: RADIUS_SM, paddingHorizontal: 14, paddingVertical: 11, color: t.textPrimary, fontFamily: FONTS.regular, fontSize: 15, borderWidth: 1, borderColor: t.hairline },
-    addRuleBtn: { paddingHorizontal: 18, paddingVertical: 12, borderRadius: RADIUS_SM },
-    addRuleText: { color: "#FFF", fontFamily: FONTS.bold, fontSize: 14 * fs },
-
-    storageTotal: { color: t.textPrimary, fontSize: 15 * fs, fontFamily: FONTS.bold, textAlign: "right" },
-    storageRow: { flexDirection: "row", justifyContent: "space-between" },
-    storageKey: { flex: 1, color: t.textSecondary, fontSize: 12 * fs, fontFamily: FONTS.medium, textAlign: "right" },
-    storageBytes: { color: t.textMuted, fontSize: 12 * fs, fontFamily: FONTS.regular, marginStart: 8 },
-    storageBarBg: { height: 7, borderRadius: 4, backgroundColor: t.surfaceMuted, marginTop: 4, overflow: "hidden" },
-    storageBarFill: { height: "100%", borderRadius: 4 },
-    archiveBtn: { marginTop: 16, borderWidth: 1.5, borderRadius: RADIUS_SM, paddingVertical: 13, alignItems: "center" },
-    archiveText: { fontSize: 14 * fs, fontFamily: FONTS.bold },
-
-    logout: { borderWidth: 1.5, borderRadius: RADIUS, paddingVertical: 15, alignItems: "center", marginTop: 6 },
-    logoutText: { fontSize: 15 * fs, fontFamily: FONTS.bold },
-  });
+function Group({ title, icon, accent, children }) {
+  return (
+    <View style={s.group}>
+      <Text style={[s.groupTitle, accent && { color: accent }]}>
+        {icon ? `${icon}  ` : ""}
+        {title}
+      </Text>
+      <View style={[s.groupCard, accent && { borderWidth: 1, borderColor: accent + "55" }]}>{children}</View>
+    </View>
+  );
 }
+
+function Divider({ last }) {
+  if (last) return null;
+  return <View style={s.divider} />;
+}
+
+function InfoRow({ label, value, last }) {
+  return (
+    <>
+      <View style={s.row}>
+        <Text style={s.rowValue} numberOfLines={1}>{value}</Text>
+        <Text style={s.rowLabel}>{label}</Text>
+      </View>
+      <Divider last={last} />
+    </>
+  );
+}
+
+function SwitchRow({ label, hint, value, onValueChange, disabled, last }) {
+  return (
+    <>
+      <View style={[s.row, disabled && { opacity: 0.45 }]}>
+        <Switch
+          value={value}
+          onValueChange={onValueChange}
+          disabled={disabled}
+          trackColor={{ false: "#DDE1E6", true: BLUE }}
+          thumbColor={WHITE}
+          ios_backgroundColor="#DDE1E6"
+          // react-native-web keeps a separate on-state thumb colour and
+          // defaults it to teal; thumbColor alone only styles the off state.
+          {...WEB_SWITCH_THUMB}
+        />
+        <View style={{ flex: 1 }}>
+          <Text style={s.rowLabel}>{label}</Text>
+          {!!hint && <Text style={s.rowHint}>{hint}</Text>}
+        </View>
+      </View>
+      <Divider last={last} />
+    </>
+  );
+}
+
+function ActionRow({ label, hint, icon, onPress, danger, actionLabel, last }) {
+  return (
+    <>
+      <TouchableOpacity style={s.row} onPress={onPress} activeOpacity={0.65}>
+        {actionLabel ? (
+          <View style={[s.actionPill, danger && { backgroundColor: RED + "18" }]}>
+            <Text style={[s.actionPillText, danger && { color: RED }]}>{actionLabel}</Text>
+          </View>
+        ) : (
+          <Text style={s.chevron}>‹</Text>
+        )}
+        <View style={{ flex: 1 }}>
+          <Text style={[s.rowLabel, danger && { color: RED }]}>{label}</Text>
+          {!!hint && <Text style={s.rowHint}>{hint}</Text>}
+        </View>
+        {!!icon && <Text style={s.rowIcon}>{icon}</Text>}
+      </TouchableOpacity>
+      <Divider last={last} />
+    </>
+  );
+}
+
+function Segment({ options, value, onChange }) {
+  return (
+    <View style={s.segment}>
+      {options.map((o) => (
+        <TouchableOpacity
+          key={o.key}
+          style={[s.segmentBtn, value === o.key && { backgroundColor: BLUE }]}
+          onPress={() => onChange(o.key)}
+          activeOpacity={0.75}
+        >
+          <Text style={[s.segmentText, value === o.key && { color: WHITE }]}>{o.label}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
+const SHADOW = {
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.05,
+  shadowRadius: 3,
+  elevation: 2,
+};
+
+const s = StyleSheet.create({
+  header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 10, gap: 10 },
+  title: { fontFamily: FONTS.bold, fontSize: 22, color: INK, textAlign: "right" },
+  subtitle: { fontFamily: FONTS.regular, fontSize: 12, color: INK_MUTED, textAlign: "right", marginTop: 2 },
+  devPill: {
+    minHeight: 38,
+    paddingHorizontal: 12,
+    borderRadius: 19,
+    backgroundColor: WHITE,
+    borderWidth: 1,
+    borderColor: GOLD,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  devPillText: { fontFamily: FONTS.bold, fontSize: 12, color: "#8A6D14" },
+
+  group: { marginBottom: 18 },
+  groupTitle: {
+    fontFamily: FONTS.bold,
+    fontSize: 13,
+    color: INK_SOFT,
+    textAlign: "right",
+    marginBottom: 8,
+    marginHorizontal: 6,
+  },
+  groupCard: { backgroundColor: WHITE, borderRadius: 16, overflow: "hidden", ...SHADOW },
+  divider: { height: 1, backgroundColor: HAIRLINE, marginStart: 16 },
+
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minHeight: 56,
+  },
+  rowLabel: { fontFamily: FONTS.semibold, fontSize: 14.5, color: INK, textAlign: "right" },
+  rowHint: { fontFamily: FONTS.regular, fontSize: 11.5, color: INK_MUTED, textAlign: "right", marginTop: 3, lineHeight: 17 },
+  rowValue: { fontFamily: FONTS.medium, fontSize: 13, color: INK_MUTED, maxWidth: "55%" },
+  rowIcon: { fontSize: 18 },
+  chevron: { fontFamily: FONTS.bold, fontSize: 20, color: "#C6CCD3", width: 12, textAlign: "center" },
+
+  fieldRow: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14, gap: 8 },
+  nameInput: {
+    backgroundColor: BG,
+    borderRadius: 12,
+    minHeight: 48,
+    paddingHorizontal: 14,
+    fontFamily: FONTS.semibold,
+    fontSize: 15,
+    color: INK,
+    ...NO_OUTLINE,
+  },
+
+  stackRow: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14, gap: 8 },
+  segment: { flexDirection: "row", backgroundColor: BG, borderRadius: 13, padding: 4, gap: 4, marginTop: 4 },
+  segmentBtn: { flex: 1, minHeight: 42, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  segmentText: { fontFamily: FONTS.semibold, fontSize: 12.5, color: INK_SOFT },
+
+  actionPill: { minHeight: 34, paddingHorizontal: 14, borderRadius: 17, backgroundColor: BG, alignItems: "center", justifyContent: "center" },
+  actionPillText: { fontFamily: FONTS.bold, fontSize: 12.5, color: BLUE },
+
+  storageHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  storageTotal: { fontFamily: FONTS.bold, fontSize: 16, color: BLUE },
+  storageRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  storageKey: { flex: 1, fontFamily: FONTS.medium, fontSize: 12, color: INK_SOFT, textAlign: "right" },
+  storageBytes: { fontFamily: FONTS.regular, fontSize: 11, color: INK_MUTED },
+  barBg: { height: 6, borderRadius: 3, backgroundColor: BG, marginTop: 5, overflow: "hidden" },
+  barFill: { height: "100%", borderRadius: 3, backgroundColor: BLUE },
+
+  versionWrap: { paddingVertical: 22, alignItems: "center" },
+  versionText: { fontFamily: FONTS.regular, fontSize: 11.5, color: INK_MUTED, textAlign: "center" },
+
+  toast: {
+    position: "absolute",
+    alignSelf: "center",
+    backgroundColor: INK,
+    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    maxWidth: "88%",
+  },
+  toastText: { fontFamily: FONTS.semibold, fontSize: 13, color: WHITE, textAlign: "center" },
+
+  backdrop: { flex: 1, backgroundColor: "rgba(16,20,26,0.5)", alignItems: "center", justifyContent: "center", padding: 24 },
+  dialog: { width: "100%", backgroundColor: WHITE, borderRadius: 20, padding: 20, gap: 10 },
+  dialogTitle: { fontFamily: FONTS.bold, fontSize: 17, color: INK, textAlign: "right" },
+  dialogBody: { fontFamily: FONTS.regular, fontSize: 13, color: INK_SOFT, textAlign: "right", lineHeight: 20, marginBottom: 6 },
+  dialogBtn: { minHeight: 50, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  dialogBtnText: { fontFamily: FONTS.bold, fontSize: 14.5, color: WHITE },
+});
