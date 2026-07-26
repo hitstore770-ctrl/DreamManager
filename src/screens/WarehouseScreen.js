@@ -13,12 +13,12 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 // category color tag, cost/sell prices. The ⚙️ FAB opens the Pro Tools sheet.
 
 const WHITE = "#FFFFFF";
-const CARD = "#F0F2F5";
-const INK = "#1A1D21";
-const INK_MUTED = "#9AA4B0";
-const BLUE = "#003366";
-const RED = "#E14848";
-const GREEN = "#34C759";
+const CARD = "#F9FAFC";
+const INK = "#111827";
+const INK_MUTED = "#9CA3AF";
+const BLUE = "#7C3AED";
+const RED = "#EF4444";
+const GREEN = "#10B981";
 
 const EMPTY_FORM = { name: "", cost: "", price: "", qty: "", category: CATEGORIES[0].key };
 
@@ -228,9 +228,9 @@ export default function WarehouseScreen({ onGoToPos }) {
 
 const SHADOW = {
   shadowColor: "#000",
-  shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.06,
+  shadowRadius: 18,
   elevation: 2,
 };
 
@@ -259,7 +259,7 @@ const s = StyleSheet.create({
   },
   addBtnText: { fontFamily: FONTS.bold, fontSize: 15, color: BLUE },
 
-  formCard: { backgroundColor: CARD, borderRadius: 16, padding: 12, gap: 8, marginBottom: 10, ...SHADOW },
+  formCard: { backgroundColor: CARD, borderRadius: 28, padding: 12, gap: 8, marginBottom: 10, ...SHADOW },
   input: {
     minHeight: 48,
     backgroundColor: WHITE,
@@ -309,5 +309,5 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  restockText: { fontFamily: FONTS.bold, fontSize: 14, color: "#1E9E58" },
+  restockText: { fontFamily: FONTS.bold, fontSize: 14, color: "#10B981" },
 });

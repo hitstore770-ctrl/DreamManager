@@ -24,7 +24,7 @@ import { doc, setDoc } from "firebase/firestore";
 
 import Bounce from "../components/Bounce";
 import Icon from "../components/Icon";
-import { SCREEN_IN } from "../utils/motion";
+import { FLUID, SCREEN_IN, listEntry } from "../utils/motion";
 import PinLock from "../components/PinLock";
 import { db, isFirebaseConfigured } from "../config/firebaseConfig";
 import { useAuth } from "../context/AuthContext";
@@ -42,14 +42,14 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 // group that renders above everything else.
 
 const WHITE = "#FFFFFF";
-const BG = "#F0F2F5";
-const INK = "#1A1D21";
-const INK_SOFT = "#5A6470";
-const INK_MUTED = "#9AA4B0";
-const BLUE = "#003366";
-const GOLD = "#D4AF37";
-const RED = "#E14848";
-const HAIRLINE = "#ECEEF1";
+const BG = "#F9FAFC";
+const INK = "#111827";
+const INK_SOFT = "#4B5563";
+const INK_MUTED = "#9CA3AF";
+const BLUE = "#7C3AED";
+const GOLD = "#06B6D4";
+const RED = "#EF4444";
+const HAIRLINE = "#EEF1F6";
 
 const APP_VERSION = "Version 1.0.0 (Build 770) - Made in Beitar Illit";
 const TAPS_TO_UNLOCK = 7;
@@ -1013,7 +1013,7 @@ export default function SettingsScreen() {
 // Sections stagger in when the tab mounts.
 function Section({ index = 0, children }) {
   return (
-    <Animated.View entering={FadeInDown.delay(index * 70).duration(340)} layout={LinearTransition.springify()}>
+    <Animated.View entering={listEntry(index, 90)} layout={FLUID}>
       {children}
     </Animated.View>
   );
@@ -1062,9 +1062,9 @@ function SwitchRow({ label, hint, icon, value, onValueChange, disabled, last, bo
           value={value}
           onValueChange={onValueChange}
           disabled={disabled}
-          trackColor={{ false: "#DDE1E6", true: BLUE }}
+          trackColor={{ false: "#E5E9F0", true: BLUE }}
           thumbColor={WHITE}
-          ios_backgroundColor="#DDE1E6"
+          ios_backgroundColor="#E5E9F0"
           // react-native-web keeps a separate on-state thumb colour and
           // defaults it to teal; thumbColor alone only styles the off state.
           {...WEB_SWITCH_THUMB}
@@ -1078,7 +1078,7 @@ function SwitchRow({ label, hint, icon, value, onValueChange, disabled, last, bo
 function ActionRow({ label, hint, icon, onPress, danger, actionLabel, last, bounds, compact }) {
   return (
     <>
-      <TouchableOpacity style={[s.row, compact && s.rowCompact, bounds]} onPress={onPress} activeOpacity={0.65}>
+      <Bounce style={[s.row, compact && s.rowCompact, bounds]} onPress={onPress} scaleTo={0.97}>
         <Text style={s.rowIcon}>{icon || "•"}</Text>
         <View style={{ flex: 1 }}>
           <Text style={[s.rowLabel, danger && { color: RED }]}>{label}</Text>
@@ -1091,7 +1091,7 @@ function ActionRow({ label, hint, icon, onPress, danger, actionLabel, last, boun
         ) : (
           <Text style={s.chevron}>‹</Text>
         )}
-      </TouchableOpacity>
+      </Bounce>
       <Divider last={last} />
     </>
   );
@@ -1101,15 +1101,14 @@ function Segment({ options, value, onChange, disabled, bounds }) {
   return (
     <View style={[s.segment, bounds]}>
       {options.map((o) => (
-        <TouchableOpacity
+        <Bounce
           key={o.key}
           testID={`seg-${o.key}`}
           style={[s.segmentBtn, bounds, value === o.key && { backgroundColor: BLUE }]}
           onPress={() => !disabled && onChange(o.key)}
-          activeOpacity={disabled ? 1 : 0.75}
         >
           <Text style={[s.segmentText, value === o.key && { color: WHITE }]}>{o.label}</Text>
-        </TouchableOpacity>
+        </Bounce>
       ))}
     </View>
   );
@@ -1117,9 +1116,9 @@ function Segment({ options, value, onChange, disabled, bounds }) {
 
 const SHADOW = {
   shadowColor: "#000",
-  shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.06,
+  shadowRadius: 18,
   elevation: 2,
 };
 
@@ -1150,7 +1149,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  devPillText: { fontFamily: FONTS.bold, fontSize: 12, color: "#8A6D14" },
+  devPillText: { fontFamily: FONTS.bold, fontSize: 12, color: "#0E7490" },
 
   group: { marginBottom: 18 },
   groupTitle: {
@@ -1161,7 +1160,7 @@ const s = StyleSheet.create({
     marginBottom: 8,
     marginHorizontal: 6,
   },
-  groupCard: { backgroundColor: WHITE, borderRadius: 18, overflow: "hidden", ...SHADOW },
+  groupCard: { backgroundColor: WHITE, borderRadius: 28, overflow: "hidden", ...SHADOW },
   divider: { height: 1, backgroundColor: HAIRLINE, marginStart: 16 },
 
   // I18nManager.isRTL is false on web, so a plain "row" would mirror the whole
@@ -1180,7 +1179,7 @@ const s = StyleSheet.create({
   rowHint: { fontFamily: FONTS.regular, fontSize: 11.5, color: INK_MUTED, textAlign: "right", marginTop: 3, lineHeight: 17 },
   rowValue: { fontFamily: FONTS.medium, fontSize: 13, color: INK_MUTED, maxWidth: "55%" },
   rowIcon: { fontSize: 18 },
-  chevron: { fontFamily: FONTS.bold, fontSize: 20, color: "#C6CCD3", width: 12, textAlign: "center" },
+  chevron: { fontFamily: FONTS.bold, fontSize: 20, color: "#D6DBE5", width: 12, textAlign: "center" },
 
   fieldRow: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14, gap: 8 },
   nameInput: {
@@ -1241,7 +1240,19 @@ const s = StyleSheet.create({
 
   dangerWrap: { padding: 16, gap: 12 },
   dangerText: { fontFamily: FONTS.regular, fontSize: 12.5, color: INK_SOFT, textAlign: "right", lineHeight: 19 },
-  dangerBtn: { minHeight: 54, borderRadius: 14, backgroundColor: RED, alignItems: "center", justifyContent: "center" },
+  dangerBtn: {
+    minHeight: 54,
+    borderRadius: 24,
+    backgroundColor: RED,
+    alignItems: "center",
+    justifyContent: "center",
+    // Destructive action gets its own red halo.
+    shadowColor: RED,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.32,
+    shadowRadius: 20,
+    elevation: 8,
+  },
   dangerBtnText: { fontFamily: FONTS.bold, fontSize: 15.5, color: WHITE },
 
   // Developer "render layout bounds" overlay.
@@ -1254,7 +1265,7 @@ const s = StyleSheet.create({
     position: "absolute",
     alignSelf: "center",
     backgroundColor: INK,
-    borderRadius: 20,
+    borderRadius: 28,
     paddingHorizontal: 18,
     paddingVertical: 11,
     maxWidth: "88%",
@@ -1262,7 +1273,7 @@ const s = StyleSheet.create({
   toastText: { fontFamily: FONTS.semibold, fontSize: 13, color: WHITE, textAlign: "center" },
 
   backdrop: { flex: 1, backgroundColor: "rgba(16,20,26,0.5)", alignItems: "center", justifyContent: "center", padding: 24 },
-  dialog: { width: "100%", backgroundColor: WHITE, borderRadius: 20, padding: 20, gap: 10 },
+  dialog: { width: "100%", backgroundColor: WHITE, borderRadius: 28, padding: 20, gap: 10 },
   dialogTitle: { fontFamily: FONTS.bold, fontSize: 17, color: INK, textAlign: "right" },
   dialogBody: { fontFamily: FONTS.regular, fontSize: 13, color: INK_SOFT, textAlign: "right", lineHeight: 20, marginBottom: 6 },
   dialogBtn: { minHeight: 50, borderRadius: 14, alignItems: "center", justifyContent: "center" },

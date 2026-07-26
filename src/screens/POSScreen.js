@@ -32,13 +32,13 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 // ---------------------------------------------------------------------------
 
 const WHITE = "#FFFFFF";
-const CARD = "#F0F2F5";
-const GREEN = "#34C759";
-const INK = "#1A1D21";
-const INK_SOFT = "#5A6470";
-const INK_MUTED = "#9AA4B0";
-const BLUE = "#003366";
-const RED = "#E14848";
+const CARD = "#F9FAFC";
+const GREEN = "#10B981";
+const INK = "#111827";
+const INK_SOFT = "#4B5563";
+const INK_MUTED = "#9CA3AF";
+const BLUE = "#7C3AED";
+const RED = "#EF4444";
 const RED_SOFT = "#FDEBEB";
 
 // Quick-add products for the print/delivery counter. Prices in ₪.
@@ -420,7 +420,7 @@ export default function POSScreen() {
         contentContainerStyle={s.productRailContent}
       >
         {activePromos.map((p) => (
-          <TouchableOpacity
+          <Bounce
             key={p.id}
             style={[s.productChip, s.promoChip]}
             onPress={() => addItem(p.name, p.price)}
@@ -429,14 +429,14 @@ export default function POSScreen() {
             <Text style={s.productEmoji}>{p.emoji}</Text>
             <Text style={s.productName} numberOfLines={1}>{p.name}</Text>
             <Text style={[s.productPrice, { color: "#A8871F" }]}>{shekel(p.price)}</Text>
-          </TouchableOpacity>
+          </Bounce>
         ))}
         {PRODUCTS.map((p) => (
-          <TouchableOpacity key={p.name} style={s.productChip} onPress={() => addItem(p.name, p.price)} activeOpacity={0.75}>
+          <Bounce key={p.name} style={s.productChip} onPress={() => addItem(p.name, p.price)}>
             <Text style={s.productEmoji}>{p.emoji}</Text>
             <Text style={s.productName} numberOfLines={1}>{p.name}</Text>
             <Text style={s.productPrice}>{shekel(p.price)}</Text>
-          </TouchableOpacity>
+          </Bounce>
         ))}
       </ScrollView>
 
@@ -594,10 +594,10 @@ export default function POSScreen() {
                 </View>
                 {/* The headline number: exact change, impossible to misread */}
                 <View style={[s.changeBox, { backgroundColor: change >= 0 ? GREEN + "1A" : RED_SOFT }]}>
-                  <Text style={[s.changeValue, { color: change >= 0 ? "#1E9E58" : RED }]}>
+                  <Text style={[s.changeValue, { color: change >= 0 ? "#10B981" : RED }]}>
                     {change >= 0 ? shekel(Math.round(change * 100) / 100) : shekel(Math.round(-change * 100) / 100)}
                   </Text>
-                  <Text style={[s.changeLabel, { color: change >= 0 ? "#1E9E58" : RED }]}>
+                  <Text style={[s.changeLabel, { color: change >= 0 ? "#10B981" : RED }]}>
                     {change >= 0 ? "עודף להחזרה" : "חסר לתשלום"}
                   </Text>
                 </View>
@@ -745,9 +745,9 @@ export default function POSScreen() {
 
 const SHADOW = {
   shadowColor: "#000",
-  shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.06,
+  shadowRadius: 18,
   elevation: 2,
 };
 
@@ -790,7 +790,7 @@ const s = StyleSheet.create({
   productEmoji: { fontSize: 18 },
   productName: { fontFamily: FONTS.semibold, fontSize: 11, color: INK, marginTop: 2, maxWidth: 96 },
   productPrice: { fontFamily: FONTS.bold, fontSize: 11, color: BLUE, marginTop: 1 },
-  promoChip: { backgroundColor: "#D4AF3722" },
+  promoChip: { backgroundColor: "#06B6D422" },
 
   lastTxPill: {
     position: "absolute",
@@ -801,11 +801,11 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     backgroundColor: WHITE,
-    borderRadius: 20,
+    borderRadius: 28,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderWidth: 1,
-    borderColor: "#EAEAEA",
+    borderColor: "#EEF1F6",
     ...SHADOW,
   },
   lastTxText: { fontFamily: FONTS.medium, fontSize: 12, color: INK_SOFT },
@@ -841,7 +841,7 @@ const s = StyleSheet.create({
   stepBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 28,
     backgroundColor: WHITE,
     alignItems: "center",
     justifyContent: "center",
@@ -854,7 +854,7 @@ const s = StyleSheet.create({
   expressNote: { fontFamily: FONTS.medium, fontSize: 11, color: INK_MUTED, textAlign: "center", marginBottom: 4 },
   entryBox: {
     backgroundColor: CARD,
-    borderRadius: 16,
+    borderRadius: 28,
     paddingVertical: 10,
     alignItems: "center",
     marginBottom: 8,
@@ -995,7 +995,7 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   cashAddChipText: { fontFamily: FONTS.bold, fontSize: 15, color: BLUE },
-  changeBox: { borderRadius: 16, alignItems: "center", paddingVertical: 14, marginBottom: 14 },
+  changeBox: { borderRadius: 28, alignItems: "center", paddingVertical: 14, marginBottom: 14 },
   changeValue: { fontFamily: FONTS.bold, fontSize: 36 },
   changeLabel: { fontFamily: FONTS.semibold, fontSize: 13, marginTop: 2 },
   cashClose: {
@@ -1047,7 +1047,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     backgroundColor: WHITE,
     borderTopWidth: 1,
-    borderTopColor: "#EEF0F3",
+    borderTopColor: "#EEF1F6",
   },
   totalBlock: { alignItems: "flex-end", minWidth: 110 },
   totalLabel: { fontFamily: FONTS.regular, fontSize: 12, color: INK_MUTED },
@@ -1055,9 +1055,15 @@ const s = StyleSheet.create({
   chargeBtn: {
     flexDirection: "row",
     gap: 10,
+    // The charge button carries its own coloured halo.
+    shadowColor: GREEN,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    elevation: 8,
     flex: 1,
     height: 56,
-    borderRadius: 18,
+    borderRadius: 28,
     backgroundColor: GREEN,
     alignItems: "center",
     justifyContent: "center",

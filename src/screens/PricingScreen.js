@@ -11,13 +11,13 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 // Profit is color-coded: green above 30% of cost, red below 10%.
 
 const WHITE = "#FFFFFF";
-const CARD = "#F0F2F5";
-const INK = "#1A1D21";
-const INK_SOFT = "#5A6470";
-const INK_MUTED = "#9AA4B0";
-const BLUE = "#003366";
-const GREEN_DARK = "#1E9E58";
-const RED = "#E14848";
+const CARD = "#F9FAFC";
+const INK = "#111827";
+const INK_SOFT = "#4B5563";
+const INK_MUTED = "#9CA3AF";
+const BLUE = "#7C3AED";
+const GREEN_DARK = "#10B981";
+const RED = "#EF4444";
 const AMBER = "#B8791A";
 
 // Defined at module level (not inside the screen) so its identity is stable
@@ -136,9 +136,9 @@ export default function PricingScreen() {
 
 const SHADOW = {
   shadowColor: "#000",
-  shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.06,
+  shadowRadius: 18,
   elevation: 2,
 };
 
@@ -150,7 +150,7 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: CARD,
-    borderRadius: 16,
+    borderRadius: 28,
     paddingHorizontal: 12,
     minHeight: 56,
     ...SHADOW,
@@ -158,19 +158,19 @@ const s = StyleSheet.create({
   fieldSuffix: { fontFamily: FONTS.bold, fontSize: 16, color: INK_MUTED },
   fieldInput: { flex: 1, fontFamily: FONTS.bold, fontSize: 22, color: INK, minHeight: 56 },
 
-  segment: { flexDirection: "row", backgroundColor: CARD, borderRadius: 16, padding: 4, marginBottom: 10, ...SHADOW },
+  segment: { flexDirection: "row", backgroundColor: CARD, borderRadius: 28, padding: 4, marginBottom: 10, ...SHADOW },
   segmentBtn: { flex: 1, minHeight: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   segmentActive: { backgroundColor: BLUE },
   segmentText: { fontFamily: FONTS.semibold, fontSize: 13, color: INK_SOFT },
 
-  resultCard: { backgroundColor: CARD, borderRadius: 20, padding: 16, marginTop: 4, ...SHADOW },
+  resultCard: { backgroundColor: CARD, borderRadius: 28, padding: 16, marginTop: 4, ...SHADOW },
   resultRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 36 },
   resultLabel: { fontFamily: FONTS.medium, fontSize: 13, color: INK_SOFT },
   resultValueSmall: { fontFamily: FONTS.bold, fontSize: 16, color: INK },
   hr: { height: 1, backgroundColor: "#E7EAEE", marginVertical: 8 },
   resultHero: { alignItems: "center", paddingVertical: 8 },
   sellValue: { fontFamily: FONTS.bold, fontSize: 38, color: BLUE },
-  profitBox: { borderRadius: 16, alignItems: "center", paddingVertical: 12, marginTop: 10, backgroundColor: WHITE },
+  profitBox: { borderRadius: 28, alignItems: "center", paddingVertical: 12, marginTop: 10, backgroundColor: WHITE },
   profitValue: { fontFamily: FONTS.bold, fontSize: 26 },
   profitLabel: { fontFamily: FONTS.semibold, fontSize: 12, marginTop: 2 },
   roundHint: { fontFamily: FONTS.semibold, fontSize: 13, color: INK_SOFT, textAlign: "center", marginTop: 10 },

@@ -7,7 +7,7 @@
 export const CATEGORIES = [
   { key: "electronics", label: "אלקטרוניקה", color: "#1B3A6B" },
   { key: "snacks", label: "חטיפים", color: "#F4B400" },
-  { key: "print", label: "חומרי הדפסה", color: "#1E9E58" },
+  { key: "print", label: "חומרי הדפסה", color: "#10B981" },
 ];
 
 // Below this quantity an item is flagged low-stock (red border).

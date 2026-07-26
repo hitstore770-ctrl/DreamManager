@@ -20,13 +20,13 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 // tool suite show up here untouched.
 
 const WHITE = "#FFFFFF";
-const CARD = "#F0F2F5";
-const INK = "#1A1D21";
-const INK_SOFT = "#5A6470";
-const INK_MUTED = "#9AA4B0";
-const BLUE = "#003366";
-const RED = "#E14848";
-const GREEN_DARK = "#1E9E58";
+const CARD = "#F9FAFC";
+const INK = "#111827";
+const INK_SOFT = "#4B5563";
+const INK_MUTED = "#9CA3AF";
+const BLUE = "#7C3AED";
+const RED = "#EF4444";
+const GREEN_DARK = "#10B981";
 
 const balanceOf = (d) => Math.max(0, (Number(d.owed) || 0) - (Number(d.paid) || 0));
 
@@ -233,9 +233,9 @@ export default function DebtsScreen() {
 
 const SHADOW = {
   shadowColor: "#000",
-  shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.06,
+  shadowRadius: 18,
   elevation: 2,
 };
 
@@ -247,7 +247,7 @@ const s = StyleSheet.create({
     marginHorizontal: 14,
     marginTop: 8,
     backgroundColor: CARD,
-    borderRadius: 16,
+    borderRadius: 28,
     paddingHorizontal: 16,
     minHeight: 56,
     ...SHADOW,
@@ -263,7 +263,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     backgroundColor: CARD,
-    borderRadius: 16,
+    borderRadius: 28,
     paddingHorizontal: 12,
     paddingVertical: 10,
     marginBottom: 8,

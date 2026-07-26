@@ -15,8 +15,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
 
+import Pulse from "../components/Pulse";
+import Bounce from "../components/Bounce";
 import Icon from "../components/Icon";
-import { SCREEN_IN } from "../utils/motion";
+import { SCREEN_IN, listEntry } from "../utils/motion";
 import PinLock from "../components/PinLock";
 import { useNotes } from "../context/NotesContext";
 import { useSettings } from "../context/SettingsContext";
@@ -33,9 +35,9 @@ import { RADIUS, RADIUS_SM } from "../utils/theme";
 import { usePersistentState } from "../utils/usePersistentState";
 
 // Hub surface: white cards on soft grey, per the Phase 2 spec.
-const BLUE_TITLE = "#003366";
-const GOLD_HDR = "#D4AF37";
-const HUB_BG = "#F0F2F5";
+const BLUE_TITLE = "#7C3AED";
+const GOLD_HDR = "#06B6D4";
+const HUB_BG = "#F9FAFC";
 
 // Rough reading-time estimate at ~200 words/min (min 1 minute).
 function readTime(note) {
@@ -55,7 +57,7 @@ function fmtUpdated(ts) {
 }
 
 // Stable per-tag pill color derived from the tag text.
-const TAG_COLORS = ["#3E7BD6", "#1E9E58", "#B05AC4", "#D4952C", "#E8635A"];
+const TAG_COLORS = ["#3E7BD6", "#10B981", "#B05AC4", "#D4952C", "#E8635A"];
 function tagColor(tag) {
   let h = 0;
   for (let i = 0; i < tag.length; i++) h = (h * 31 + tag.charCodeAt(i)) >>> 0;
@@ -305,13 +307,14 @@ export default function NotesHubScreen({ navigation }) {
       </ScrollView>
 
       {/* FAB */}
-      <TouchableOpacity
-        style={[s.fab, { bottom: insets.bottom + 24 }, I18nManager.isRTL ? { left: 22 } : { right: 22 }]}
-        activeOpacity={0.85}
+      <Pulse style={[s.fabPulse, { bottom: insets.bottom + 96 }, I18nManager.isRTL ? { left: 22 } : { right: 22 }]}>
+      <Bounce
+        style={s.fab}
         onPress={() => createNote({})}
       >
         <Text style={s.fabIcon}>+</Text>
-      </TouchableOpacity>
+      </Bounce>
+      </Pulse>
 
       {/* Toolbox sheet */}
       <Sheet visible={toolbox} onClose={() => setToolbox(false)} theme={theme} title="🧰 ארגז הכלים של הפנקס">
@@ -421,7 +424,7 @@ function NoteCard({ note, index, theme, styles, onOpen, onLong, onDelete }) {
   );
 
   return (
-    <Animated.View entering={FadeInDown.delay(Math.min(index * 40, 320)).duration(240)}>
+    <Animated.View entering={listEntry(index)}>
       <Swipeable
         renderRightActions={renderRightActions}
         onSwipeableOpen={() => onDelete()}
@@ -520,7 +523,7 @@ function makeStyles(t, fs) {
     // stretches the filter chips into full-height bars.
     tagRowScroll: { flexGrow: 0, marginBottom: 8 },
     tagRow: { paddingHorizontal: 14, gap: 8, alignItems: "center" },
-    tag: { height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: t.surface, borderWidth: 1, borderColor: t.hairline, alignItems: "center", justifyContent: "center" },
+    tag: { height: 36, paddingHorizontal: 14, borderRadius: 28, backgroundColor: t.surface, borderWidth: 1, borderColor: t.hairline, alignItems: "center", justifyContent: "center" },
     tagText: { fontSize: 13 * fs, fontFamily: FONTS.semibold },
     grid: { flexDirection: "row", flexWrap: "wrap" },
     masonry: { flexDirection: "row", gap: 10, alignItems: "flex-start" },
@@ -546,7 +549,15 @@ function makeStyles(t, fs) {
     deleteIcon: { fontSize: 22 },
     deleteLabel: { color: "#FFF", fontFamily: FONTS.bold, fontSize: 12, marginTop: 2 },
     empty: { color: t.textMuted, fontSize: 14 * fs, fontFamily: FONTS.regular, textAlign: "center", marginTop: 50, paddingHorizontal: 30, lineHeight: 22 },
-    fab: { position: "absolute", width: 64, height: 64, borderRadius: 32, backgroundColor: t.accent, alignItems: "center", justifyContent: "center", ...SHADOW },
+    fabPulse: {
+      position: "absolute",
+      borderRadius: 34,
+      shadowColor: "#7C3AED",
+      shadowOffset: { width: 0, height: 10 },
+      shadowRadius: 22,
+      elevation: 10,
+    },
+    fab: { width: 64, height: 64, borderRadius: 32, backgroundColor: t.accent, alignItems: "center", justifyContent: "center" },
     fabIcon: { color: "#FFF", fontSize: 34, fontFamily: FONTS.bold, marginTop: -4 },
     toolCard: { width: "29.33%", margin: "2%", aspectRatio: 1, borderRadius: RADIUS, alignItems: "center", justifyContent: "center", padding: 8 },
     toolEmoji: { fontSize: 28, marginBottom: 8 },

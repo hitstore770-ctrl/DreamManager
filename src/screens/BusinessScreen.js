@@ -3,8 +3,9 @@ import { I18nManager, ScrollView, StyleSheet, Text, TouchableOpacity, View } fro
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
+import Bounce from "../components/Bounce";
 import Icon from "../components/Icon";
-import { SCREEN_IN } from "../utils/motion";
+import { FLUID, SCREEN_IN } from "../utils/motion";
 import { BusinessProvider } from "../context/BusinessContext";
 import BizDashboardScreen from "./BizDashboardScreen";
 import DebtsScreen from "./DebtsScreen";
@@ -20,13 +21,13 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 // POS, Warehouse, customer tabs, Z-report, promos, pricing and the dashboard
 // (ספקים remains the one scaffold).
 
-const INK_SOFT_PILL = "#5A6470";
-const BLUE_ACCENT = "#003366";
+const INK_SOFT_PILL = "#4B5563";
+const BLUE_ACCENT = "#7C3AED";
 const WHITE = "#FFFFFF";
-const CARD = "#F0F2F5";
-const INK = "#1A1D21";
-const INK_MUTED = "#9AA4B0";
-const BLUE = "#003366";
+const CARD = "#F9FAFC";
+const INK = "#111827";
+const INK_MUTED = "#9CA3AF";
+const BLUE = "#7C3AED";
 
 const MODULES = [
   { key: "pos", label: "קופה", icon: "shopping-cart" },
@@ -98,15 +99,14 @@ function BusinessShell() {
         {MODULES.map((m) => {
           const active = module === m.key;
           return (
-            <TouchableOpacity
+            <Bounce
               key={m.key}
               style={[s.pill, active && s.pillActive]}
               onPress={() => switchTo(m.key)}
-              activeOpacity={0.7}
             >
               <Icon name={m.icon} size={15} color={active ? WHITE : INK_SOFT_PILL} />
               <Text style={[s.pillText, active && { color: WHITE }]}>{m.label}</Text>
-            </TouchableOpacity>
+            </Bounce>
           );
         })}
       </ScrollView>
@@ -143,9 +143,9 @@ const s = StyleSheet.create({
   pillActive: {
     backgroundColor: BLUE,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 18,
     elevation: 2,
   },
   pillText: { fontFamily: FONTS.semibold, fontSize: 13, color: INK },
@@ -161,6 +161,6 @@ const s = StyleSheet.create({
     marginBottom: 16,
   },
   scaffoldTitle: { fontFamily: FONTS.bold, fontSize: 20, color: INK, marginBottom: 10 },
-  scaffoldPill: { backgroundColor: BLUE + "12", borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 },
+  scaffoldPill: { backgroundColor: BLUE + "12", borderRadius: 28, paddingHorizontal: 16, paddingVertical: 8 },
   scaffoldPillText: { fontFamily: FONTS.bold, fontSize: 13, color: BLUE },
 });

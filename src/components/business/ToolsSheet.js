@@ -7,12 +7,12 @@ import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
 // rows/sub-views inside it.
 
 const WHITE = "#FFFFFF";
-const CARD = "#F0F2F5";
-const INK = "#1A1D21";
-const INK_SOFT = "#5A6470";
-const INK_MUTED = "#9AA4B0";
-const BLUE = "#003366";
-const RED = "#E14848";
+const CARD = "#F9FAFC";
+const INK = "#111827";
+const INK_SOFT = "#4B5563";
+const INK_MUTED = "#9CA3AF";
+const BLUE = "#7C3AED";
+const RED = "#EF4444";
 
 export function ToolsFab({ onPress, style }) {
   return (
@@ -72,7 +72,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#EAEAEA",
+    borderColor: "#EEF1F6",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.1,
@@ -89,7 +89,7 @@ const s = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 22,
   },
-  grabber: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: "#E3E6EA", marginBottom: 10 },
+  grabber: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: "#EEF1F6", marginBottom: 10 },
   title: { fontFamily: FONTS.bold, fontSize: 17, color: INK, textAlign: "right", marginBottom: 10 },
 
   row: {

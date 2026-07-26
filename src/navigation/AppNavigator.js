@@ -1,3 +1,4 @@
+import { View } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
@@ -11,7 +12,7 @@ import DreamsScreen from "../screens/DreamsScreen";
 import ToolsScreen from "../screens/ToolsScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import { FONTS } from "../utils/theme";
-import { UI } from "../utils/ui";
+import { UI, glow } from "../utils/ui";
 
 const RootStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -35,25 +36,46 @@ const TAB_LABEL = {
   Settings: "הגדרות",
 };
 
+const ACTIVE_CHIP = {
+  minWidth: 46,
+  height: 30,
+  borderRadius: 15,
+  alignItems: "center",
+  justifyContent: "center",
+  backgroundColor: UI.violet + "16",
+};
+const INACTIVE_CHIP = { minWidth: 46, height: 30, alignItems: "center", justifyContent: "center" };
+
 function MainTabs() {
   return (
     <Tab.Navigator
       initialRouteName="Notes"
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: UI.blue,
+        tabBarActiveTintColor: UI.violet,
         tabBarInactiveTintColor: UI.inkMuted,
+        // Floating glass bar: detached from the edges, translucent, and lit by
+        // a violet halo instead of a hairline.
         tabBarStyle: {
-          backgroundColor: UI.surface,
-          borderTopColor: UI.hairline,
-          borderTopWidth: 1,
-          height: 68,
-          paddingTop: 8,
-          paddingBottom: 10,
+          position: "absolute",
+          left: 14,
+          right: 14,
+          bottom: 14,
+          height: 72,
+          paddingTop: 10,
+          paddingBottom: 12,
+          borderRadius: UI.radius,
+          backgroundColor: UI.glass,
+          borderTopWidth: 0,
+          ...glow(UI.violet, 0.18),
         },
-        tabBarLabelStyle: { fontFamily: FONTS.medium, fontSize: 11, marginTop: 2 },
+        tabBarItemStyle: { borderRadius: UI.radiusSm },
+        tabBarLabelStyle: { fontFamily: FONTS.medium, fontSize: 10.5, marginTop: 3 },
         tabBarIcon: ({ focused }) => (
-          <Icon name={TAB_ICON[route.name]} size={22} color={focused ? UI.blue : UI.inkMuted} />
+          // The active tab sits in a vibrant tinted chip.
+          <View style={focused ? ACTIVE_CHIP : INACTIVE_CHIP}>
+            <Icon name={TAB_ICON[route.name]} size={21} color={focused ? UI.violet : UI.inkMuted} />
+          </View>
         ),
         tabBarLabel: TAB_LABEL[route.name],
       })}

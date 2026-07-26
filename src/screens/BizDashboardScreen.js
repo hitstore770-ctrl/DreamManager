@@ -11,11 +11,11 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 // from 0 with a small stagger, growing bottom-up.
 
 const WHITE = "#FFFFFF";
-const CARD = "#F0F2F5";
-const INK = "#1A1D21";
-const INK_SOFT = "#5A6470";
-const INK_MUTED = "#9AA4B0";
-const BLUE = "#003366";
+const CARD = "#F9FAFC";
+const INK = "#111827";
+const INK_SOFT = "#4B5563";
+const INK_MUTED = "#9CA3AF";
+const BLUE = "#7C3AED";
 
 const CHART_H = 140;
 const DAY_LETTERS = ["א", "ב", "ג", "ד", "ה", "ו", "ש"];
@@ -148,16 +148,16 @@ export default function BizDashboardScreen() {
 
 const SHADOW = {
   shadowColor: "#000",
-  shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.06,
+  shadowRadius: 18,
   elevation: 2,
 };
 
 const s = StyleSheet.create({
   heroCard: {
     backgroundColor: CARD,
-    borderRadius: 20,
+    borderRadius: 28,
     alignItems: "center",
     paddingVertical: 24,
     marginBottom: 10,
@@ -170,7 +170,7 @@ const s = StyleSheet.create({
   statCard: {
     flex: 1,
     backgroundColor: CARD,
-    borderRadius: 16,
+    borderRadius: 28,
     alignItems: "center",
     paddingVertical: 16,
     paddingHorizontal: 10,
@@ -179,7 +179,7 @@ const s = StyleSheet.create({
   statValue: { fontFamily: FONTS.bold, fontSize: 15, color: INK, maxWidth: "100%" },
   statLabel: { fontFamily: FONTS.regular, fontSize: 11, color: INK_MUTED, marginTop: 3 },
 
-  chartCard: { backgroundColor: CARD, borderRadius: 20, padding: 16, ...SHADOW },
+  chartCard: { backgroundColor: CARD, borderRadius: 28, padding: 16, ...SHADOW },
   chartTitle: { fontFamily: FONTS.semibold, fontSize: 14, color: INK_SOFT, textAlign: "right", marginBottom: 12 },
   chartArea: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between" },
   barCol: { flex: 1, alignItems: "center" },

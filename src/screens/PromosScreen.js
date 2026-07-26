@@ -11,12 +11,12 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 // rail. The two starter bundles are seeded by BusinessProvider.
 
 const WHITE = "#FFFFFF";
-const CARD = "#F0F2F5";
-const INK = "#1A1D21";
-const INK_SOFT = "#5A6470";
-const INK_MUTED = "#9AA4B0";
-const BLUE = "#003366";
-const GOLD = "#D4AF37";
+const CARD = "#F9FAFC";
+const INK = "#111827";
+const INK_SOFT = "#4B5563";
+const INK_MUTED = "#9CA3AF";
+const BLUE = "#7C3AED";
+const GOLD = "#06B6D4";
 
 export default function PromosScreen() {
   const { promos, setPromos } = useBusiness();
@@ -119,9 +119,9 @@ export default function PromosScreen() {
 
 const SHADOW = {
   shadowColor: "#000",
-  shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.06,
+  shadowRadius: 18,
   elevation: 2,
 };
 
@@ -134,7 +134,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     backgroundColor: CARD,
-    borderRadius: 16,
+    borderRadius: 28,
     paddingHorizontal: 12,
     paddingVertical: 12,
     marginBottom: 8,
@@ -155,7 +155,7 @@ const s = StyleSheet.create({
   },
   addBtnText: { fontFamily: FONTS.bold, fontSize: 15, color: BLUE },
 
-  formCard: { backgroundColor: CARD, borderRadius: 16, padding: 12, gap: 8, marginTop: 4, ...SHADOW },
+  formCard: { backgroundColor: CARD, borderRadius: 28, padding: 12, gap: 8, marginTop: 4, ...SHADOW },
   input: {
     minHeight: 48,
     backgroundColor: WHITE,

@@ -14,14 +14,14 @@ import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
 // renders inside the hub's bottom sheet.
 
 const WHITE = "#FFFFFF";
-const CARD = "#F0F2F5";
-const INK = "#1A1D21";
-const INK_SOFT = "#5A6470";
-const INK_MUTED = "#9AA4B0";
-const BLUE = "#003366";
-const GOLD = "#D4AF37";
-const GREEN = "#1E9E58";
-const RED = "#E14848";
+const CARD = "#F9FAFC";
+const INK = "#111827";
+const INK_SOFT = "#4B5563";
+const INK_MUTED = "#9CA3AF";
+const BLUE = "#7C3AED";
+const GOLD = "#06B6D4";
+const GREEN = "#10B981";
+const RED = "#EF4444";
 
 // The browser's focus ring draws a hard black box around a focused input,
 // which fights the soft 770JLM surfaces. No-op on native.
@@ -541,7 +541,7 @@ export function ZmanimRoutine() {
         ].map((r) => (
           <View key={r.label} style={[s.zTile, r.gold && { backgroundColor: GOLD + "16" }]}>
             <Text style={{ fontSize: 17 }}>{r.emoji}</Text>
-            <Text style={[s.zTileTime, r.gold && { color: "#8A6D14" }]}>{fmtTime(r.value)}</Text>
+            <Text style={[s.zTileTime, r.gold && { color: "#0E7490" }]}>{fmtTime(r.value)}</Text>
             <Text style={s.zTileLabel}>{r.label}</Text>
           </View>
         ))}
@@ -750,8 +750,8 @@ export function QrGenerator() {
         </View>
       </View>
       <View style={[s.banner, { backgroundColor: GOLD + "16" }]}>
-        <Text style={[s.bannerText, { color: "#8A6D14" }]}>תצוגה מקדימה — הקוד אינו סָריק</Text>
-        <Text style={[s.bannerSub, { color: "#8A6D14" }]}>
+        <Text style={[s.bannerText, { color: "#0E7490" }]}>תצוגה מקדימה — הקוד אינו סָריק</Text>
+        <Text style={[s.bannerSub, { color: "#0E7490" }]}>
           קוד QR אמיתי דורש ספריית קידוד ייעודית שלא מותקנת כדי לא לסכן את הבילד. בינתיים אפשר להעתיק את
           הטקסט ולהפיק ממנו קוד בכל שירות.
         </Text>
@@ -1044,8 +1044,8 @@ export function SlowMoFps() {
         </View>
       ) : r.equal ? (
         <View style={[s.banner, { backgroundColor: GOLD + "16" }]}>
-          <Text style={[s.bannerText, { color: "#8A6D14" }]}>אין מרווח להאטה (100%)</Text>
-          <Text style={[s.bannerSub, { color: "#8A6D14" }]}>
+          <Text style={[s.bannerText, { color: "#0E7490" }]}>אין מרווח להאטה (100%)</Text>
+          <Text style={[s.bannerSub, { color: "#0E7490" }]}>
             קצב ההקלטה זהה לטיימליין. כדי להאט צריך להקליד בקצב גבוה יותר.
           </Text>
         </View>
@@ -1367,11 +1367,11 @@ const s = StyleSheet.create({
   segmentText: { fontFamily: FONTS.semibold, fontSize: 12.5, color: INK_SOFT },
 
   checkRow: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 48 },
-  checkbox: { width: 26, height: 26, borderRadius: 8, borderWidth: 2, borderColor: "#C9CFD6", alignItems: "center", justifyContent: "center" },
+  checkbox: { width: 26, height: 26, borderRadius: 8, borderWidth: 2, borderColor: "#D6DBE5", alignItems: "center", justifyContent: "center" },
   checkMark: { color: WHITE, fontFamily: FONTS.bold, fontSize: 14 },
   checkLabel: { flex: 1, fontFamily: FONTS.medium, fontSize: 13, color: INK_SOFT, textAlign: "right" },
 
-  previewStage: { backgroundColor: "#EDF0F4", borderRadius: 18, padding: 22, marginBottom: 6 },
+  previewStage: { backgroundColor: "#EDF0F4", borderRadius: 28, padding: 22, marginBottom: 6 },
   previewTitle: { fontFamily: FONTS.bold, fontSize: 16, color: INK },
   previewSub: { fontFamily: FONTS.regular, fontSize: 12, color: INK_MUTED, marginTop: 3 },
   snippetBox: { backgroundColor: "#0E1729", borderRadius: 14, padding: 12, marginTop: 4 },
@@ -1394,7 +1394,7 @@ const s = StyleSheet.create({
   actionBtn: { flex: 1, minHeight: 50, borderRadius: 14, backgroundColor: BLUE, alignItems: "center", justifyContent: "center" },
   actionText: { fontFamily: FONTS.bold, fontSize: 14, color: WHITE },
 
-  hebCard: { backgroundColor: CARD, borderRadius: 16, padding: 16, alignItems: "center" },
+  hebCard: { backgroundColor: CARD, borderRadius: 28, padding: 16, alignItems: "center" },
   hebDate: { fontFamily: FONTS.bold, fontSize: 20, color: INK, textAlign: "center" },
   hebSub: { fontFamily: FONTS.regular, fontSize: 12, color: INK_MUTED, marginTop: 4, textAlign: "center" },
 
@@ -1403,7 +1403,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     backgroundColor: BLUE + "0E",
-    borderRadius: 16,
+    borderRadius: 28,
     padding: 14,
     minHeight: 66,
   },
@@ -1495,7 +1495,7 @@ const s = StyleSheet.create({
 
   resultInline: { fontFamily: FONTS.bold, fontSize: 18, color: BLUE },
 
-  bigBtn: { minHeight: 54, borderRadius: 16, backgroundColor: BLUE, alignItems: "center", justifyContent: "center" },
+  bigBtn: { minHeight: 54, borderRadius: 28, backgroundColor: BLUE, alignItems: "center", justifyContent: "center" },
   bigBtnText: { fontFamily: FONTS.bold, fontSize: 15, color: WHITE },
 
   msgPreview: { backgroundColor: CARD, borderRadius: 14, padding: 12 },

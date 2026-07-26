@@ -11,7 +11,7 @@ export const TOOL_CATEGORIES = [
     key: "vending",
     label: "מכונות שתייה וטרנזיט",
     emoji: "🥤",
-    color: "#1E9E58",
+    color: "#10B981",
     tools: [
       { id: "vending-roi", name: "החזר השקעה למכונה", emoji: "📈" },
       { id: "can-profit", name: "רווח לפחית", emoji: "💰" },
@@ -35,7 +35,7 @@ export const TOOL_CATEGORIES = [
     key: "dev",
     label: "פיתוח קוד ובינה מלאכותית",
     emoji: "💻",
-    color: "#003366",
+    color: "#7C3AED",
     tools: [
       { id: "rn-ui-gen", name: "מחולל עיצוב RN", emoji: "🎨" },
       { id: "json-validator", name: "בודק JSON", emoji: "🧩" },
@@ -58,7 +58,7 @@ export const TOOL_CATEGORIES = [
     key: "video",
     label: "עריכת וידאו ומושן",
     emoji: "🎬",
-    color: "#E14848",
+    color: "#EF4444",
     tools: [
       { id: "video-size", name: "מחשבון גודל וידאו", emoji: "💾" },
       { id: "fps-slowmo", name: "מחשבון סלו-מושן", emoji: "🎞️" },
@@ -173,7 +173,7 @@ export const TOOL_CATEGORIES = [
     key: "utils",
     label: "כלי עזר",
     emoji: "🧰",
-    color: "#5A6470",
+    color: "#4B5563",
     tools: [
       { id: "qr-gen", name: "מחולל ברקודים/QR", emoji: "🔳" },
       { id: "unit-conv", name: "המרת יחידות", emoji: "📐" },

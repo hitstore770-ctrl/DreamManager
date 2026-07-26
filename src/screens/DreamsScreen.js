@@ -18,8 +18,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown, FadeInUp, LinearTransition } from "react-native-reanimated";
 
 
+import Pulse from "../components/Pulse";
+import Bounce from "../components/Bounce";
 import Icon from "../components/Icon";
-import { SCREEN_IN } from "../utils/motion";
+import { FLUID, SCREEN_IN, listEntry } from "../utils/motion";
 import Celebration from "../components/dreams/Celebration";
 import HabitChain from "../components/dreams/HabitChain";
 import ProgressBar from "../components/dreams/ProgressBar";
@@ -47,14 +49,14 @@ import { usePersistentState } from "../utils/usePersistentState";
 // celebrated + archived on completion.
 
 const WHITE = "#FFFFFF";
-const BG = "#F8F9FA";
-const CARD = "#F0F2F5";
-const INK = "#1A1D21";
-const INK_SOFT = "#5A6470";
-const INK_MUTED = "#9AA4B0";
-const BLUE = "#003366";
-const GOLD = "#D4AF37";
-const RED = "#E14848";
+const BG = "#F9FAFC";
+const CARD = "#F9FAFC";
+const INK = "#111827";
+const INK_SOFT = "#4B5563";
+const INK_MUTED = "#9CA3AF";
+const BLUE = "#7C3AED";
+const GOLD = "#06B6D4";
+const RED = "#EF4444";
 
 // Same hardcoded vault PIN as the Notes lock, per spec.
 const VAULT_PIN = "1234";
@@ -352,9 +354,11 @@ export default function DreamsScreen({ navigation }) {
         </View>
       ) : board.length === 0 ? (
         <Animated.View entering={FadeInUp.duration(400)} style={s.empty}>
+          <Pulse style={s.emptyPulse}>
           <View style={s.emptyBadge}>
             <Text style={{ fontSize: 46 }}>🌙</Text>
           </View>
+          </Pulse>
           <Text style={s.emptyTitle}>מה החלום הבא שלך?</Text>
           <Text style={s.emptyText}>
             הוסף חלום ראשון ללוח החזון — תמונה, יעד ואבני דרך שיקרבו אותך אליו.
@@ -382,13 +386,14 @@ export default function DreamsScreen({ navigation }) {
         </ScrollView>
       )}
 
-      <TouchableOpacity
-        style={[s.fab, { bottom: insets.bottom + 26 }]}
+      <Pulse style={[s.fabPulse, { bottom: insets.bottom + 98 }]}>
+      <Bounce
+        style={s.fab}
         onPress={() => { hapticLight(); setCreateOpen(true); }}
-        activeOpacity={0.85}
       >
         <Text style={s.fabPlus}>＋</Text>
-      </TouchableOpacity>
+      </Bounce>
+      </Pulse>
 
       {toast && (
         <Animated.View entering={FadeInUp.duration(200)} style={[s.toast, { bottom: insets.bottom + 100 }]}>
@@ -480,7 +485,7 @@ export default function DreamsScreen({ navigation }) {
                           <Text style={s.finSaved}>{shekel(open.saved || 0)}</Text>
                           <Text style={s.finLabel}>💰 נחסך עד כה</Text>
                         </View>
-                        <ProgressBar pct={fundPct} height={8} track="#E3E6EA" style={{ marginTop: 10 }} />
+                        <ProgressBar pct={fundPct} height={8} track="#EEF1F6" style={{ marginTop: 10 }} />
 
                         {/* Fund from business */}
                         <View style={s.fundBox}>
@@ -524,7 +529,7 @@ export default function DreamsScreen({ navigation }) {
                               onPress={() => fund(available)}
                               activeOpacity={0.7}
                             >
-                              <Text style={[s.fundChipText, { color: "#8A6D14" }]}>הכול</Text>
+                              <Text style={[s.fundChipText, { color: "#0E7490" }]}>הכול</Text>
                             </TouchableOpacity>
                           </View>
                         </View>
@@ -639,7 +644,7 @@ export default function DreamsScreen({ navigation }) {
                         <Text style={s.hint}>מה עלול לעצור אותך? תכנן מראש את התגובה.</Text>
                       )}
                       {(open.obstacles || []).map((o) => (
-                        <Animated.View key={o.id} layout={LinearTransition.springify()} style={s.obsRow}>
+                        <Animated.View key={o.id} layout={FLUID} style={s.obsRow}>
                           <TouchableOpacity
                             style={s.obsRemove}
                             onPress={() => { hapticLight(); removeObstacle(open.id, o.id); }}
@@ -653,13 +658,13 @@ export default function DreamsScreen({ navigation }) {
                               {o.ifText}
                             </Text>
                             <Text style={s.obsThen}>
-                              <Text style={[s.obsTag, { color: "#1E9E58" }]}>אז </Text>
+                              <Text style={[s.obsTag, { color: "#10B981" }]}>אז </Text>
                               {o.thenText}
                             </Text>
                           </View>
                         </Animated.View>
                       ))}
-                      <Animated.View layout={LinearTransition.springify()} style={s.obsForm}>
+                      <Animated.View layout={FLUID} style={s.obsForm}>
                         <TextInput
                           style={s.obsInput}
                           value={obstacleIf}
@@ -818,7 +823,7 @@ function DreamCard({ dream, height, index, onPress }) {
   const paused = !!dream.paused;
 
   return (
-    <Animated.View entering={FadeInDown.delay(Math.min(index * 80, 480)).duration(420)}>
+    <Animated.View entering={listEntry(index)}>
       <TouchableOpacity
         style={[s.card, { height }, paused && s.cardPaused]}
         onPress={onPress}
@@ -877,9 +882,9 @@ function DreamCard({ dream, height, index, onPress }) {
 
 const SHADOW = {
   shadowColor: "#000",
-  shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.06,
+  shadowRadius: 18,
   elevation: 2,
 };
 
@@ -905,7 +910,7 @@ const s = StyleSheet.create({
     justifyContent: "center",
     ...SHADOW,
   },
-  archiveBtnText: { fontFamily: FONTS.bold, fontSize: 14, color: "#8A6D14" },
+  archiveBtnText: { fontFamily: FONTS.bold, fontSize: 14, color: "#0E7490" },
 
   wallet: {
     flexDirection: "row",
@@ -914,7 +919,7 @@ const s = StyleSheet.create({
     marginHorizontal: 12,
     marginBottom: 10,
     backgroundColor: WHITE,
-    borderRadius: 16,
+    borderRadius: 28,
     paddingHorizontal: 16,
     minHeight: 52,
     ...SHADOW,
@@ -931,7 +936,7 @@ const s = StyleSheet.create({
   emptyTitle: { fontFamily: FONTS.bold, fontSize: 21, color: INK, marginBottom: 8, textAlign: "center" },
   emptyText: { fontFamily: FONTS.light, fontSize: 14, color: INK_SOFT, textAlign: "center", lineHeight: 22 },
 
-  card: { borderRadius: 20, overflow: "hidden", justifyContent: "flex-end", ...SHADOW },
+  card: { borderRadius: 28, overflow: "hidden", justifyContent: "flex-end", ...SHADOW },
   cardBody: { padding: 12 },
   cardTitle: { fontFamily: FONTS.bold, fontSize: 15, color: WHITE, textAlign: "right" },
   cardMetaRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6 },
@@ -967,9 +972,23 @@ const s = StyleSheet.create({
   },
   countdownText: { fontFamily: FONTS.bold, fontSize: 11, color: WHITE },
 
-  fab: {
+  fabPulse: {
     position: "absolute",
-    right: 18,
+    right: 22,
+    borderRadius: 36,
+    shadowColor: "#FF4E50",
+    shadowOffset: { width: 0, height: 12 },
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  emptyPulse: {
+    borderRadius: 60,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 12 },
+    shadowRadius: 26,
+    elevation: 8,
+  },
+  fab: {
     width: 62,
     height: 62,
     borderRadius: 31,
@@ -988,7 +1007,7 @@ const s = StyleSheet.create({
     position: "absolute",
     alignSelf: "center",
     backgroundColor: INK,
-    borderRadius: 20,
+    borderRadius: 28,
     paddingHorizontal: 18,
     paddingVertical: 11,
     maxWidth: "88%",
@@ -996,9 +1015,9 @@ const s = StyleSheet.create({
   toastText: { fontFamily: FONTS.semibold, fontSize: 13, color: WHITE, textAlign: "center" },
 
   backdrop: { flex: 1, backgroundColor: "rgba(16,20,26,0.5)", justifyContent: "flex-end" },
-  sheet: { backgroundColor: WHITE, borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 16, paddingTop: 8 },
-  grabber: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: "#E3E6EA", marginBottom: 12 },
-  sheetHero: { height: 124, borderRadius: 18, overflow: "hidden", justifyContent: "flex-end", marginBottom: 10 },
+  sheet: { backgroundColor: WHITE, borderTopLeftRadius: 34, borderTopRightRadius: 34, paddingHorizontal: 16, paddingTop: 8 },
+  grabber: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: "#EEF1F6", marginBottom: 12 },
+  sheetHero: { height: 124, borderRadius: 28, overflow: "hidden", justifyContent: "flex-end", marginBottom: 10 },
   sheetHeroText: { padding: 14 },
   sheetTitle: { fontFamily: FONTS.bold, fontSize: 20, color: WHITE, textAlign: "right" },
   sheetPct: { fontFamily: FONTS.bold, fontSize: 13, color: GOLD, textAlign: "right", marginTop: 3 },
@@ -1009,7 +1028,7 @@ const s = StyleSheet.create({
   quickEmoji: { fontSize: 19 },
   quickText: { fontFamily: FONTS.semibold, fontSize: 11, color: INK_SOFT },
 
-  finCard: { backgroundColor: CARD, borderRadius: 16, padding: 14, marginBottom: 14 },
+  finCard: { backgroundColor: CARD, borderRadius: 28, padding: 14, marginBottom: 14 },
   finRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 30 },
   finLabel: { fontFamily: FONTS.medium, fontSize: 13, color: INK_SOFT },
   finTarget: { fontFamily: FONTS.bold, fontSize: 17, color: INK },
@@ -1053,7 +1072,7 @@ const s = StyleSheet.create({
   dateChipText: { fontFamily: FONTS.semibold, fontSize: 12, color: INK_SOFT },
 
   msRow: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 48, paddingVertical: 4 },
-  msBox: { width: 26, height: 26, borderRadius: 9, borderWidth: 2, borderColor: "#C9CFD6", alignItems: "center", justifyContent: "center" },
+  msBox: { width: 26, height: 26, borderRadius: 9, borderWidth: 2, borderColor: "#D6DBE5", alignItems: "center", justifyContent: "center" },
   msCheck: { color: WHITE, fontFamily: FONTS.bold, fontSize: 15 },
   msText: { flex: 1, fontFamily: FONTS.medium, fontSize: 14, color: INK, textAlign: "right" },
   msAddRow: { flexDirection: "row", gap: 8, marginTop: 8, marginBottom: 14 },
@@ -1092,7 +1111,7 @@ const s = StyleSheet.create({
   deleteBtnText: { fontFamily: FONTS.semibold, fontSize: 13, color: RED },
 
   archiveTitle: { fontFamily: FONTS.bold, fontSize: 19, color: INK, textAlign: "right", marginBottom: 12 },
-  archRow: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: CARD, borderRadius: 16, padding: 12, marginBottom: 8, minHeight: 64 },
+  archRow: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: CARD, borderRadius: 28, padding: 12, marginBottom: 8, minHeight: 64 },
   archName: { fontFamily: FONTS.semibold, fontSize: 15, color: INK },
   archMeta: { fontFamily: FONTS.regular, fontSize: 11, color: INK_MUTED, marginTop: 2 },
   archRestore: { minHeight: 40, paddingHorizontal: 12, borderRadius: 11, backgroundColor: WHITE, alignItems: "center", justifyContent: "center" },
@@ -1104,7 +1123,7 @@ const s = StyleSheet.create({
   createInput: { minHeight: 52, backgroundColor: CARD, borderRadius: 14, paddingHorizontal: 14, fontFamily: FONTS.regular, fontSize: 15, color: INK },
   createLabel: { fontFamily: FONTS.semibold, fontSize: 13, color: INK_SOFT, textAlign: "right", marginTop: 2 },
   coverRow: { flexDirection: "row", gap: 10, justifyContent: "space-between" },
-  coverDot: { flex: 1, height: 44, borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: "#EAEAEA" },
+  coverDot: { flex: 1, height: 44, borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: "#EEF1F6" },
   cancelBtn: { flex: 1, minHeight: 52, borderRadius: 14, backgroundColor: CARD, alignItems: "center", justifyContent: "center" },
   cancelBtnText: { fontFamily: FONTS.bold, fontSize: 15, color: INK_SOFT },
   saveBtn: { flex: 2, minHeight: 52, borderRadius: 14, backgroundColor: BLUE, alignItems: "center", justifyContent: "center" },

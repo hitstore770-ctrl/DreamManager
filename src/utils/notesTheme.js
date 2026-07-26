@@ -8,28 +8,28 @@ export const NOTES_THEME = {
   scheme: "light",
 
   // Surfaces — clean whites and very soft greys, no heavy color blocks.
-  background: "#F0F2F5", // soft grey canvas
+  background: "#F9FAFC", // soft grey canvas
   surface: "#FFFFFF", // clean white cards
-  surfaceAlt: "#F8F9FA", // subtle raised / input fill
+  surfaceAlt: "#F9FAFC", // subtle raised / input fill
   surfaceMuted: "#EEF1F4", // chips / progress track
 
   // Ink.
-  textPrimary: "#1A1D21",
-  textSecondary: "#5A6470",
-  textMuted: "#9AA4B0",
+  textPrimary: "#111827",
+  textSecondary: "#4B5563",
+  textMuted: "#9CA3AF",
 
   // Hairlines.
-  border: "#ECEEF1",
-  hairline: "#EEF0F3",
+  border: "#EEF1F6",
+  hairline: "#EEF1F6",
 
   // Accents — used only on interactive elements.
-  accent: "#003366", // deep blue (primary interactive)
-  brand: "#003366",
-  gold: "#D4AF37", // refined gold (special touches)
+  accent: "#7C3AED", // deep blue (primary interactive)
+  brand: "#7C3AED",
+  gold: "#06B6D4", // refined gold (special touches)
 
-  danger: "#E14848",
-  warning: "#D4AF37",
-  success: "#12965A",
+  danger: "#EF4444",
+  warning: "#06B6D4",
+  success: "#10B981",
   onAccent: "#FFFFFF",
   overlay: "rgba(16, 24, 40, 0.32)",
 };
@@ -47,17 +47,17 @@ export const NOTES_FONTS = {
 
 // Soft, barely-there elevation per the spec (elevation 2, opacity 0.05).
 export const NOTES_SHADOW = {
-  shadowColor: "#0A1F44",
-  shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
+  shadowColor: "#7C3AED",
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.06,
+  shadowRadius: 18,
   elevation: 2,
 };
 
 export const NOTES_SHADOW_LG = {
-  shadowColor: "#0A1F44",
-  shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
+  shadowColor: "#7C3AED",
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.06,
+  shadowRadius: 18,
   elevation: 5,
 };

@@ -24,14 +24,14 @@ export default class ErrorBoundary extends Component {
       return (
         <View style={{ flex: 1, backgroundColor: "#FFFFFF", padding: 24, justifyContent: "center" }}>
           <Text style={{ fontSize: 40, textAlign: "center", marginBottom: 12 }}>⚠️</Text>
-          <Text style={{ fontSize: 18, fontWeight: "700", textAlign: "center", color: "#1A1D21", marginBottom: 8 }}>
+          <Text style={{ fontSize: 18, fontWeight: "700", textAlign: "center", color: "#111827", marginBottom: 8 }}>
             משהו השתבש
           </Text>
-          <Text style={{ fontSize: 14, textAlign: "center", color: "#5A6470", marginBottom: 16 }}>
+          <Text style={{ fontSize: 14, textAlign: "center", color: "#4B5563", marginBottom: 16 }}>
             אירעה שגיאה בטעינת האפליקציה. נסה לרענן.
           </Text>
-          <ScrollView style={{ maxHeight: 220, backgroundColor: "#F8F9FA", borderRadius: 12, padding: 12 }}>
-            <Text style={{ fontSize: 12, color: "#E14848" }}>
+          <ScrollView style={{ maxHeight: 220, backgroundColor: "#F9FAFC", borderRadius: 12, padding: 12 }}>
+            <Text style={{ fontSize: 12, color: "#EF4444" }}>
               {String(this.state.error?.message || this.state.error)}
             </Text>
           </ScrollView>

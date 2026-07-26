@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
   },
   balanceCard: {
     padding: 24,
-    borderRadius: 20,
+    borderRadius: 28,
     backgroundColor: COLORS.glass,
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: 24,
-    borderRadius: 20,
+    borderRadius: 28,
     backgroundColor: COLORS.glass,
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
   playButton: {
     width: "100%",
     height: 56,
-    borderRadius: 16,
+    borderRadius: 28,
     backgroundColor: COLORS.accent,
     alignItems: "center",
     justifyContent: "center",

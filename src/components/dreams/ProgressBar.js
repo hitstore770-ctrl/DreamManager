@@ -8,7 +8,7 @@ export default function ProgressBar({
   pct,
   height = 8,
   track = "rgba(255,255,255,0.26)",
-  fill = "#D4AF37",
+  fill = "#06B6D4",
   duration = 650,
   style,
 }) {

@@ -17,6 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInUp, FadeOutDown } from "react-native-reanimated";
 
+import { FLUID } from "../utils/motion";
 import Bounce from "../components/Bounce";
 import Icon from "../components/Icon";
 import { useNotes } from "../context/NotesContext";
@@ -40,7 +41,7 @@ import HebrewDateTools from "../components/notes/HebrewDateTools";
 // ---------------------------------------------------------------------------
 
 const ZEN_BG = "#FFFFFF";
-const PRO_BG = "#F8F9FA";
+const PRO_BG = "#F9FAFC";
 const HIGHLIGHT_BG = "#FFF3B0";
 const INK_RED = "#D32F2F";
 const INK_BLUE = "#1565C0";
@@ -357,13 +358,15 @@ export default function NoteEditorScreen({ route, navigation }) {
         </View>
       </View>
       {(note.checklist || []).map((item) => (
-        <View key={item.id} style={s.checkRow}>
-          <TouchableOpacity
+        // Rows spring into their new position as items are added or ticked.
+        <Animated.View key={item.id} layout={FLUID} style={s.checkRow}>
+          <Bounce
             style={[s.checkbox, item.done && { backgroundColor: theme.accent, borderColor: theme.accent }]}
             onPress={() => toggleItem(item.id)}
+            scaleTo={0.85}
           >
             {item.done && <Text style={s.checkMark}>✓</Text>}
-          </TouchableOpacity>
+          </Bounce>
           <TextInput
             style={[
               s.checkText,
@@ -377,7 +380,7 @@ export default function NoteEditorScreen({ route, navigation }) {
             editable={!readOnly}
             textAlign="auto"
           />
-        </View>
+        </Animated.View>
       ))}
       {!readOnly && (
         <View style={s.checkActions}>
@@ -735,7 +738,7 @@ function makeStyles(t, fsScale) {
       alignItems: "center",
       justifyContent: "center",
       borderWidth: 1,
-      borderColor: "#EAEAEA",
+      borderColor: "#EEF1F6",
     },
     modePillPro: { backgroundColor: t.accent, borderColor: t.accent },
     modePillText: { fontFamily: FONTS.bold, fontSize: 14 * fsScale, color: t.textSecondary },
@@ -764,7 +767,7 @@ function makeStyles(t, fsScale) {
     tagPill: { backgroundColor: t.accent + "18", borderRadius: 14, paddingHorizontal: 12, paddingVertical: 6 },
     tagPillText: { color: t.accent, fontSize: 13 * fsScale, fontFamily: FONTS.bold },
 
-    mathChip: { backgroundColor: t.accent + "18", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, marginEnd: 8 },
+    mathChip: { backgroundColor: t.accent + "18", borderRadius: 28, paddingHorizontal: 14, paddingVertical: 8, marginEnd: 8 },
     mathChipText: { color: t.accent, fontSize: 14 * fsScale, fontFamily: FONTS.bold },
 
     // Pro toolbar card (pinned above the keyboard by KeyboardAvoidingView).
@@ -774,7 +777,7 @@ function makeStyles(t, fsScale) {
       paddingVertical: 10,
       paddingHorizontal: 12,
       borderWidth: 1,
-      borderColor: "#EAEAEA",
+      borderColor: "#EEF1F6",
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 6 },
       shadowOpacity: 0.04,
@@ -784,7 +787,7 @@ function makeStyles(t, fsScale) {
       marginBottom: 8,
     },
     toolbar: { flexGrow: 1, justifyContent: "center", alignItems: "center", gap: 8, paddingHorizontal: 2 },
-    tbtn: { minWidth: 44, minHeight: 44, paddingHorizontal: 10, borderRadius: RADIUS_SM, backgroundColor: t.surfaceAlt, borderWidth: 1, borderColor: "#EEF0F3", alignItems: "center", justifyContent: "center" },
+    tbtn: { minWidth: 44, minHeight: 44, paddingHorizontal: 10, borderRadius: RADIUS_SM, backgroundColor: t.surfaceAlt, borderWidth: 1, borderColor: "#EEF1F6", alignItems: "center", justifyContent: "center" },
     tbtnText: { fontSize: 17 * fsScale, fontFamily: FONTS.bold, textAlign: "center" },
     tsep: { width: 1, height: 26, backgroundColor: t.hairline, marginHorizontal: 4 },
     bgDot: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: t.hairline },
@@ -792,7 +795,7 @@ function makeStyles(t, fsScale) {
     linksRow: { flexGrow: 0, marginBottom: 6 },
     linkChip: {
       minHeight: 40,
-      borderRadius: 20,
+      borderRadius: 28,
       backgroundColor: t.accent + "10",
       paddingHorizontal: 14,
       alignItems: "center",
@@ -807,7 +810,7 @@ function makeStyles(t, fsScale) {
       paddingHorizontal: 16,
       paddingTop: 8,
       borderTopWidth: 1,
-      borderTopColor: "#EEF0F3",
+      borderTopColor: "#EEF1F6",
       gap: 8,
     },
     bottomText: { fontFamily: FONTS.regular, fontSize: 11 * fsScale, color: t.textMuted },

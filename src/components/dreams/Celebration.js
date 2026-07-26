@@ -9,9 +9,9 @@ import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
 // unreliable in the web preview) — instead a gold screen flash, a scaling
 // trophy, and a staggered burst of success haptics that reads as a drumroll.
 
-const GOLD = "#D4AF37";
-const INK = "#1A1D21";
-const INK_SOFT = "#5A6470";
+const GOLD = "#06B6D4";
+const INK = "#111827";
+const INK_SOFT = "#4B5563";
 const WHITE = "#FFFFFF";
 
 // Fixed ring of emoji around the trophy — cheap stand-in for confetti.
@@ -76,7 +76,7 @@ const s = StyleSheet.create({
   card: {
     width: "100%",
     backgroundColor: WHITE,
-    borderRadius: 26,
+    borderRadius: 30,
     padding: 26,
     alignItems: "center",
     borderWidth: 2,

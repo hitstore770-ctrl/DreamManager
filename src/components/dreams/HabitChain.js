@@ -14,12 +14,12 @@ import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
 // "Don't break the chain" — the current week as seven tappable dots. Marking
 // a day pops it briefly so the tap feels physical.
 
-const GOLD = "#D4AF37";
+const GOLD = "#06B6D4";
 const WHITE = "#FFFFFF";
-const CARD = "#F0F2F5";
-const INK = "#1A1D21";
-const INK_SOFT = "#5A6470";
-const INK_MUTED = "#9AA4B0";
+const CARD = "#F9FAFC";
+const INK = "#111827";
+const INK_SOFT = "#4B5563";
+const INK_MUTED = "#9CA3AF";
 
 function Day({ day, done, onPress }) {
   const scale = useSharedValue(1);
@@ -83,7 +83,7 @@ export default function HabitChain({ habitDays = {}, onToggle }) {
 }
 
 const s = StyleSheet.create({
-  wrap: { backgroundColor: CARD, borderRadius: 16, padding: 12, marginBottom: 14 },
+  wrap: { backgroundColor: CARD, borderRadius: 28, padding: 12, marginBottom: 14 },
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
   streak: { fontFamily: FONTS.bold, fontSize: 13, color: GOLD },
   headLabel: { fontFamily: FONTS.regular, fontSize: 12, color: INK_MUTED },

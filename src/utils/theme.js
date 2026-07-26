@@ -61,14 +61,14 @@ export function makeTheme(scheme = "light", accentKey = "blue") {
     surfaceAlt: "#F7F9FC", // subtle raised / input fill
     surfaceMuted: "#EEF1F6",
     brand: "#17315C", // deep navy blue
-    textPrimary: "#101828",
+    textPrimary: "#7C3AED",
     textSecondary: "#475467",
     textMuted: "#98A2B3",
     border: "#E4E8EF",
     hairline: "#EDF0F5",
-    danger: "#E14848",
+    danger: "#EF4444",
     warning: "#E5A400",
-    success: "#12965A",
+    success: "#10B981",
     onAccent: "#FFFFFF",
     overlay: "rgba(16,24,40,0.45)",
   };
@@ -87,7 +87,7 @@ export const COLORS = {
   textSecondary: T.textSecondary,
   textMuted: T.textMuted,
   border: T.hairline,
-  shadow: "#101828",
+  shadow: "#7C3AED",
   accent: T.accent, // primary action → the vivid accent
   navy: T.brand, // deep blue brand
   brand: T.brand,
@@ -135,15 +135,15 @@ export function getNoteTilt() {
 // offset shadow). Legacy names preserved.
 // ---------------------------------------------------------------------------
 export const SHADOW = {
-  shadowColor: "#0A1F44",
-  shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
+  shadowColor: "#7C3AED",
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.06,
+  shadowRadius: 18,
   elevation: 2,
 };
 
 export const SHADOW_SM = {
-  shadowColor: "#0A1F44",
+  shadowColor: "#7C3AED",
   shadowOffset: { width: 0, height: 4 },
   shadowOpacity: 0.04,
   shadowRadius: 10,
@@ -151,7 +151,7 @@ export const SHADOW_SM = {
 };
 
 export const SHADOW_LG = {
-  shadowColor: "#101828",
+  shadowColor: "#7C3AED",
   shadowOffset: { width: 0, height: 12 },
   shadowOpacity: 0.14,
   shadowRadius: 28,

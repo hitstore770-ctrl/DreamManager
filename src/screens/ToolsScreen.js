@@ -27,7 +27,7 @@ import Animated, {
 
 import Bounce from "../components/Bounce";
 import Icon from "../components/Icon";
-import { SCREEN_IN } from "../utils/motion";
+import { FLUID, SCREEN_IN, listEntry } from "../utils/motion";
 import { MINI_APPS } from "../components/tools/MiniApps";
 import { useSettings } from "../context/SettingsContext";
 import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
@@ -41,12 +41,12 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 // the built mini-apps. Long-press any tool to favorite it.
 
 const WHITE = "#FFFFFF";
-const BG = "#F0F2F5";
-const INK = "#1A1D21";
-const INK_SOFT = "#5A6470";
-const INK_MUTED = "#9AA4B0";
-const BLUE = "#003366";
-const GOLD = "#D4AF37";
+const BG = "#F9FAFC";
+const INK = "#111827";
+const INK_SOFT = "#4B5563";
+const INK_MUTED = "#9CA3AF";
+const BLUE = "#7C3AED";
+const GOLD = "#06B6D4";
 
 export default function ToolsScreen() {
   const insets = useSafeAreaInsets();
@@ -215,7 +215,7 @@ export default function ToolsScreen() {
           <>
             {/* Favorites */}
             {favTools.length > 0 && (
-              <Animated.View layout={LinearTransition.springify()} style={s.section}>
+              <Animated.View layout={FLUID} style={s.section}>
                 <View style={[s.sectionHead, { backgroundColor: GOLD + "12", borderWidth: 1, borderColor: GOLD + "44" }]}>
                   <View style={{ flex: 1, alignItems: "flex-end" }}>
                     <Text style={s.sectionLabel}>מועדפים</Text>
@@ -244,8 +244,8 @@ export default function ToolsScreen() {
               const isOpen = !!openSections[cat.key];
               const ready = cat.tools.filter((t) => IMPLEMENTED.has(t.id)).length;
               return (
-                <Animated.View key={cat.key} layout={LinearTransition.springify()} style={s.section}>
-                  <TouchableOpacity style={s.sectionHead} onPress={() => toggleSection(cat.key)} activeOpacity={0.75}>
+                <Animated.View key={cat.key} layout={FLUID} style={s.section}>
+                  <Bounce style={s.sectionHead} onPress={() => toggleSection(cat.key)} scaleTo={0.98}>
                     <Text style={[s.chevron, isOpen && { transform: [{ rotate: "90deg" }] }]}>›</Text>
                     <View style={{ flex: 1, alignItems: "flex-end" }}>
                       <Text style={s.sectionLabel}>{cat.label}</Text>
@@ -256,7 +256,7 @@ export default function ToolsScreen() {
                     <View style={[s.sectionBadge, { backgroundColor: cat.color + "16" }]}>
                       <Text style={{ fontSize: 20 }}>{cat.emoji}</Text>
                     </View>
-                  </TouchableOpacity>
+                  </Bounce>
 
                   {isOpen && (
                     <View style={s.grid}>
@@ -330,7 +330,7 @@ export default function ToolsScreen() {
 function ToolCard({ tool, index, fav, onPress, onLongPress, showCategory }) {
   const ready = IMPLEMENTED.has(tool.id);
   return (
-    <Animated.View entering={FadeInDown.delay(Math.min(index * 22, 260)).duration(240)} style={s.cardWrap}>
+    <Animated.View entering={listEntry(index)} style={s.cardWrap}>
       <Bounce
         style={[s.card, fav && { borderWidth: 1, borderColor: GOLD + "55" }]}
         onPress={onPress}
@@ -355,9 +355,9 @@ function ToolCard({ tool, index, fav, onPress, onLongPress, showCategory }) {
 
 const SHADOW = {
   shadowColor: "#000",
-  shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.06,
+  shadowRadius: 18,
   elevation: 2,
 };
 
@@ -382,19 +382,19 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  readyPillText: { fontFamily: FONTS.bold, fontSize: 12, color: "#8A6D14" },
+  readyPillText: { fontFamily: FONTS.bold, fontSize: 12, color: "#0E7490" },
 
   searchWrap: { paddingHorizontal: 12, marginBottom: 10, justifyContent: "center" },
   search: {
     backgroundColor: WHITE,
-    borderRadius: 16,
+    borderRadius: 28,
     minHeight: 52,
     paddingHorizontal: 18,
     fontFamily: FONTS.regular,
     fontSize: 15,
     color: INK,
     borderWidth: 1,
-    borderColor: "#EAEAEA",
+    borderColor: "#EEF1F6",
     ...SHADOW,
   },
   clearBtn: {
@@ -415,7 +415,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     backgroundColor: WHITE,
-    borderRadius: 18,
+    borderRadius: 28,
     padding: 14,
     minHeight: 68,
     ...SHADOW,
@@ -429,7 +429,7 @@ const s = StyleSheet.create({
   cardWrap: { width: "33.33%", padding: 5 },
   card: {
     backgroundColor: WHITE,
-    borderRadius: 16,
+    borderRadius: 28,
     paddingVertical: 15,
     paddingHorizontal: 8,
     alignItems: "center",
@@ -460,7 +460,7 @@ const s = StyleSheet.create({
     position: "absolute",
     alignSelf: "center",
     backgroundColor: INK,
-    borderRadius: 20,
+    borderRadius: 28,
     paddingHorizontal: 18,
     paddingVertical: 11,
     maxWidth: "88%",
@@ -468,7 +468,7 @@ const s = StyleSheet.create({
   toastText: { fontFamily: FONTS.semibold, fontSize: 13, color: WHITE, textAlign: "center" },
 
   backdrop: { flex: 1, backgroundColor: "rgba(16,20,26,0.5)", justifyContent: "flex-end" },
-  sheet: { backgroundColor: WHITE, borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 16, paddingTop: 8 },
+  sheet: { backgroundColor: WHITE, borderTopLeftRadius: 34, borderTopRightRadius: 34, paddingHorizontal: 16, paddingTop: 8 },
   // A tall-enough strip so the swipe-down gesture is easy to grab by thumb.
   grabZone: { paddingTop: 8, paddingBottom: 14, alignItems: "center" },
   grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: "#D8DDE3" },

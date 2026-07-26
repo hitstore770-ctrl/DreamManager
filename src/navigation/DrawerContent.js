@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.16)",
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: 28,
   },
   coinText: { color: "#FFFFFF", fontSize: 13, fontFamily: FONTS.bold },
   body: { paddingHorizontal: 12, paddingTop: 10 },

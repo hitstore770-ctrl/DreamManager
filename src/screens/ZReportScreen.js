@@ -14,12 +14,12 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 // without touching the underlying sales history.
 
 const WHITE = "#FFFFFF";
-const CARD = "#F0F2F5";
-const INK = "#1A1D21";
-const INK_SOFT = "#5A6470";
-const INK_MUTED = "#9AA4B0";
-const BLUE = "#003366";
-const GREEN_DARK = "#1E9E58";
+const CARD = "#F9FAFC";
+const INK = "#111827";
+const INK_SOFT = "#4B5563";
+const INK_MUTED = "#9CA3AF";
+const BLUE = "#7C3AED";
+const GREEN_DARK = "#10B981";
 
 export default function ZReportScreen() {
   const { sales, closes, setCloses } = useBusiness();
@@ -137,9 +137,9 @@ export default function ZReportScreen() {
 
 const SHADOW = {
   shadowColor: "#000",
-  shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.06,
+  shadowRadius: 18,
   elevation: 2,
 };
 
@@ -154,7 +154,7 @@ const s = StyleSheet.create({
 
   heroCard: {
     backgroundColor: CARD,
-    borderRadius: 20,
+    borderRadius: 28,
     alignItems: "center",
     paddingVertical: 26,
     marginBottom: 10,
@@ -167,7 +167,7 @@ const s = StyleSheet.create({
   metricCard: {
     flex: 1,
     backgroundColor: CARD,
-    borderRadius: 16,
+    borderRadius: 28,
     alignItems: "center",
     paddingVertical: 16,
     paddingHorizontal: 10,
@@ -177,11 +177,11 @@ const s = StyleSheet.create({
   metricLabel: { fontFamily: FONTS.regular, fontSize: 12, color: INK_MUTED, marginTop: 3 },
 
   dmgRow: { backgroundColor: "#FDEBEB", borderRadius: 14, padding: 12, marginTop: 10 },
-  dmgText: { fontFamily: FONTS.semibold, fontSize: 13, color: "#E14848", textAlign: "right" },
+  dmgText: { fontFamily: FONTS.semibold, fontSize: 13, color: "#EF4444", textAlign: "right" },
 
   shareBtn: {
     minHeight: 52,
-    borderRadius: 16,
+    borderRadius: 28,
     backgroundColor: "#25D366",
     alignItems: "center",
     justifyContent: "center",
@@ -208,11 +208,11 @@ const s = StyleSheet.create({
     paddingBottom: 16,
     backgroundColor: WHITE,
     borderTopWidth: 1,
-    borderTopColor: "#EEF0F3",
+    borderTopColor: "#EEF1F6",
   },
   closeBtn: {
     minHeight: 58,
-    borderRadius: 18,
+    borderRadius: 28,
     backgroundColor: BLUE,
     alignItems: "center",
     justifyContent: "center",
