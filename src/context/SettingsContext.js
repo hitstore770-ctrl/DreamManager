@@ -2,7 +2,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Vibration } from "react-native";
 
-import { setHapticsEnabled } from "../utils/haptics";
+import { setHapticsEnabled, setHapticsLevel } from "../utils/haptics";
+import { setCurrencySymbol } from "../utils/posStore";
 import { FONT_SCALES, makeTheme } from "../utils/theme";
 
 // Global, persisted app preferences — the single source of truth for the new
@@ -18,7 +19,7 @@ export const WORKSPACES = [
   { key: "production", label: "מצב הפקה", hint: "עבודות והדפסה קודם" },
 ];
 
-const DEFAULT_SETTINGS = {
+export const DEFAULT_SETTINGS = {
   scheme: "light", // 'light' | 'dark'
   accentKey: "blue",
   fontScaleKey: "medium", // 'small' | 'medium' | 'large'
@@ -30,6 +31,18 @@ const DEFAULT_SETTINGS = {
   automation: [], // [{ id, metric, op, threshold, label }]
   userName: "", // shown in the Settings profile group
   devMode: false, // unlocked by tapping the version line seven times
+
+  // --- Business / POS ---
+  vatRate: "17", // default VAT rate used by the pricing tools
+  autoClearCart: true, // empty the POS cart automatically after a charge
+  receiptFooter: "תודה שקניתם!", // appended to shared receipts and Z-reports
+  currency: "₪", // symbol used by every money value in the app
+  hapticsLevel: "light", // remembered level, re-applied when haptics turn on
+
+  // --- Data & privacy ---
+  cloudBackup: false, // mirror a snapshot to Firestore on change
+  imageCacheToken: 0, // bumped by "clear image cache" to force a re-fetch
+  layoutBounds: false, // dev-only: outline the settings layout
 };
 
 const SettingsContext = createContext(undefined);
@@ -73,7 +86,14 @@ export function SettingsProvider({ children }) {
   // across the app (which imports the plain functions) honours the switch.
   useEffect(() => {
     setHapticsEnabled(settings.haptics !== "off");
+    if (settings.haptics !== "off") setHapticsLevel(settings.haptics);
   }, [settings.haptics]);
+
+  // Same pattern for the currency symbol: shekel() is a plain function used
+  // across every screen, so the preference is mirrored into its module.
+  useEffect(() => {
+    setCurrencySymbol(settings.currency);
+  }, [settings.currency]);
 
   // --- Derived theme + typography ------------------------------------------
   const theme = useMemo(
@@ -94,7 +114,7 @@ export function SettingsProvider({ children }) {
   const haptic = useCallback(
     (kind = "light") => {
       if (settings.haptics === "off") return;
-      const heavy = settings.haptics === "heavy";
+      const heavy = settings.haptics === "heavy" || settings.haptics === "medium";
       try {
         if (kind === "success") Vibration.vibrate(heavy ? [0, 40, 60, 40] : [0, 20, 40, 20]);
         else if (kind === "error") Vibration.vibrate(heavy ? 120 : 60);

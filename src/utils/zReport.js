@@ -38,7 +38,7 @@ export function aggregateDay(sales, d = new Date(), sinceTs = 0) {
 }
 
 // WhatsApp-friendly shareable summary (emoji headers, short lines).
-export function buildZReportText(sales, d = new Date(), sinceTs = 0) {
+export function buildZReportText(sales, d = new Date(), sinceTs = 0, footer = "") {
   const { revenue, txCount, units, top, dmgUnits } = aggregateDay(sales, d, sinceTs);
 
   const lines = [
@@ -54,6 +54,33 @@ export function buildZReportText(sales, d = new Date(), sinceTs = 0) {
     .join("\n");
   if (topLines) lines.push("", "מובילים:", topLines);
   if (dmgUnits > 0) lines.push("", `⚠️ פחת/נזק: ${dmgUnits} יח׳`);
+  if (footer && footer.trim()) lines.push("", footer.trim());
   lines.push("", "הופק מ-DreamManager 💼");
   return lines.join("\n");
+}
+
+// One row per sale line, oldest first. Excel opens CSV as UTF-8 only with a
+// BOM, so the caller prepends one when writing a file.
+export function buildSalesCsv(sales) {
+  const head = ["date", "time", "item", "qty", "price", "total", "payment", "kind"];
+  const rows = [...(sales || [])]
+    .sort((a, b) => (a.ts || 0) - (b.ts || 0))
+    .map((r) => {
+      const when = new Date(r.ts || 0);
+      return [
+        r.day || "",
+        Number.isFinite(r.ts) ? when.toTimeString().slice(0, 5) : "",
+        r.name || "",
+        r.qty ?? "",
+        r.price ?? "",
+        r.total ?? "",
+        r.pay || "",
+        r.kind || "sale",
+      ];
+    });
+  const esc = (v) => {
+    const t = String(v ?? "");
+    return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+  };
+  return [head, ...rows].map((r) => r.map(esc).join(",")).join("\n");
 }

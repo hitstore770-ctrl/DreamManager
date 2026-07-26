@@ -13,6 +13,7 @@ import {
 
 import ToolsSheet, { SheetRow } from "../components/business/ToolsSheet";
 import { useBusiness } from "../context/BusinessContext";
+import { useSettings } from "../context/SettingsContext";
 import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
 import { monthKey, shekel, todayKey, uid } from "../utils/posStore";
 import { playCaching } from "../utils/sound";
@@ -61,6 +62,7 @@ export default function POSScreen() {
   // the cart + last transaction are POS-private (persisted so a mid-sale
   // crash on the counter phone loses nothing).
   const { sales, setSales, closes, promos } = useBusiness();
+  const { autoClearCart, receiptFooter } = useSettings();
   // Active promo bundles ride at the front of the product rail as gold chips.
   const activePromos = (promos || []).filter((p) => p.active);
   const [cart, setCart, cartLoaded] = usePersistentState("@dreammanager/pos-cart", []);
@@ -244,12 +246,16 @@ export default function POSScreen() {
       received: cash?.received ?? null,
       change: cash?.change ?? null,
     });
-    setCart([]);
-    setEntry("");
-    setKeypadManual(false);
-    setDiscountPct(0);
-    setDiscountFix(0);
-    setOrderNote("");
+    // "Auto-clear cart" off keeps the basket on screen after a charge, for
+    // shops that ring the same basket up repeatedly.
+    if (autoClearCart) {
+      setCart([]);
+      setEntry("");
+      setKeypadManual(false);
+      setDiscountPct(0);
+      setDiscountFix(0);
+      setOrderNote("");
+    }
     setUndoCart(null);
   };
 
@@ -346,7 +352,7 @@ export default function POSScreen() {
     hapticLight();
     setSheetOpen(false);
     try {
-      await Share.share({ message: buildZReportText(sales, new Date(), lastCloseTs(closes)) });
+      await Share.share({ message: buildZReportText(sales, new Date(), lastCloseTs(closes), receiptFooter) });
     } catch {
       /* user cancelled */
     }

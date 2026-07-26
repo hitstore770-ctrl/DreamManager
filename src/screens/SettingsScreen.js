@@ -18,13 +18,18 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown, FadeInUp, LinearTransition } from "react-native-reanimated";
 
+import { doc, setDoc } from "firebase/firestore";
+
 import PinLock from "../components/PinLock";
+import { db, isFirebaseConfigured } from "../config/firebaseConfig";
 import { useAuth } from "../context/AuthContext";
-import { WORKSPACES, useSettings } from "../context/SettingsContext";
+import { DEFAULT_SETTINGS, WORKSPACES, useSettings } from "../context/SettingsContext";
 import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
-import { todayKey } from "../utils/posStore";
+import { monthKey, todayKey, uid } from "../utils/posStore";
 import { STORAGE_KEYS } from "../utils/storageKeys";
+import { withTimeout } from "../utils/network";
 import { IMPLEMENTED, TOOL_COUNT } from "../utils/toolsCatalog";
+import { buildSalesCsv } from "../utils/zReport";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 
 // הגדרות — an iOS-style grouped settings list on the 770JLM Light Modern
@@ -52,16 +57,43 @@ const WEB_SWITCH_THUMB = Platform.OS === "web" ? { activeThumbColor: WHITE } : {
 
 const fmtBytes = (n) => (n >= 1024 ? `${(n / 1024).toFixed(1)} KB` : `${n} B`);
 
+const CURRENCIES = [
+  { key: "₪", label: "₪ שקל" },
+  { key: "$", label: "$ דולר" },
+  { key: "€", label: "€ אירו" },
+];
+
+const HAPTIC_LEVELS = [
+  { key: "light", label: "עדין" },
+  { key: "medium", label: "בינוני" },
+  { key: "heavy", label: "חזק" },
+];
+
+// Sample basket used by the developer "inject dummy sales" action.
+const DUMMY_ITEMS = [
+  { name: "פחית שתייה", price: 6 },
+  { name: "בקבוק מים", price: 5 },
+  { name: "משקה אנרגיה", price: 12 },
+  { name: "קפה קר", price: 9 },
+  { name: "חטיף", price: 5 },
+  { name: "מארז 6 פחיות", price: 30 },
+];
+
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const settings = useSettings();
-  const { update } = settings;
+  const { update, persist } = settings;
   const { user, logout } = useAuth();
   const scrollRef = useRef(null);
 
   const [name, setName] = useState(settings.userName || "");
   const [pinModal, setPinModal] = useState(false);
-  const [wipeModal, setWipeModal] = useState(false);
+  // "devWipe" clears app storage; "factory" also restores default settings.
+  const [confirmMode, setConfirmMode] = useState(null);
+  const [crash, setCrash] = useState(false);
+  const [vat, setVat] = useState(String(settings.vatRate ?? "17"));
+  const [footer, setFooter] = useState(settings.receiptFooter ?? "");
+  const [syncState, setSyncState] = useState(null);
   const [storage, setStorage] = useState({ total: 0, count: 0, rows: [] });
   // Snapshot of every app key, captured alongside the size measurement. Held
   // in state so the export handlers can serialise it synchronously — see
@@ -71,6 +103,8 @@ export default function SettingsScreen() {
   const toastTimer = useRef(null);
 
   const hapticsOn = settings.haptics !== "off";
+  const bounds = settings.devMode && settings.layoutBounds ? s.bounds : null;
+
 
   const flash = useCallback((msg) => {
     setToast(msg);
@@ -83,6 +117,12 @@ export default function SettingsScreen() {
   useEffect(() => {
     setName(settings.userName || "");
   }, [settings.userName]);
+  useEffect(() => {
+    setVat(String(settings.vatRate ?? ""));
+  }, [settings.vatRate]);
+  useEffect(() => {
+    setFooter(settings.receiptFooter ?? "");
+  }, [settings.receiptFooter]);
 
   // --- Storage health -------------------------------------------------------
   const measureStorage = useCallback(async () => {
@@ -270,18 +310,188 @@ export default function SettingsScreen() {
     }
   };
 
-  const wipeAll = async () => {
-    setWipeModal(false);
+  // --- Business inputs ------------------------------------------------------
+  const saveVat = (text) => {
+    // Numbers only, at most two decimals — this feeds the pricing tools.
+    const clean = text.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1").slice(0, 5);
+    setVat(clean);
+    update({ vatRate: clean });
+  };
+
+  const saveFooter = (text) => {
+    setFooter(text);
+    update({ receiptFooter: text });
+  };
+
+  // --- Data & privacy -------------------------------------------------------
+  const exportZReports = async () => {
+    hapticLight();
+    Alert.alert("Preparing CSV export...", "מכין ייצוא דוחות Z");
+    const sales = (snapshot && snapshot[STORAGE_KEYS.posSales]) || [];
+    if (!Array.isArray(sales) || sales.length === 0) {
+      flash("אין מכירות לייצוא — רענן מדידת אחסון אם מכרת עכשיו");
+      return;
+    }
+    const csv = buildSalesCsv(sales);
+    try {
+      await Share.share({ message: csv, title: "דוחות Z — CSV" });
+      return;
+    } catch {
+      // No share sheet here — fall back to the clipboard.
+    }
+    try {
+      await Clipboard.setStringAsync(csv);
+      flash(`${sales.length} שורות CSV הועתקו ללוח`);
+    } catch {
+      hapticWarning();
+      flash("הייצוא נכשל");
+    }
+  };
+
+  const toggleCloudBackup = async (on) => {
+    hapticLight();
+    update({ cloudBackup: on });
+    if (!on) {
+      setSyncState(null);
+      flash("סנכרון לענן כובה");
+      return;
+    }
+    if (!isFirebaseConfigured || !user?.uid) {
+      setSyncState({ ok: false, text: "אין חיבור לחשבון ענן" });
+      flash("אין חיבור לחשבון ענן");
+      return;
+    }
+    setSyncState({ ok: null, text: "מסנכרן…" });
+    try {
+      await withTimeout(
+        setDoc(doc(db, "users", user.uid), { backup: buildBackup(), backupAt: Date.now() }, { merge: true })
+      );
+      hapticSuccess();
+      setSyncState({ ok: true, text: `סונכרן ${new Date().toLocaleTimeString("he-IL")}` });
+      flash("הגיבוי נשלח לענן");
+    } catch {
+      hapticWarning();
+      setSyncState({ ok: false, text: "הסנכרון נכשל — אין רשת" });
+      flash("הסנכרון נכשל");
+    }
+  };
+
+  const clearImageCache = () => {
+    hapticLight();
+    // React Native has no public image-cache clear API. Bumping a token that
+    // every remote cover URI carries forces the loader to miss its entry once,
+    // which is the portable equivalent.
+    update({ imageCacheToken: Date.now() });
+    flash("מטמון התמונות אופס — הכריכות ייטענו מחדש");
+  };
+
+  const factoryReset = () => {
+    hapticWarning();
+    // Alert buttons are ignored by react-native-web, so the web build gets the
+    // in-app dialog and native gets the platform alert.
+    if (Platform.OS === "web") {
+      setConfirmMode("factory");
+      return;
+    }
+    Alert.alert(
+      "איפוס אפליקציה מוחלט",
+      "כל הנתונים המקומיים וההגדרות יימחקו לצמיתות. אין דרך לשחזר בלי גיבוי.",
+      [
+        { text: "ביטול", style: "cancel" },
+        { text: "אפס הכל", style: "destructive", onPress: () => runWipe(true) },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const requestDeepWipe = () => {
+    hapticWarning();
+    if (Platform.OS === "web") {
+      setConfirmMode("devWipe");
+      return;
+    }
+    Alert.alert(
+      "מחיקת AsyncStorage עמוקה",
+      "כל מפתחות האחסון של האפליקציה יימחקו. ההגדרות יישארו כפי שהן בזיכרון עד להפעלה מחדש.",
+      [
+        { text: "ביטול", style: "cancel" },
+        { text: "מחק", style: "destructive", onPress: () => runWipe(false) },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const runWipe = async (factory) => {
+    setConfirmMode(null);
     try {
       const keys = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith("@dreammanager/"));
       await AsyncStorage.removeMany(keys);
+      if (factory) persist({ ...DEFAULT_SETTINGS });
       hapticWarning();
       await measureStorage();
-      flash(`${keys.length} מפתחות נמחקו — הפעל מחדש את האפליקציה`);
+      flash(
+        factory
+          ? `אופס למצב יצרן · ${keys.length} מפתחות נמחקו`
+          : `${keys.length} מפתחות נמחקו — הפעל מחדש את האפליקציה`
+      );
     } catch {
       flash("המחיקה נכשלה");
     }
   };
+
+  // --- Developer ------------------------------------------------------------
+  const injectDummySales = async () => {
+    hapticLight();
+    const records = [];
+    const now = Date.now();
+    for (let day = 6; day >= 0; day--) {
+      const when = new Date(now - day * 86400000);
+      const txCount = 2 + ((day * 3) % 3);
+      for (let t = 0; t < txCount; t++) {
+        const txId = uid();
+        const ts = when.setHours(9 + t * 3, 15 * t, 0, 0);
+        const lines = 1 + ((day + t) % 3);
+        for (let i = 0; i < lines; i++) {
+          const item = DUMMY_ITEMS[(day + t + i) % DUMMY_ITEMS.length];
+          const qty = 1 + ((t + i) % 3);
+          records.push({
+            id: uid(),
+            eventId: txId,
+            ts,
+            day: todayKey(new Date(ts)),
+            month: monthKey(new Date(ts)),
+            name: item.name,
+            qty,
+            price: item.price,
+            total: item.price * qty,
+            profit: item.price * qty,
+            cost: 0,
+            itemId: null,
+            category: "demo",
+            kind: "sale",
+            pay: (day + t) % 2 === 0 ? "cash" : "credit",
+          });
+        }
+      }
+    }
+    try {
+      const raw = await AsyncStorage.getItem(STORAGE_KEYS.posSales);
+      const existing = raw ? JSON.parse(raw) : [];
+      await AsyncStorage.setItem(STORAGE_KEYS.posSales, JSON.stringify([...existing, ...records]));
+      hapticSuccess();
+      await measureStorage();
+      // The business tab keeps its own copy in context once mounted, so the
+      // new rows appear there after a restart.
+      flash(`${records.length} רשומות מכירה נוספו · הפעל מחדש כדי לראות בעסק`);
+    } catch {
+      hapticWarning();
+      flash("ההזרקה נכשלה");
+    }
+  };
+
+  // Developer "force crash": thrown after every hook has run, so the only
+  // thing that unwinds is the render — exactly what ErrorBoundary catches.
+  if (crash) throw new Error("Forced crash from Developer Options 🛠️");
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
@@ -309,24 +519,48 @@ export default function SettingsScreen() {
         {settings.devMode && (
           <Animated.View entering={FadeInDown.duration(260)} layout={LinearTransition.springify()}>
             <Group title="Developer Options 🛠️" accent={GOLD}>
-              <InfoRow label="פלטפורמה" value={diagnostics.platform} />
-              <InfoRow label="כיוון פריסה" value={diagnostics.rtl} />
-              <InfoRow label="קטלוג כלים" value={diagnostics.tools} />
-              <InfoRow label="אחסון מקומי" value={diagnostics.keys} />
-              <InfoRow label="מזהה משתמש" value={diagnostics.user} />
-              <ActionRow label="העתק דוח אבחון" hint="כל הנתונים שלמעלה כטקסט" icon="📋" onPress={copyDiagnostics} />
-              <ActionRow label="רענן מדידת אחסון" icon="🔄" onPress={() => { hapticLight(); measureStorage(); flash("נמדד מחדש"); }} />
+              <InfoRow label="פלטפורמה" value={diagnostics.platform} bounds={bounds} />
+              <InfoRow label="כיוון פריסה" value={diagnostics.rtl} bounds={bounds} />
+              <InfoRow label="קטלוג כלים" value={diagnostics.tools} bounds={bounds} />
+              <InfoRow label="אחסון מקומי" value={diagnostics.keys} bounds={bounds} />
+              <InfoRow label="מזהה משתמש" value={diagnostics.user} bounds={bounds} />
+              <ActionRow label="העתק דוח אבחון" hint="כל הנתונים שלמעלה כטקסט" icon="📋" bounds={bounds} onPress={copyDiagnostics} />
+              <ActionRow label="רענן מדידת אחסון" icon="🔄" bounds={bounds} onPress={() => { hapticLight(); measureStorage(); flash("נמדד מחדש"); }} />
               <ActionRow
-                label="מחק את כל הנתונים המקומיים"
+                label="הזרקת נתוני מכירות לבדיקה"
+                hint="מוסיף שבוע של מכירות דמה ל-posSales"
+                icon="💉"
+                bounds={bounds}
+                onPress={injectDummySales}
+              />
+              <SwitchRow
+                label="הצגת גבולות עיצוב"
+                hint="מסמן כל שורה ופקד במסך ההגדרות"
+                value={!!settings.layoutBounds}
+                bounds={bounds}
+                onValueChange={(v) => { hapticLight(); update({ layoutBounds: v }); }}
+              />
+              <ActionRow
+                label="בדיקת קריסה"
+                hint="זורק שגיאה כדי לבדוק את ה-Error Boundary"
+                icon="💥"
+                danger
+                bounds={bounds}
+                onPress={() => { hapticWarning(); setCrash(true); }}
+              />
+              <ActionRow
+                label="מחיקת AsyncStorage עמוקה"
                 hint="פעולה בלתי הפיכה"
                 icon="🧨"
                 danger
-                onPress={() => { hapticWarning(); setWipeModal(true); }}
+                bounds={bounds}
+                onPress={requestDeepWipe}
               />
               <ActionRow
                 label="נעל מצב מפתח"
                 icon="🔒"
                 last
+                bounds={bounds}
                 onPress={() => {
                   hapticWarning();
                   update({ devMode: false });
@@ -351,7 +585,7 @@ export default function SettingsScreen() {
               maxLength={24}
             />
           </View>
-          <InfoRow label="חשבון" value={user?.email || "—"} />
+          <InfoRow label="חשבון" value={user?.email || "—"} bounds={bounds} />
           <ActionRow label="התנתקות" icon="🚪" danger last onPress={() => { hapticWarning(); logout(); }} />
         </Group>
 
@@ -376,9 +610,76 @@ export default function SettingsScreen() {
             label="מצב חשאי"
             hint="הסתרת כל הסכומים הכספיים (•••••)"
             value={settings.stealth}
-            last
+            bounds={bounds}
             onValueChange={(v) => { hapticLight(); update({ stealth: v }); }}
           />
+          <View style={[s.row, bounds]}>
+            <TextInput
+              testID="vat-input"
+              style={[s.inlineInput, bounds]}
+              value={vat}
+              onChangeText={saveVat}
+              keyboardType="numeric"
+              placeholder="17"
+              placeholderTextColor={INK_MUTED}
+              textAlign="right"
+              maxLength={5}
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={s.rowLabel}>מע״מ ברירת מחדל</Text>
+              <Text style={s.rowHint}>משמש את מחשבוני התמחור והייבוא (%)</Text>
+            </View>
+          </View>
+          <Divider />
+          <SwitchRow
+            label="ניקוי עגלה אוטומטי בסיום חיוב"
+            hint="כבוי — הסל נשאר על המסך אחרי חיוב"
+            value={settings.autoClearCart}
+            bounds={bounds}
+            onValueChange={(v) => { hapticLight(); update({ autoClearCart: v }); }}
+          />
+          <View style={[s.stackRow, bounds]}>
+            <Text style={s.rowLabel}>הודעת תחתית קבלה</Text>
+            <TextInput
+              testID="footer-input"
+              style={[s.nameInput, bounds]}
+              value={footer}
+              onChangeText={saveFooter}
+              placeholder="תודה שקניתם!"
+              placeholderTextColor={INK_MUTED}
+              textAlign="right"
+              maxLength={60}
+            />
+          </View>
+          <Divider />
+          <View style={[s.stackRow, bounds]}>
+            <Text style={s.rowLabel}>סמל מטבע</Text>
+            <Text style={s.rowHint}>מוחל על כל הסכומים באפליקציה</Text>
+            <Segment
+              options={CURRENCIES}
+              value={settings.currency}
+              bounds={bounds}
+              onChange={(k) => { hapticLight(); update({ currency: k }); }}
+            />
+          </View>
+          <Divider />
+          <View style={[s.stackRow, bounds, !hapticsOn && { opacity: 0.45 }]}>
+            <Text style={s.rowLabel}>עוצמת רטט</Text>
+            <Text style={s.rowHint}>
+              {hapticsOn ? "חוזק המשוב בכל לחיצה באפליקציה" : "מושבת — הפעל ״משוב הפטי״ בקבוצת מערכת"}
+            </Text>
+            <Segment
+              options={HAPTIC_LEVELS}
+              value={hapticsOn ? settings.haptics : settings.hapticsLevel}
+              disabled={!hapticsOn}
+              bounds={bounds}
+              onChange={(k) => {
+                update({ haptics: k, hapticsLevel: k });
+                // Fire after the level lands so the tap demonstrates it.
+                setTimeout(hapticLight, 0);
+              }}
+            />
+          </View>
         </Group>
 
         {/* ---------- Data & backup ---------- */}
@@ -404,9 +705,37 @@ export default function SettingsScreen() {
             })}
             {storage.rows.length === 0 && <Text style={s.rowHint}>אין עדיין נתונים מקומיים.</Text>}
           </View>
-          <ActionRow label="ייצוא גיבוי" hint="שיתוף כל הנתונים כקובץ JSON" icon="📤" onPress={exportBackup} />
-          <ActionRow label="העתק גיבוי ללוח" icon="📋" onPress={copyBackup} />
-          <ActionRow label="ארכוב דוחות מעל 90 יום" hint="מנקה מכירות ישנות" icon="🗄️" last onPress={archiveOldReports} />
+          <ActionRow label="ייצוא גיבוי" hint="שיתוף כל הנתונים כקובץ JSON" icon="📤" bounds={bounds} onPress={exportBackup} />
+          <ActionRow label="העתק גיבוי ללוח" icon="📋" bounds={bounds} onPress={copyBackup} />
+          <ActionRow
+            label="ייצוא דוחות Z"
+            hint="כל שורות המכירה כקובץ CSV"
+            icon="📊"
+            bounds={bounds}
+            onPress={exportZReports}
+          />
+          <SwitchRow
+            label="סנכרון נתונים לענן"
+            hint={syncState ? syncState.text : "שולח עותק של הנתונים ל-Firestore"}
+            value={settings.cloudBackup}
+            bounds={bounds}
+            onValueChange={toggleCloudBackup}
+          />
+          <ActionRow label="ניקוי מטמון תמונות" hint="טוען מחדש את כריכות החלומות" icon="🖼️" bounds={bounds} onPress={clearImageCache} />
+          <ActionRow label="ארכוב דוחות מעל 90 יום" hint="מנקה מכירות ישנות" icon="🗄️" last bounds={bounds} onPress={archiveOldReports} />
+        </Group>
+
+        {/* ---------- Danger zone ---------- */}
+        <Group title="אזור סכנה" icon="⚠️" accent={RED}>
+          <View style={s.dangerWrap}>
+            <Text style={s.dangerText}>
+              מחיקה מוחלטת של כל המכירות, המלאי, ההקפות, הפתקים, החלומות וההעדפות מהמכשיר, וחזרה
+              להגדרות היצרן.
+            </Text>
+            <TouchableOpacity testID="factory-reset" style={[s.dangerBtn, bounds]} onPress={factoryReset} activeOpacity={0.85}>
+              <Text style={s.dangerBtnText}>איפוס אפליקציה מוחלט</Text>
+            </TouchableOpacity>
+          </View>
         </Group>
 
         {/* ---------- System ---------- */}
@@ -415,15 +744,10 @@ export default function SettingsScreen() {
             label="משוב הפטי"
             hint="רטט בלחיצות ובפעולות בכל האפליקציה"
             value={hapticsOn}
+            bounds={bounds}
             onValueChange={toggleHaptics}
           />
-          <SwitchRow
-            label="רטט חזק"
-            hint="עוצמת רטט מוגברת"
-            value={settings.haptics === "heavy"}
-            disabled={!hapticsOn}
-            onValueChange={(v) => { hapticLight(); update({ haptics: v ? "heavy" : "light" }); }}
-          />
+          <InfoRow label="עוצמת רטט" value={HAPTIC_LEVELS.find((l) => l.key === settings.haptics)?.label || "כבוי"} bounds={bounds} />
           <ActionRow
             label="נעילת קוד"
             hint={settings.pin ? "פעיל — נדרש קוד בכל פתיחה" : "כבוי"}
@@ -439,7 +763,7 @@ export default function SettingsScreen() {
               }
             }}
           />
-          <InfoRow label="שפה וכיוון" value={`עברית · ${diagnostics.rtl}`} last />
+          <InfoRow label="שפה וכיוון" value={`עברית · ${diagnostics.rtl}`} last bounds={bounds} />
         </Group>
 
         {/* ---------- Version / easter egg ---------- */}
@@ -473,21 +797,29 @@ export default function SettingsScreen() {
         />
       </Modal>
 
-      {/* Wipe confirmation — a real dialog rather than Alert buttons, which
-          react-native-web ignores. */}
-      <Modal visible={wipeModal} transparent animationType="fade" onRequestClose={() => setWipeModal(false)}>
+      {/* Destructive confirmation for web, where Alert buttons are ignored. */}
+      <Modal visible={!!confirmMode} transparent animationType="fade" onRequestClose={() => setConfirmMode(null)}>
         <View style={s.backdrop}>
           <View style={s.dialog}>
-            <Text style={s.dialogTitle}>🧨 למחוק את כל הנתונים?</Text>
-            <Text style={s.dialogBody}>
-              כל המכירות, המלאי, ההקפות, הפתקים, החלומות וההעדפות יימחקו מהמכשיר. אין דרך לשחזר בלי גיבוי.
+            <Text style={s.dialogTitle}>
+              {confirmMode === "factory" ? "⚠️ איפוס אפליקציה מוחלט" : "🧨 מחיקת AsyncStorage עמוקה"}
             </Text>
-            <TouchableOpacity style={[s.dialogBtn, { backgroundColor: RED }]} onPress={wipeAll} activeOpacity={0.85}>
-              <Text style={s.dialogBtnText}>כן, מחק הכל</Text>
+            <Text style={s.dialogBody}>
+              {confirmMode === "factory"
+                ? "כל הנתונים המקומיים וההגדרות יימחקו לצמיתות וההגדרות יחזרו לברירת המחדל. אין דרך לשחזר בלי גיבוי."
+                : "כל מפתחות האחסון של האפליקציה יימחקו. ההגדרות יישארו בזיכרון עד להפעלה מחדש."}
+            </Text>
+            <TouchableOpacity
+              testID="confirm-destructive"
+              style={[s.dialogBtn, { backgroundColor: RED }]}
+              onPress={() => runWipe(confirmMode === "factory")}
+              activeOpacity={0.85}
+            >
+              <Text style={s.dialogBtnText}>{confirmMode === "factory" ? "אפס הכל" : "כן, מחק הכל"}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[s.dialogBtn, { backgroundColor: BG }]}
-              onPress={() => setWipeModal(false)}
+              onPress={() => setConfirmMode(null)}
               activeOpacity={0.85}
             >
               <Text style={[s.dialogBtnText, { color: INK_SOFT }]}>ביטול</Text>
@@ -503,9 +835,9 @@ export default function SettingsScreen() {
  * Grouped-list building blocks
  * ----------------------------------------------------------------------- */
 
-function Group({ title, icon, accent, children }) {
+function Group({ title, icon, accent, children, bounds }) {
   return (
-    <View style={s.group}>
+    <View style={[s.group, bounds]}>
       <Text style={[s.groupTitle, accent && { color: accent }]}>
         {icon ? `${icon}  ` : ""}
         {title}
@@ -520,10 +852,10 @@ function Divider({ last }) {
   return <View style={s.divider} />;
 }
 
-function InfoRow({ label, value, last }) {
+function InfoRow({ label, value, last, bounds }) {
   return (
     <>
-      <View style={s.row}>
+      <View style={[s.row, bounds]}>
         <Text style={s.rowValue} numberOfLines={1}>{value}</Text>
         <Text style={s.rowLabel}>{label}</Text>
       </View>
@@ -532,10 +864,10 @@ function InfoRow({ label, value, last }) {
   );
 }
 
-function SwitchRow({ label, hint, value, onValueChange, disabled, last }) {
+function SwitchRow({ label, hint, value, onValueChange, disabled, last, bounds }) {
   return (
     <>
-      <View style={[s.row, disabled && { opacity: 0.45 }]}>
+      <View style={[s.row, bounds, disabled && { opacity: 0.45 }]}>
         <Switch
           value={value}
           onValueChange={onValueChange}
@@ -557,10 +889,10 @@ function SwitchRow({ label, hint, value, onValueChange, disabled, last }) {
   );
 }
 
-function ActionRow({ label, hint, icon, onPress, danger, actionLabel, last }) {
+function ActionRow({ label, hint, icon, onPress, danger, actionLabel, last, bounds }) {
   return (
     <>
-      <TouchableOpacity style={s.row} onPress={onPress} activeOpacity={0.65}>
+      <TouchableOpacity style={[s.row, bounds]} onPress={onPress} activeOpacity={0.65}>
         {actionLabel ? (
           <View style={[s.actionPill, danger && { backgroundColor: RED + "18" }]}>
             <Text style={[s.actionPillText, danger && { color: RED }]}>{actionLabel}</Text>
@@ -579,15 +911,16 @@ function ActionRow({ label, hint, icon, onPress, danger, actionLabel, last }) {
   );
 }
 
-function Segment({ options, value, onChange }) {
+function Segment({ options, value, onChange, disabled, bounds }) {
   return (
-    <View style={s.segment}>
+    <View style={[s.segment, bounds]}>
       {options.map((o) => (
         <TouchableOpacity
           key={o.key}
-          style={[s.segmentBtn, value === o.key && { backgroundColor: BLUE }]}
-          onPress={() => onChange(o.key)}
-          activeOpacity={0.75}
+          testID={`seg-${o.key}`}
+          style={[s.segmentBtn, bounds, value === o.key && { backgroundColor: BLUE }]}
+          onPress={() => !disabled && onChange(o.key)}
+          activeOpacity={disabled ? 1 : 0.75}
         >
           <Text style={[s.segmentText, value === o.key && { color: WHITE }]}>{o.label}</Text>
         </TouchableOpacity>
@@ -673,6 +1006,27 @@ const s = StyleSheet.create({
   storageBytes: { fontFamily: FONTS.regular, fontSize: 11, color: INK_MUTED },
   barBg: { height: 6, borderRadius: 3, backgroundColor: BG, marginTop: 5, overflow: "hidden" },
   barFill: { height: "100%", borderRadius: 3, backgroundColor: BLUE },
+
+  inlineInput: {
+    minWidth: 78,
+    maxWidth: 120,
+    minHeight: 44,
+    backgroundColor: BG,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    fontFamily: FONTS.bold,
+    fontSize: 16,
+    color: BLUE,
+    ...NO_OUTLINE,
+  },
+
+  dangerWrap: { padding: 16, gap: 12 },
+  dangerText: { fontFamily: FONTS.regular, fontSize: 12.5, color: INK_SOFT, textAlign: "right", lineHeight: 19 },
+  dangerBtn: { minHeight: 54, borderRadius: 14, backgroundColor: RED, alignItems: "center", justifyContent: "center" },
+  dangerBtnText: { fontFamily: FONTS.bold, fontSize: 15.5, color: WHITE },
+
+  // Developer "render layout bounds" overlay.
+  bounds: { borderWidth: 1, borderColor: "#FF2D95" },
 
   versionWrap: { paddingVertical: 22, alignItems: "center" },
   versionText: { fontFamily: FONTS.regular, fontSize: 11.5, color: INK_MUTED, textAlign: "center" },

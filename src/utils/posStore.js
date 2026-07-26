@@ -31,11 +31,24 @@ export function monthKey(d = new Date()) {
   return todayKey(d).slice(0, 7);
 }
 
+// Currency symbol shown by shekel(). Driven by the Settings screen through
+// SettingsProvider — a module flag rather than context, because shekel() is a
+// plain function called from dozens of render paths.
+let CURRENCY = "₪";
+
+export function setCurrencySymbol(symbol) {
+  CURRENCY = symbol || "₪";
+}
+
+export function currencySymbol() {
+  return CURRENCY;
+}
+
 export function shekel(n) {
   const v = Math.round((Number(n) || 0) * 100) / 100;
   const [int, dec] = String(Math.abs(v)).split(".");
   const sep = int.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return `${v < 0 ? "-" : ""}₪${dec ? `${sep}.${dec}` : sep}`;
+  return `${v < 0 ? "-" : ""}${CURRENCY}${dec ? `${sep}.${dec}` : sep}`;
 }
 
 // Build a sale record from an inventory item.

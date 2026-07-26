@@ -4,6 +4,7 @@ import { ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from "rea
 import { useBusiness } from "../context/BusinessContext";
 import { hapticHeavy, hapticLight } from "../utils/haptics";
 import { shekel, todayKey, uid } from "../utils/posStore";
+import { useSettings } from "../context/SettingsContext";
 import { aggregateDay, buildZReportText, lastCloseTs } from "../utils/zReport";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 
@@ -22,6 +23,7 @@ const GREEN_DARK = "#1E9E58";
 
 export default function ZReportScreen() {
   const { sales, closes, setCloses } = useBusiness();
+  const { receiptFooter } = useSettings();
 
   const since = lastCloseTs(closes);
   const stats = useMemo(() => aggregateDay(sales, new Date(), since), [sales, since]);
@@ -32,7 +34,7 @@ export default function ZReportScreen() {
   const shareZ = async () => {
     hapticLight();
     try {
-      await Share.share({ message: buildZReportText(sales, new Date(), since) });
+      await Share.share({ message: buildZReportText(sales, new Date(), since, receiptFooter) });
     } catch {
       /* user cancelled */
     }

@@ -3,6 +3,7 @@ import * as Clipboard from "expo-clipboard";
 import { Linking, Platform, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 import Slider from "./Slider";
+import { useSettings } from "../../context/SettingsContext";
 import { hapticLight, hapticSuccess, hapticWarning } from "../../utils/haptics";
 import { gregorianToHebrew, hebrewWeekday } from "../../utils/hebrewDate";
 import { shekel } from "../../utils/posStore";
@@ -375,6 +376,8 @@ export function RnUiGenerator() {
 // D. מחשבון ייבוא אליאקספרס
 // ---------------------------------------------------------------------------
 export function AliImportCalc() {
+  const { vatRate } = useSettings();
+  const vatPct = Math.max(0, parseFloat(vatRate) || 0);
   const [cost, setCost] = useState("6.5");
   const [shipping, setShipping] = useState("2");
   const [margin, setMargin] = useState("60");
@@ -387,7 +390,7 @@ export function AliImportCalc() {
     const m = parseFloat(margin) || 0;
     const landedIls = usd * fx;
     const sellBeforeVat = landedIls * (1 + m / 100);
-    const sell = vat ? sellBeforeVat * 1.18 : sellBeforeVat;
+    const sell = vat ? sellBeforeVat * (1 + vatPct / 100) : sellBeforeVat;
     const profit = sellBeforeVat - landedIls;
     const rounded = sell > 0 ? Math.ceil(sell / 5) * 5 : 0;
     return {
@@ -398,7 +401,7 @@ export function AliImportCalc() {
       marginOfPrice: sell > 0 ? Math.round((profit / sell) * 100) : 0,
       ready: usd > 0 && fx > 0,
     };
-  }, [cost, shipping, margin, rate, vat]);
+  }, [cost, shipping, margin, rate, vat, vatPct]);
 
   return (
     <View style={{ gap: 12 }}>
@@ -415,7 +418,7 @@ export function AliImportCalc() {
         <View style={[s.checkbox, vat && { backgroundColor: BLUE, borderColor: BLUE }]}>
           {vat && <Text style={s.checkMark}>✓</Text>}
         </View>
-        <Text style={s.checkLabel}>הוסף מע״מ 18% למחיר המכירה</Text>
+        <Text style={s.checkLabel}>הוסף מע״מ {vatPct}% למחיר המכירה</Text>
       </TouchableOpacity>
 
       {r.ready ? (
@@ -1237,10 +1240,13 @@ const VAT_RATES = [
 ];
 
 export function VatDiscount() {
+  // Seeded from the default VAT rate in Settings.
+  const { vatRate } = useSettings();
+  const defaultRate = String(Math.max(0, parseFloat(vatRate) || 18));
   const [base, setBase] = useState("100");
   const [discount, setDiscount] = useState(10);
   const [vatOn, setVatOn] = useState(true);
-  const [rate, setRate] = useState("18");
+  const [rate, setRate] = useState(defaultRate);
 
   // No useCalcHaptic here: the discount slider already taps per step, and
   // stacking a second pulse on the same drag feels buzzy.
@@ -1282,7 +1288,17 @@ export function VatDiscount() {
         </View>
         <Text style={s.checkLabel}>הוסף מע״מ למחיר הסופי</Text>
       </TouchableOpacity>
-      {vatOn && <Segment options={VAT_RATES} value={rate} onChange={setRate} />}
+      {vatOn && (
+        <Segment
+          options={
+            VAT_RATES.some((r) => r.key === defaultRate)
+              ? VAT_RATES
+              : [{ key: defaultRate, label: `מע״מ ${defaultRate}%` }, ...VAT_RATES]
+          }
+          value={rate}
+          onChange={setRate}
+        />
+      )}
 
       {r.ready ? (
         <>

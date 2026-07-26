@@ -6,6 +6,8 @@ import * as Haptics from "expo-haptics";
 // SettingsProvider. Kept as a module flag rather than context so the dozens of
 // call sites across the app stay plain function calls.
 let enabled = true;
+// 'light' | 'medium' | 'heavy' — scales how hard every tap in the app feels.
+let level = "light";
 
 export function setHapticsEnabled(next) {
   enabled = next !== false;
@@ -15,11 +17,29 @@ export function areHapticsEnabled() {
   return enabled;
 }
 
+export function setHapticsLevel(next) {
+  level = next === "medium" || next === "heavy" ? next : "light";
+}
+
+export function hapticsLevel() {
+  return level;
+}
+
+// A "light" tap at the heavy setting should still feel lighter than a "heavy"
+// one, so the level shifts the whole scale rather than flattening it.
+const IMPACT = {
+  light: { light: "Light", heavy: "Medium" },
+  medium: { light: "Medium", heavy: "Heavy" },
+  heavy: { light: "Heavy", heavy: "Heavy" },
+};
+
+const impactStyle = (kind) => Haptics.ImpactFeedbackStyle[IMPACT[level][kind]];
+
 // Light tap — used when pinning a note.
 export function hapticLight() {
   if (!enabled) return;
   try {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    Haptics.impactAsync(impactStyle("light")).catch(() => {});
   } catch {
     /* no-op on web */
   }
@@ -39,7 +59,7 @@ export function hapticSuccess() {
 export function hapticHeavy() {
   if (!enabled) return;
   try {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+    Haptics.impactAsync(impactStyle("heavy")).catch(() => {});
   } catch {
     /* no-op on web */
   }

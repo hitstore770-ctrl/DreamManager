@@ -30,7 +30,9 @@ import {
   useDreams,
 } from "../context/DreamContext";
 import { useNotes } from "../context/NotesContext";
+import { useSettings } from "../context/SettingsContext";
 import { hapticHeavy, hapticLight, hapticSuccess } from "../utils/haptics";
+import { bustCache } from "../utils/imageCache";
 import { makeNote } from "../utils/notesStore";
 import { NOTES_FONTS as FONTS, NOTES_THEME } from "../utils/notesTheme";
 import { shekel } from "../utils/posStore";
@@ -66,6 +68,7 @@ function countdownLabel(days) {
 }
 
 export default function DreamsScreen({ navigation }) {
+  const { imageCacheToken } = useSettings();
   const insets = useSafeAreaInsets();
   const {
     dreams,
@@ -402,7 +405,11 @@ export default function DreamsScreen({ navigation }) {
                     <View style={s.grabber} />
                     <View style={s.sheetHero}>
                       {open.imageUri ? (
-                        <Image source={{ uri: open.imageUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                        <Image
+                          source={{ uri: bustCache(open.imageUri, imageCacheToken) }}
+                          style={StyleSheet.absoluteFill}
+                          resizeMode="cover"
+                        />
                       ) : (
                         <CoverGradient colors={coverOf(open.cover).colors} />
                       )}
@@ -795,6 +802,7 @@ export default function DreamsScreen({ navigation }) {
 // Vision tile. Locked dreams hide their title and darken the cover so the
 // board can be shown to anyone without leaking private goals.
 function DreamCard({ dream, height, index, onPress }) {
+  const { imageCacheToken } = useSettings();
   const pct = dreamProgress(dream);
   const done = (dream.milestones || []).filter((m) => m.done).length;
   const total = (dream.milestones || []).length;
@@ -811,7 +819,12 @@ function DreamCard({ dream, height, index, onPress }) {
         activeOpacity={0.88}
       >
         {dream.imageUri ? (
-          <Image source={{ uri: dream.imageUri }} style={StyleSheet.absoluteFill} resizeMode="cover" blurRadius={locked ? 18 : 0} />
+          <Image
+            source={{ uri: bustCache(dream.imageUri, imageCacheToken) }}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+            blurRadius={locked ? 18 : 0}
+          />
         ) : (
           <CoverGradient colors={coverOf(dream.cover).colors} />
         )}
