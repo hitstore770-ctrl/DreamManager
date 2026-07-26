@@ -60,7 +60,9 @@ export default function POSScreen() {
   // Sales ledger is shared with the other business modules via context; only
   // the cart + last transaction are POS-private (persisted so a mid-sale
   // crash on the counter phone loses nothing).
-  const { sales, setSales, closes } = useBusiness();
+  const { sales, setSales, closes, promos } = useBusiness();
+  // Active promo bundles ride at the front of the product rail as gold chips.
+  const activePromos = (promos || []).filter((p) => p.active);
   const [cart, setCart, cartLoaded] = usePersistentState("@dreammanager/pos-cart", []);
   const [lastTx, setLastTx] = usePersistentState("@dreammanager/pos-last-tx", null);
 
@@ -195,7 +197,18 @@ export default function POSScreen() {
     playCaching();
     const txId = uid();
     const ts = Date.now();
-    const base = { ts, day: todayKey(), month: monthKey(), itemId: null, category: "print", cost: 0, kind: "sale", eventId: txId };
+    const base = {
+      ts,
+      day: todayKey(),
+      month: monthKey(),
+      itemId: null,
+      category: "print",
+      cost: 0,
+      kind: "sale",
+      eventId: txId,
+      // Cash sales go through the change calculator; everything else is card.
+      pay: cash ? "cash" : "credit",
+    };
     const records = cart.map((i) => ({
       ...base,
       id: uid(),
@@ -394,6 +407,18 @@ export default function POSScreen() {
         style={s.productRail}
         contentContainerStyle={s.productRailContent}
       >
+        {activePromos.map((p) => (
+          <TouchableOpacity
+            key={p.id}
+            style={[s.productChip, s.promoChip]}
+            onPress={() => addItem(p.name, p.price)}
+            activeOpacity={0.75}
+          >
+            <Text style={s.productEmoji}>{p.emoji}</Text>
+            <Text style={s.productName} numberOfLines={1}>{p.name}</Text>
+            <Text style={[s.productPrice, { color: "#A8871F" }]}>{shekel(p.price)}</Text>
+          </TouchableOpacity>
+        ))}
         {PRODUCTS.map((p) => (
           <TouchableOpacity key={p.name} style={s.productChip} onPress={() => addItem(p.name, p.price)} activeOpacity={0.75}>
             <Text style={s.productEmoji}>{p.emoji}</Text>
@@ -751,6 +776,7 @@ const s = StyleSheet.create({
   productEmoji: { fontSize: 18 },
   productName: { fontFamily: FONTS.semibold, fontSize: 11, color: INK, marginTop: 2, maxWidth: 96 },
   productPrice: { fontFamily: FONTS.bold, fontSize: 11, color: BLUE, marginTop: 1 },
+  promoChip: { backgroundColor: "#D4AF3722" },
 
   lastTxPill: {
     position: "absolute",

@@ -11,4 +11,5 @@ export const STORAGE_KEYS = {
   posEvents: "@dreammanager/pos-events",
   posLockedDays: "@dreammanager/pos-locked-days",
   posRegisterCloses: "@dreammanager/pos-register-closes",
+  posPromos: "@dreammanager/pos-promos",
 };

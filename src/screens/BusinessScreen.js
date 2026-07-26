@@ -4,16 +4,19 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { BusinessProvider } from "../context/BusinessContext";
+import BizDashboardScreen from "./BizDashboardScreen";
 import DebtsScreen from "./DebtsScreen";
 import POSScreen from "./POSScreen";
+import PricingScreen from "./PricingScreen";
+import PromosScreen from "./PromosScreen";
 import WarehouseScreen from "./WarehouseScreen";
 import ZReportScreen from "./ZReportScreen";
 import { hapticLight } from "../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 
-// "העסק שלי" shell: a pill sub-navigation over 8 business modules. POS,
-// Warehouse, customer tabs (הקפות) and the Z-report are fully built; the
-// remaining four are scaffolded for a later phase.
+// "העסק שלי" shell: a pill sub-navigation over 8 business modules — all live:
+// POS, Warehouse, customer tabs, Z-report, promos, pricing and the dashboard
+// (ספקים remains the one scaffold).
 
 const WHITE = "#FFFFFF";
 const CARD = "#F4F5F7";
@@ -66,6 +69,12 @@ function BusinessShell() {
         return <DebtsScreen />;
       case "zreport":
         return <ZReportScreen />;
+      case "deals":
+        return <PromosScreen />;
+      case "pricing":
+        return <PricingScreen />;
+      case "dash":
+        return <BizDashboardScreen />;
       default: {
         const m = MODULES.find((x) => x.key === module);
         return <ModuleScaffold emoji={m.emoji} title={m.label} />;

@@ -1,7 +1,15 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, useEffect } from "react";
 
 import { STORAGE_KEYS } from "../utils/storageKeys";
 import { usePersistentState } from "../utils/usePersistentState";
+
+// Starter promo bundles, seeded once on first run (store starts as null).
+// Seeding happens here — not in the Promos screen — so the POS shows the
+// gold promo chips even if the Promos module was never opened.
+export const DEFAULT_PROMOS = [
+  { id: "promo-night", name: "מארז לילה: 2 חטיפים + פחית", price: 20, emoji: "🌙", active: true },
+  { id: "promo-stickers", name: "100 מדבקות A5 + חיתוך", price: 120, emoji: "🏷️", active: true },
+];
 
 // Single source of truth for the business data while the "My Business" tab is
 // mounted. All sub-modules (POS, Warehouse, Z-report, tools sheet) read and
@@ -16,6 +24,11 @@ export function BusinessProvider({ children }) {
   const [debts, setDebts, debtsLoaded] = usePersistentState(STORAGE_KEYS.posDebts, []);
   // Register-close archive: [{id, day, ts, revenue, txCount, units, topItem}].
   const [closes, setCloses, closesLoaded] = usePersistentState(STORAGE_KEYS.posRegisterCloses, []);
+  // Promo bundles: [{id, name, price, emoji, active}]. null until first seed.
+  const [promos, setPromos, promosLoaded] = usePersistentState(STORAGE_KEYS.posPromos, null);
+  useEffect(() => {
+    if (promosLoaded && promos === null) setPromos(DEFAULT_PROMOS);
+  }, [promosLoaded, promos]);
 
   return (
     <BusinessContext.Provider
@@ -28,7 +41,9 @@ export function BusinessProvider({ children }) {
         setDebts,
         closes,
         setCloses,
-        loaded: salesLoaded && invLoaded && debtsLoaded && closesLoaded,
+        promos,
+        setPromos,
+        loaded: salesLoaded && invLoaded && debtsLoaded && closesLoaded && promosLoaded,
       }}
     >
       {children}
