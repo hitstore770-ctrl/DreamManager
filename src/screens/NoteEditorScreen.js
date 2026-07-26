@@ -26,8 +26,21 @@ import { RADIUS, RADIUS_SM } from "../utils/theme";
 import HebrewDateTools from "../components/notes/HebrewDateTools";
 
 // Ready-to-use business templates appended into the note from the toolbar.
+// The primary template is the standard document + A5 sticker printing order
+// (NO sublimation) — kept verbatim per the business's intake form.
 const BUSINESS_TEMPLATES = [
-  { key: "print", emoji: "🖨️", label: "הזמנת הדפסות", text: "הזמנת הדפסות/מדבקות: לקוח: ___ | גודל: A5 | כמות: ___ | מחיר סה״כ: ___" },
+  {
+    key: "print",
+    emoji: "🖨️",
+    label: "הזמנת הדפסת מסמכים ומדבקות A5",
+    text:
+      "הזמנת הדפסת מסמכים ומדבקות A5:\n" +
+      "לקוח: ___\n" +
+      "סוג: מסמכים / מדבקות A5\n" +
+      "כמות: ___\n" +
+      "צבע: צבעוני / שחור-לבן\n" +
+      "מחיר סה״כ: ___",
+  },
   { key: "scooter", emoji: "🛴", label: "משלוח בקורקינט", text: "משלוח (קורקינט): יעד: ___ | שעה: ___ | סטטוס: ממתין" },
   { key: "restock", emoji: "📦", label: "השלמת מלאי", text: "השלמת מלאי קופה: מוצר: ___ | כמות חסרה: ___" },
 ];
@@ -117,7 +130,12 @@ export default function NoteEditorScreen({ route, navigation }) {
   }
 
   const readOnly = note.readOnly;
-  const bg = noteBg(note.bg, theme.scheme === "dark");
+  // Editor surface defaults to the 770JLM soft grey (#F8F9FA); a chosen pastel
+  // overrides it. Keeps the writing area calm and on-theme by default.
+  const bg =
+    note.bg && note.bg !== "white"
+      ? noteBg(note.bg, theme.scheme === "dark")
+      : theme.surfaceAlt;
   const s = makeStyles(theme, fontScale);
 
   // ---- Rich-text toolbar --------------------------------------------------
@@ -229,18 +247,20 @@ export default function NoteEditorScreen({ route, navigation }) {
   const checklistDone = note.checklist.filter((i) => i.done).length;
   const checklistPct = note.checklist.length ? Math.round((checklistDone / note.checklist.length) * 100) : 0;
 
-  const TBtn = ({ label, on, active, wide }) => (
+  // Toolbar button — Deep Blue by default (signals interactivity), solid Deep
+  // Blue fill with white glyph when active.
+  const TBtn = ({ label, on, active }) => (
     <TouchableOpacity
-      style={[s.tbtn, wide && { paddingHorizontal: 12 }, active && { backgroundColor: theme.accent }]}
+      style={[s.tbtn, active && { backgroundColor: theme.accent, borderColor: theme.accent }]}
       onPress={on}
       activeOpacity={0.7}
     >
-      <Text style={[s.tbtnText, { color: active ? "#FFF" : theme.textPrimary }]}>{label}</Text>
+      <Text style={[s.tbtnText, { color: active ? "#FFF" : theme.accent }]}>{label}</Text>
     </TouchableOpacity>
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.surface }}>
       {/* Header */}
       <View style={[s.header, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity style={s.iconBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
@@ -253,6 +273,13 @@ export default function NoteEditorScreen({ route, navigation }) {
           </Text>
         </View>
         <View style={s.headerActions}>
+          <TouchableOpacity
+            style={[s.iconBtn, note.pinned && { backgroundColor: theme.accent }]}
+            onPress={() => { hapticLight(); patchNote({ pinned: !note.pinned }); }}
+            activeOpacity={0.7}
+          >
+            <Text style={s.icon}>📌</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={s.iconBtn} onPress={shareNote} activeOpacity={0.7}>
             <Text style={s.icon}>📤</Text>
           </TouchableOpacity>
@@ -266,56 +293,53 @@ export default function NoteEditorScreen({ route, navigation }) {
         </View>
       </View>
 
-      {/* Formatting toolbar */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.toolbar}>
-        <TBtn label="B" on={() => applyMarker("**")} />
-        <TBtn label="I" on={() => applyMarker("*")} />
-        <TBtn label="U" on={() => applyMarker("__")} />
-        <View style={s.tsep} />
-        <TBtn label="A−" on={() => bumpFont(-1)} />
-        <TBtn label="A+" on={() => bumpFont(1)} />
-        <View style={s.tsep} />
-        <TBtn label={preview ? "✏️ עריכה" : "👁️ תצוגה"} on={() => setPreview((p) => !p)} active={preview} wide />
-        <TBtn label={readOnly ? "🔏 לקריאה" : "🖊️ לעריכה"} on={() => patchNote({ readOnly: !readOnly })} active={readOnly} wide />
-        <View style={s.tsep} />
-        <TBtn label="🪄 תבניות" on={() => setShowTemplates(true)} wide />
-        <TBtn label="🕐 חותמת זמן" on={insertTimestamp} wide />
-      </ScrollView>
-
-      {/* Background color picker — four soft pastels */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.bgRow}>
-        {NOTE_BG.filter((b) => ["yellow", "blue", "green", "pink"].includes(b.key)).map((b) => (
-          <TouchableOpacity
-            key={b.key}
-            style={[
-              s.bgDot,
-              { backgroundColor: theme.scheme === "dark" ? b.dark : b.color },
-              note.bg === b.key && { borderColor: theme.accent, borderWidth: 3 },
-            ]}
-            onPress={() => patchNote({ bg: note.bg === b.key ? "white" : b.key })}
-            activeOpacity={0.8}
-          />
-        ))}
-        <View style={s.tsep} />
-        <TBtn label="🧮 מחשבון" on={() => setShowCalc(true)} wide />
-        <TBtn label="📆 תאריך עברי" on={() => setShowDates(true)} wide />
-        {!note.isChecklist ? (
-          <TBtn label="✅ לצ׳קליסט" on={convertToChecklist} wide />
-        ) : (
-          <TBtn label="📝 לטקסט" on={() => patchNote({ isChecklist: false })} wide />
-        )}
-      </ScrollView>
-
-      {/* Dynamic #tag pills */}
-      {liveTags.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tagPillRow}>
-          {liveTags.map((t) => (
-            <View key={t} style={s.tagPill}>
-              <Text style={s.tagPillText}>#{t}</Text>
-            </View>
+      {/* Unified Action Toolbar (סרגל כלים) — one prominent, centered, grouped
+          panel that scrolls horizontally instead of buttons floating loose. */}
+      <View style={s.toolbarCard}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={s.toolbar}
+        >
+          {/* Rich text */}
+          <TBtn label="B" on={() => applyMarker("**")} />
+          <TBtn label="I" on={() => applyMarker("*")} />
+          <TBtn label="U" on={() => applyMarker("__")} />
+          <View style={s.tsep} />
+          {/* Font size */}
+          <TBtn label="A−" on={() => bumpFont(-1)} />
+          <TBtn label="A+" on={() => bumpFont(1)} />
+          <View style={s.tsep} />
+          {/* Colors */}
+          {NOTE_BG.filter((b) => ["yellow", "blue", "green", "pink"].includes(b.key)).map((b) => (
+            <TouchableOpacity
+              key={b.key}
+              style={[
+                s.bgDot,
+                { backgroundColor: theme.scheme === "dark" ? b.dark : b.color },
+                note.bg === b.key && { borderColor: theme.accent, borderWidth: 3 },
+              ]}
+              onPress={() => patchNote({ bg: note.bg === b.key ? "white" : b.key })}
+              activeOpacity={0.8}
+            />
           ))}
+          <View style={s.tsep} />
+          {/* Smart tools */}
+          <TBtn label="🧮" on={() => setShowCalc(true)} />
+          <TBtn label="📆" on={() => setShowDates(true)} />
+          <TBtn label="🪄" on={() => setShowTemplates(true)} />
+          <TBtn label="🕐" on={insertTimestamp} />
+          <View style={s.tsep} />
+          {/* View / mode */}
+          <TBtn label="👁️" on={() => setPreview((p) => !p)} active={preview} />
+          {!note.isChecklist ? (
+            <TBtn label="✅" on={convertToChecklist} />
+          ) : (
+            <TBtn label="📝" on={() => patchNote({ isChecklist: false })} active />
+          )}
+          <TBtn label={readOnly ? "🔏" : "🖊️"} on={() => patchNote({ readOnly: !readOnly })} active={readOnly} />
         </ScrollView>
-      )}
+      </View>
 
       <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()} accessible={false}>
       <ScrollView
@@ -334,6 +358,17 @@ export default function NoteEditorScreen({ route, navigation }) {
           editable={!readOnly}
           textAlign="auto"
         />
+
+        {/* Dynamic #tag pills */}
+        {liveTags.length > 0 && (
+          <View style={s.tagPillRow}>
+            {liveTags.map((t) => (
+              <View key={t} style={s.tagPill}>
+                <Text style={s.tagPillText}>#{t}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Inline math suggestions */}
         {inlineMath.length > 0 && !note.isChecklist && (
@@ -430,18 +465,6 @@ export default function NoteEditorScreen({ route, navigation }) {
         )}
       </ScrollView>
       </TouchableWithoutFeedback>
-
-      {/* Floating "Pin to Top" toggle */}
-      <TouchableOpacity
-        style={[s.floatPin, { backgroundColor: note.pinned ? theme.accent : theme.surface, bottom: (insets.bottom || 0) + 74 }]}
-        onPress={() => {
-          hapticLight();
-          patchNote({ pinned: !note.pinned });
-        }}
-        activeOpacity={0.85}
-      >
-        <Text style={[s.floatPinIcon, { color: note.pinned ? "#FFF" : theme.textSecondary }]}>📌</Text>
-      </TouchableOpacity>
 
       {/* Sticky auto-sum bar */}
       <View style={[s.sumBar, { paddingBottom: (insets.bottom || 0) + 10, borderTopColor: theme.hairline, backgroundColor: theme.surface }]}>
@@ -561,20 +584,19 @@ function makeStyles(t, fs) {
     headerDate: { color: t.textPrimary, fontSize: 15 * fs, fontFamily: FONTS.bold },
     headerSub: { color: t.textMuted, fontSize: 11 * fs, fontFamily: FONTS.regular, marginTop: 1 },
 
-    toolbar: { paddingHorizontal: 12, paddingVertical: 10, gap: 8, alignItems: "center" },
-    tbtn: { minWidth: 40, height: 38, paddingHorizontal: 8, borderRadius: RADIUS_SM, backgroundColor: t.surface, alignItems: "center", justifyContent: "center", ...SHADOW_SM },
-    tbtnText: { fontSize: 15 * fs, fontFamily: FONTS.bold },
-    tsep: { width: 1, height: 26, backgroundColor: t.hairline, marginHorizontal: 4 },
+    // One prominent, grouped toolbar card that sits right above the editor.
+    toolbarCard: { marginHorizontal: 12, marginTop: 10, marginBottom: 2, backgroundColor: t.surfaceAlt, borderRadius: RADIUS, paddingVertical: 8, borderWidth: 1, borderColor: t.hairline, ...SHADOW_SM },
+    // flexGrow + center keeps the row centered when it fits, scrollable when not.
+    toolbar: { flexGrow: 1, justifyContent: "center", alignItems: "center", gap: 6, paddingHorizontal: 8 },
+    tbtn: { minWidth: 42, height: 40, paddingHorizontal: 10, borderRadius: RADIUS_SM, backgroundColor: t.surface, borderWidth: 1, borderColor: t.hairline, alignItems: "center", justifyContent: "center" },
+    tbtnText: { fontSize: 16 * fs, fontFamily: FONTS.bold, textAlign: "center" },
+    tsep: { width: 1, height: 24, backgroundColor: t.hairline, marginHorizontal: 4 },
 
-    bgRow: { paddingHorizontal: 12, paddingBottom: 10, gap: 8, alignItems: "center" },
     bgDot: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: t.hairline },
 
-    tagPillRow: { paddingHorizontal: 12, paddingBottom: 8, gap: 8, alignItems: "center" },
-    tagPill: { backgroundColor: t.accent + "18", borderRadius: 14, paddingHorizontal: 12, paddingVertical: 6, marginEnd: 6 },
+    tagPillRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 },
+    tagPill: { backgroundColor: t.accent + "18", borderRadius: 14, paddingHorizontal: 12, paddingVertical: 6 },
     tagPillText: { color: t.accent, fontSize: 13 * fs, fontFamily: FONTS.bold },
-
-    floatPin: { position: "absolute", left: 20, width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center", ...SHADOW },
-    floatPinIcon: { fontSize: 22 },
 
     sumBar: { position: "absolute", left: 0, right: 0, bottom: 0, flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingTop: 12, borderTopWidth: 1 },
     sumLabel: { fontSize: 13 * fs, fontFamily: FONTS.medium },
