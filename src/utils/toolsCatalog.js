@@ -1,4 +1,4 @@
-// The Tools super-hub catalog: 8 categories × 15 tools = 120 utilities.
+// The Tools super-hub catalog: 8 categories, 121 utilities.
 // `id` values in IMPLEMENTED below open a real mini-app; everything else is
 // catalogued UI that reports "coming soon" instead of crashing.
 //
@@ -23,6 +23,7 @@ export const TOOL_CATEGORIES = [
       { id: "location-score", name: "ניקוד מיקום למכונה", emoji: "📍" },
       { id: "transit-time", name: "זמן נסיעה בין מכונות", emoji: "🚌" },
       { id: "transit-cost", name: "עלות נסיעות שבועית", emoji: "🎫" },
+      { id: "transit-load", name: "מחשבון עומס טרנזיט", emoji: "🚚" },
       { id: "route-planner", name: "מסלול סבב מכונות", emoji: "🗺️" },
       { id: "best-sellers", name: "המשקאות הנמכרים", emoji: "🏆" },
       { id: "price-tuning", name: "כיוונון מחירים", emoji: "🎚️" },
@@ -60,7 +61,7 @@ export const TOOL_CATEGORIES = [
     color: "#E14848",
     tools: [
       { id: "video-size", name: "מחשבון גודל וידאו", emoji: "💾" },
-      { id: "fps-slowmo", name: "מחשבון FPS וסלואו", emoji: "🎞️" },
+      { id: "fps-slowmo", name: "מחשבון סלו-מושן", emoji: "🎞️" },
       { id: "aspect-ratio", name: "יחסי מסך", emoji: "🖼️" },
       { id: "bitrate-calc", name: "מחשבון Bitrate", emoji: "📶" },
       { id: "render-time", name: "הערכת זמן רינדור", emoji: "⏳" },
@@ -128,7 +129,7 @@ export const TOOL_CATEGORIES = [
     emoji: "💰",
     color: "#1B7F5C",
     tools: [
-      { id: "vat-calc", name: "מחשבון מע״מ", emoji: "🧾" },
+      { id: "vat-calc", name: "מע״מ והנחה אקספרס", emoji: "🧾" },
       { id: "margin-calc", name: "מחשבון רווחיות", emoji: "📈" },
       { id: "discount-calc", name: "מחשבון הנחות", emoji: "🏷️" },
       { id: "tip-split", name: "חלוקת חשבון", emoji: "🍽️" },
@@ -140,7 +141,7 @@ export const TOOL_CATEGORIES = [
       { id: "debt-tracker", name: "מעקב חובות", emoji: "📕" },
       { id: "roi-calc", name: "מחשבון ROI", emoji: "💹" },
       { id: "invoice-gen", name: "מחולל חשבוניות", emoji: "📑" },
-      { id: "expense-split", name: "פיצול הוצאות", emoji: "➗" },
+      { id: "expense-split", name: "מפצל הוצאות חדר", emoji: "🛏️" },
       { id: "price-history", name: "היסטוריית מחירים", emoji: "📉" },
       { id: "hourly-rate", name: "חישוב תעריף שעתי", emoji: "⏱️" },
     ],
@@ -152,7 +153,7 @@ export const TOOL_CATEGORIES = [
     color: "#B05AC4",
     tools: [
       { id: "prompt-library", name: "ספריית פרומפטים", emoji: "📚" },
-      { id: "prompt-builder", name: "בונה פרומפטים", emoji: "🧱" },
+      { id: "prompt-builder", name: "מחולל פרומפטים AI", emoji: "🧱" },
       { id: "system-prompt", name: "תבנית System Prompt", emoji: "⚙️" },
       { id: "product-desc-prompt", name: "פרומפט תיאור מוצר", emoji: "🛍️" },
       { id: "video-script", name: "פרומפט תסריט וידאו", emoji: "🎬" },
@@ -202,6 +203,12 @@ export const IMPLEMENTED = new Set([
   "zmanim-routine",
   "json-validator",
   "qr-gen",
+  // Phase 2 batch
+  "transit-load",
+  "prompt-builder",
+  "fps-slowmo",
+  "expense-split",
+  "vat-calc",
 ]);
 
 // Flat list for search + counting.

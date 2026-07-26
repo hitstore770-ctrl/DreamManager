@@ -58,6 +58,7 @@ export default function Slider({ label, value, min = 0, max = 100, step = 1, onC
         <Text style={s.label}>{label}</Text>
       </View>
       <View
+        testID={`slider-${label}`}
         style={s.trackHit}
         onLayout={(e) => {
           setWidth(e.nativeEvent.layout.width);
@@ -76,7 +77,9 @@ export default function Slider({ label, value, min = 0, max = 100, step = 1, onC
         <View style={s.track}>
           <View style={[s.fill, { width: `${pct}%` }]} />
         </View>
-        <View style={[s.thumb, { left: `${pct}%` }]} />
+        {/* Inset the thumb by its own width so it stays fully on-screen at
+            both ends instead of hanging half-way off the track. */}
+        <View style={[s.thumb, { left: (pct / 100) * Math.max(0, width - 26) }]} />
       </View>
     </View>
   );
@@ -98,7 +101,6 @@ const s = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderWidth: 2,
     borderColor: BLUE,
-    marginLeft: -13,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,

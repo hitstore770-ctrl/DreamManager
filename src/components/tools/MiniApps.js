@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as Clipboard from "expo-clipboard";
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Linking, Platform, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 import Slider from "./Slider";
 import { hapticLight, hapticSuccess, hapticWarning } from "../../utils/haptics";
@@ -21,6 +21,10 @@ const BLUE = "#003366";
 const GOLD = "#D4AF37";
 const GREEN = "#1E9E58";
 const RED = "#E14848";
+
+// The browser's focus ring draws a hard black box around a focused input,
+// which fights the soft 770JLM surfaces. No-op on native.
+const NO_OUTLINE = Platform.OS === "web" ? { outlineStyle: "none", outlineWidth: 0 } : {};
 
 function Field({ label, value, onChange, placeholder, suffix, numeric = true }) {
   return (
@@ -66,6 +70,67 @@ function Segment({ options, value, onChange }) {
       ))}
     </View>
   );
+}
+
+// Quick-fill chips that write a preset straight into a text field.
+function Chips({ options, onPick, active }) {
+  return (
+    <View style={s.chipRow}>
+      {options.map((o) => {
+        const on = active !== undefined && String(active) === String(o);
+        return (
+          <TouchableOpacity
+            key={String(o)}
+            style={[s.chip, on && { backgroundColor: BLUE }]}
+            onPress={() => { hapticLight(); onPick(o); }}
+            activeOpacity={0.75}
+          >
+            <Text style={[s.chipText, on && { color: WHITE }]}>{o}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+// − value + stepper for small integer counts (roommates, boxes).
+function Stepper({ label, value, onChange, min = 1, max = 30, suffix }) {
+  const bump = (delta) => {
+    const next = Math.max(min, Math.min(max, value + delta));
+    if (next === value) { hapticWarning(); return; }
+    hapticLight();
+    onChange(next);
+  };
+  return (
+    <View>
+      <Text style={s.fieldLabel}>{label}</Text>
+      <View style={s.stepperRow}>
+        <TouchableOpacity testID="stepper-minus" style={s.stepBtn} onPress={() => bump(-1)} activeOpacity={0.7}>
+          <Text style={s.stepBtnText}>−</Text>
+        </TouchableOpacity>
+        <Text style={s.stepValue}>
+          {value}
+          {suffix ? ` ${suffix}` : ""}
+        </Text>
+        <TouchableOpacity testID="stepper-plus" style={s.stepBtn} onPress={() => bump(1)} activeOpacity={0.7}>
+          <Text style={s.stepBtnText}>+</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+// Fires a light tap whenever a calculator's headline result settles on a new
+// value, so a calculation always confirms itself physically. Skips the first
+// render so opening a sheet is silent.
+function useCalcHaptic(value) {
+  const prev = useRef(value);
+  useEffect(() => {
+    if (prev.current === value) return;
+    prev.current = value;
+    if (value === null || value === undefined || value === "") return;
+    hapticLight();
+  }, [value]);
 }
 
 // ---------------------------------------------------------------------------
@@ -695,6 +760,553 @@ export function QrGenerator() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// G. מחשבון עומס טרנזיט
+// ---------------------------------------------------------------------------
+export function TransitLoadCalc() {
+  const [payload, setPayload] = useState("1000");
+  const [boxWeight, setBoxWeight] = useState("12");
+  const [onBoard, setOnBoard] = useState(0);
+
+  const r = useMemo(() => {
+    const max = parseFloat(payload) || 0;
+    const box = parseFloat(boxWeight) || 0;
+    if (max <= 0 || box <= 0) return { ready: false, boxes: 0 };
+    // A partial box is not a box you can legally carry — always round down.
+    const boxes = Math.floor(max / box);
+    const used = boxes * box;
+    const loadedKg = onBoard * box;
+    return {
+      ready: true,
+      boxes,
+      used: Math.round(used * 10) / 10,
+      spare: Math.round((max - used) * 10) / 10,
+      loadedKg: Math.round(loadedKg * 10) / 10,
+      pct: Math.min(100, Math.round((loadedKg / max) * 100)),
+      over: loadedKg > max,
+      left: Math.max(0, boxes - onBoard),
+    };
+  }, [payload, boxWeight, onBoard]);
+
+  useCalcHaptic(r.boxes);
+
+  return (
+    <View style={{ gap: 12 }}>
+      <View style={s.row}>
+        <Field label="מטען מותר ברכב" value={payload} onChange={setPayload} placeholder="1000" suffix="ק״ג" />
+        <Field label="משקל ארגז בודד" value={boxWeight} onChange={setBoxWeight} placeholder="12" suffix="ק״ג" />
+      </View>
+      <Chips options={[600, 800, 1000, 1200, 1500]} onPick={(v) => setPayload(String(v))} active={payload} />
+
+      {!r.ready ? (
+        <Text style={s.hint}>הזן מטען מותר ומשקל ארגז כדי לחשב.</Text>
+      ) : r.boxes === 0 ? (
+        <View style={[s.banner, { backgroundColor: RED + "14" }]}>
+          <Text style={[s.bannerText, { color: RED }]}>אפילו ארגז אחד חורג מהמטען המותר</Text>
+          <Text style={[s.bannerSub, { color: RED }]}>
+            משקל הארגז ({boxWeight} ק״ג) גדול מהמטען המותר ({payload} ק״ג).
+          </Text>
+        </View>
+      ) : (
+        <>
+          <View style={s.statRow}>
+            <Stat label="ארגזים מקסימום" value={r.boxes} color={BLUE} big />
+            <Stat label="משקל בפועל" value={`${r.used} ק״ג`} />
+            <Stat label="עודף מותר" value={`${r.spare} ק״ג`} color={GREEN} />
+          </View>
+
+          <Stepper label="כמה ארגזים העמסת בפועל" value={onBoard} onChange={setOnBoard} min={0} max={999} suffix="ארגזים" />
+          <View style={s.loadTrack}>
+            <View
+              style={[
+                s.loadFill,
+                { width: `${r.pct}%`, backgroundColor: r.over ? RED : r.pct > 85 ? GOLD : GREEN },
+              ]}
+            />
+          </View>
+          <View style={s.loadMetaRow}>
+            <Text style={[s.loadMeta, r.over && { color: RED }]}>
+              {r.loadedKg} ק״ג · {r.pct}% מהמטען
+            </Text>
+            <Text style={s.loadMeta}>
+              {r.over ? "🚨 חריגה ממשקל חוקי" : `נשארו עוד ${r.left} ארגזים`}
+            </Text>
+          </View>
+
+          <Text style={s.hint}>
+            המטען המותר הוא ההפרש בין המשקל הכולל המותר לבין משקל הרכב העצמי — מופיע ברישיון הרכב. שים לב
+            שנוסעים וציוד קבוע נחשבים גם הם על חשבון אותו מטען.
+          </Text>
+        </>
+      )}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// H. מחולל פרומפטים AI
+// ---------------------------------------------------------------------------
+const PROMPT_TOPICS = ["מכונות שתייה", "ייבוא מאליאקספרס", "React Native", "עריכת וידאו", "לימודים"];
+const PROMPT_FORMATS = ["פוסט לאינסטגרם", "תסריט לריל", "הודעה לספק", "רשימת צעדים", "קוד לדוגמה"];
+const PROMPT_TONES = [
+  { key: "pro", label: "מקצועי", he: "מקצועי ותכליתי", en: "professional and to the point" },
+  { key: "friendly", label: "ידידותי", he: "ידידותי וזורם", en: "friendly and conversational" },
+  { key: "punchy", label: "קצר וקולע", he: "קצר, חד ובלי מילים מיותרות", en: "short, punchy, no filler" },
+];
+
+export function PromptBuilder() {
+  const [topic, setTopic] = useState("מכונות שתייה");
+  const [format, setFormat] = useState("פוסט לאינסטגרם");
+  const [audience, setAudience] = useState("");
+  const [details, setDetails] = useState("");
+  const [toneKey, setToneKey] = useState("pro");
+  const [lang, setLang] = useState("he");
+  const [copied, setCopied] = useState(false);
+
+  const prompt = useMemo(() => {
+    const tone = PROMPT_TONES.find((t) => t.key === toneKey) || PROMPT_TONES[0];
+    const t = topic.trim();
+    const f = format.trim();
+    if (lang === "en") {
+      return [
+        `Act as an expert in ${t || "[Topic]"} and write a ${f || "[Format]"}.`,
+        `Tone: ${tone.en}.`,
+        audience.trim() && `Target audience: ${audience.trim()}.`,
+        details.trim() && `Additional context: ${details.trim()}.`,
+        "Return only the final result — no preamble, no explanations.",
+      ]
+        .filter(Boolean)
+        .join("\n");
+    }
+    return [
+      `תפקד כמומחה ב${t || "[נושא]"} וכתוב ${f || "[פורמט]"}.`,
+      `סגנון הכתיבה: ${tone.he}.`,
+      audience.trim() && `קהל היעד: ${audience.trim()}.`,
+      details.trim() && `הקשר נוסף: ${details.trim()}.`,
+      "החזר רק את התוצר הסופי, בעברית, בלי הקדמות ובלי הסברים.",
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }, [topic, format, audience, details, toneKey, lang]);
+
+  useEffect(() => {
+    if (!copied) return undefined;
+    const t = setTimeout(() => setCopied(false), 1800);
+    return () => clearTimeout(t);
+  }, [copied]);
+
+  const copy = async () => {
+    hapticSuccess();
+    try {
+      await Clipboard.setStringAsync(prompt);
+      setCopied(true);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
+
+  return (
+    <View style={{ gap: 12 }}>
+      <Segment
+        options={[
+          { key: "he", label: "עברית" },
+          { key: "en", label: "English" },
+        ]}
+        value={lang}
+        onChange={setLang}
+      />
+
+      <View>
+        <Text style={s.fieldLabel}>נושא / תחום המומחיות</Text>
+        <TextInput
+          style={s.textField}
+          value={topic}
+          onChangeText={setTopic}
+          placeholder="לדוגמה: מכונות שתייה"
+          placeholderTextColor={INK_MUTED}
+          textAlign="right"
+        />
+      </View>
+      <Chips options={PROMPT_TOPICS} onPick={setTopic} active={topic} />
+
+      <View>
+        <Text style={s.fieldLabel}>פורמט התוצר</Text>
+        <TextInput
+          style={s.textField}
+          value={format}
+          onChangeText={setFormat}
+          placeholder="לדוגמה: פוסט לאינסטגרם"
+          placeholderTextColor={INK_MUTED}
+          textAlign="right"
+        />
+      </View>
+      <Chips options={PROMPT_FORMATS} onPick={setFormat} active={format} />
+
+      <Text style={s.fieldLabel}>סגנון</Text>
+      <Segment
+        options={PROMPT_TONES.map((t) => ({ key: t.key, label: t.label }))}
+        value={toneKey}
+        onChange={setToneKey}
+      />
+
+      <View style={s.row}>
+        <View style={{ flex: 1 }}>
+          <Text style={s.fieldLabel}>קהל יעד (רשות)</Text>
+          <TextInput
+            style={s.textField}
+            value={audience}
+            onChangeText={setAudience}
+            placeholder="בחורי ישיבה"
+            placeholderTextColor={INK_MUTED}
+            textAlign="right"
+          />
+        </View>
+      </View>
+
+      <View>
+        <Text style={s.fieldLabel}>הקשר נוסף (רשות)</Text>
+        <TextInput
+          style={[s.textField, { minHeight: 74, textAlignVertical: "top", paddingTop: 12 }]}
+          value={details}
+          onChangeText={setDetails}
+          placeholder="מה חשוב שיופיע בתוצר?"
+          placeholderTextColor={INK_MUTED}
+          textAlign="right"
+          multiline
+        />
+      </View>
+
+      <Text style={s.fieldLabel}>הפרומפט המוכן</Text>
+      <View style={s.promptBox}>
+        <Text style={[s.promptText, lang === "en" && { textAlign: "left" }]}>{prompt}</Text>
+      </View>
+
+      <TouchableOpacity
+        style={[s.bigBtn, copied && { backgroundColor: GREEN }]}
+        onPress={copy}
+        activeOpacity={0.85}
+      >
+        <Text style={s.bigBtnText}>{copied ? "✓ הפרומפט הועתק" : "📋 העתק פרומפט"}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// I. מחשבון סלו-מושן
+// ---------------------------------------------------------------------------
+export function SlowMoFps() {
+  const [timeline, setTimeline] = useState("24");
+  const [recorded, setRecorded] = useState("60");
+  const [clip, setClip] = useState("10");
+
+  const r = useMemo(() => {
+    const base = parseFloat(timeline) || 0;
+    const rec = parseFloat(recorded) || 0;
+    if (base <= 0 || rec <= 0) return { ready: false, slowest: 0 };
+    // Every timeline frame needs a real recorded frame: the slowest smooth
+    // speed is exactly timeline fps / recorded fps.
+    const slowest = Math.round((base / rec) * 1000) / 10;
+    const factor = Math.round((rec / base) * 100) / 100;
+    const secs = parseFloat(clip) || 0;
+    return {
+      ready: true,
+      slowest: Math.min(100, slowest),
+      factor: Math.max(1, factor),
+      stretched: Math.round(secs * Math.max(1, rec / base) * 10) / 10,
+      short: rec < base,
+      equal: rec === base,
+    };
+  }, [timeline, recorded, clip]);
+
+  useCalcHaptic(r.slowest);
+
+  return (
+    <View style={{ gap: 12 }}>
+      <View style={s.row}>
+        <Field label="FPS בטיימליין" value={timeline} onChange={setTimeline} placeholder="24" suffix="fps" />
+        <Field label="FPS בהקלטה" value={recorded} onChange={setRecorded} placeholder="60" suffix="fps" />
+      </View>
+      <Chips options={[24, 25, 30, 60]} onPick={(v) => setTimeline(String(v))} active={timeline} />
+      <Chips options={[30, 60, 120, 240]} onPick={(v) => setRecorded(String(v))} active={recorded} />
+
+      {!r.ready ? (
+        <Text style={s.hint}>הזן את שני קצבי הפריימים כדי לחשב.</Text>
+      ) : r.short ? (
+        <View style={[s.banner, { backgroundColor: RED + "14" }]}>
+          <Text style={[s.bannerText, { color: RED }]}>ההקלטה איטית מהטיימליין</Text>
+          <Text style={[s.bannerSub, { color: RED }]}>
+            הקלטת {recorded}fps לטיימליין {timeline}fps — כל האטה תגמגם, כי חסרים פריימים אמיתיים.
+          </Text>
+        </View>
+      ) : r.equal ? (
+        <View style={[s.banner, { backgroundColor: GOLD + "16" }]}>
+          <Text style={[s.bannerText, { color: "#8A6D14" }]}>אין מרווח להאטה (100%)</Text>
+          <Text style={[s.bannerSub, { color: "#8A6D14" }]}>
+            קצב ההקלטה זהה לטיימליין. כדי להאט צריך להקליד בקצב גבוה יותר.
+          </Text>
+        </View>
+      ) : (
+        <>
+          <View style={s.statRow}>
+            <Stat label="האטה מקסימלית חלקה" value={`${r.slowest}%`} color={BLUE} big />
+            <Stat label="פי כמה איטי" value={`×${r.factor}`} color={GREEN} />
+          </View>
+          <View style={s.row}>
+            <Field label="אורך הקטע המקורי" value={clip} onChange={setClip} placeholder="10" suffix="שנ׳" />
+            <View style={{ flex: 1 }}>
+              <Text style={s.fieldLabel}>אורך אחרי האטה מלאה</Text>
+              <View style={[s.fieldRow, { justifyContent: "center" }]}>
+                <Text style={s.resultInline}>{r.stretched} שנ׳</Text>
+              </View>
+            </View>
+          </View>
+
+          <Text style={s.sectionLabel}>מהירויות נפוצות</Text>
+          {[100, 75, 50, 40, 25].map((speed) => {
+            const smooth = speed >= r.slowest;
+            return (
+              <View key={speed} style={s.routineRow}>
+                <Text style={[s.routineTime, { color: smooth ? GREEN : RED }]}>
+                  {smooth ? "✓ חלק" : "✕ מגמגם"}
+                </Text>
+                <Text style={s.routineLabel}>{speed}% מהמהירות</Text>
+              </View>
+            );
+          })}
+          <Text style={s.hint}>
+            כל פריים בטיימליין חייב פריים מוקלט משלו. ב-{recorded}fps על טיימליין {timeline}fps יש מרווח
+            להאטה עד {r.slowest}% — מתחת לזה העורך ישכפל פריימים והתנועה תיראה קפואה.
+          </Text>
+        </>
+      )}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// J. מפצל הוצאות חדר
+// ---------------------------------------------------------------------------
+export function DormSplitter() {
+  const [total, setTotal] = useState("240");
+  const [people, setPeople] = useState(4);
+  const [label, setLabel] = useState("קניות לחדר");
+  const [roundUp, setRoundUp] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  const r = useMemo(() => {
+    const sum = parseFloat(total) || 0;
+    const n = Math.max(1, people);
+    const exact = sum / n;
+    const per = roundUp ? Math.ceil(exact) : Math.round(exact * 100) / 100;
+    const collected = Math.round(per * n * 100) / 100;
+    return {
+      sum,
+      n,
+      exact: Math.round(exact * 100) / 100,
+      per,
+      collected,
+      extra: Math.round((collected - sum) * 100) / 100,
+      ready: sum > 0,
+    };
+  }, [total, people, roundUp]);
+
+  useCalcHaptic(r.per);
+
+  const message = useMemo(
+    () =>
+      [
+        `💸 ${label.trim() || "הוצאה משותפת"}`,
+        `סה״כ: ${shekel(r.sum)}`,
+        `מתחלק ל-${r.n} → ${shekel(r.per)} לכל אחד`,
+        "תעבירו לי כשנוח 🙏",
+      ].join("\n"),
+    [label, r.sum, r.n, r.per]
+  );
+
+  useEffect(() => {
+    if (!copied) return undefined;
+    const t = setTimeout(() => setCopied(false), 1800);
+    return () => clearTimeout(t);
+  }, [copied]);
+
+  const sendWhatsApp = async () => {
+    hapticSuccess();
+    const url = `whatsapp://send?text=${encodeURIComponent(message)}`;
+    try {
+      if (await Linking.canOpenURL(url)) {
+        await Linking.openURL(url);
+        return;
+      }
+    } catch {
+      /* WhatsApp not installed — fall through to the share sheet */
+    }
+    try {
+      await Share.share({ message });
+    } catch {
+      /* sharing unavailable on this platform */
+    }
+  };
+
+  const copyMessage = async () => {
+    hapticLight();
+    try {
+      await Clipboard.setStringAsync(message);
+      setCopied(true);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
+
+  return (
+    <View style={{ gap: 12 }}>
+      <View style={s.row}>
+        <Field label="סה״כ החשבון" value={total} onChange={setTotal} placeholder="240" suffix="₪" />
+      </View>
+      <Chips options={[60, 120, 240, 500]} onPick={(v) => setTotal(String(v))} active={total} />
+
+      <Stepper label="מספר שותפים לחדר" value={people} onChange={setPeople} min={1} max={20} suffix="שותפים" />
+
+      <View>
+        <Text style={s.fieldLabel}>על מה ההוצאה</Text>
+        <TextInput
+          style={s.textField}
+          value={label}
+          onChangeText={setLabel}
+          placeholder="קניות לחדר"
+          placeholderTextColor={INK_MUTED}
+          textAlign="right"
+        />
+      </View>
+
+      <TouchableOpacity
+        style={s.checkRow}
+        onPress={() => { hapticLight(); setRoundUp((v) => !v); }}
+        activeOpacity={0.75}
+      >
+        <View style={[s.checkbox, roundUp && { backgroundColor: BLUE, borderColor: BLUE }]}>
+          {roundUp && <Text style={s.checkMark}>✓</Text>}
+        </View>
+        <Text style={s.checkLabel}>עגל לשקל שלם (קל יותר להעביר)</Text>
+      </TouchableOpacity>
+
+      {r.ready ? (
+        <>
+          <View style={s.statRow}>
+            <Stat label="לכל אחד" value={shekel(r.per)} color={BLUE} big />
+            <Stat label="חלוקה מדויקת" value={shekel(r.exact)} />
+            <Stat label="שותפים" value={r.n} />
+          </View>
+          {roundUp && r.extra > 0 && (
+            <Text style={s.hint}>
+              העיגול אוסף {shekel(r.extra)} מעל החשבון — שאר העודף נשאר אצל מי שאסף.
+            </Text>
+          )}
+
+          <TouchableOpacity style={[s.bigBtn, { backgroundColor: "#25D366" }]} onPress={sendWhatsApp} activeOpacity={0.85}>
+            <Text style={s.bigBtnText}>💬 בקש כסף בוואטסאפ</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.bigBtn, { backgroundColor: CARD }, copied && { backgroundColor: GREEN }]}
+            onPress={copyMessage}
+            activeOpacity={0.85}
+          >
+            <Text style={[s.bigBtnText, !copied && { color: INK_SOFT }]}>
+              {copied ? "✓ ההודעה הועתקה" : "📋 העתק את ההודעה"}
+            </Text>
+          </TouchableOpacity>
+          <View style={s.msgPreview}>
+            <Text style={s.msgPreviewText}>{message}</Text>
+          </View>
+        </>
+      ) : (
+        <Text style={s.hint}>הזן סכום כדי לחשב חלוקה.</Text>
+      )}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// K. מע״מ והנחה אקספרס
+// ---------------------------------------------------------------------------
+// Israeli VAT moved to 18% in January 2025; 17% stays selectable for older
+// invoices and price lists.
+const VAT_RATES = [
+  { key: "18", label: "מע״מ 18%" },
+  { key: "17", label: "מע״מ 17%" },
+];
+
+export function VatDiscount() {
+  const [base, setBase] = useState("100");
+  const [discount, setDiscount] = useState(10);
+  const [vatOn, setVatOn] = useState(true);
+  const [rate, setRate] = useState("18");
+
+  // No useCalcHaptic here: the discount slider already taps per step, and
+  // stacking a second pulse on the same drag feels buzzy.
+  const r = useMemo(() => {
+    const b = parseFloat(base) || 0;
+    const off = b * (discount / 100);
+    const afterDiscount = b - off;
+    const vatPct = parseFloat(rate) || 0;
+    const vat = vatOn ? afterDiscount * (vatPct / 100) : 0;
+    const final = afterDiscount + vat;
+    const round2 = (n) => Math.round(n * 100) / 100;
+    return {
+      ready: b > 0,
+      off: round2(off),
+      afterDiscount: round2(afterDiscount),
+      vat: round2(vat),
+      final: round2(final),
+      rounded: Math.round(final),
+    };
+  }, [base, discount, vatOn, rate]);
+
+  return (
+    <View style={{ gap: 12 }}>
+      <View style={s.row}>
+        <Field label="מחיר בסיס" value={base} onChange={setBase} placeholder="100" suffix="₪" />
+      </View>
+      <Chips options={[50, 100, 250, 500]} onPick={(v) => setBase(String(v))} active={base} />
+
+      <Slider label="אחוז הנחה" value={discount} min={0} max={100} step={1} onChange={setDiscount} format={(v) => `${v}%`} />
+      <Chips options={[0, 5, 10, 15, 20, 25, 50]} onPick={setDiscount} active={discount} />
+
+      <TouchableOpacity
+        style={s.checkRow}
+        onPress={() => { hapticLight(); setVatOn((v) => !v); }}
+        activeOpacity={0.75}
+      >
+        <View style={[s.checkbox, vatOn && { backgroundColor: BLUE, borderColor: BLUE }]}>
+          {vatOn && <Text style={s.checkMark}>✓</Text>}
+        </View>
+        <Text style={s.checkLabel}>הוסף מע״מ למחיר הסופי</Text>
+      </TouchableOpacity>
+      {vatOn && <Segment options={VAT_RATES} value={rate} onChange={setRate} />}
+
+      {r.ready ? (
+        <>
+          <View style={s.statRow}>
+            <Stat label="לתשלום" value={shekel(r.final)} color={BLUE} big />
+            <Stat label="מחיר אחרי הנחה" value={shekel(r.afterDiscount)} />
+          </View>
+          <View style={s.statRow}>
+            <Stat label="ההנחה שווה" value={shekel(r.off)} color={GREEN} />
+            <Stat label={vatOn ? `מע״מ ${rate}%` : "ללא מע״מ"} value={shekel(r.vat)} color={vatOn ? GOLD : INK_MUTED} />
+            <Stat label="עיגול לשקל" value={shekel(r.rounded)} />
+          </View>
+          <Text style={s.hint}>
+            ההנחה מחושבת קודם, והמע״מ נגבה על המחיר שאחרי ההנחה — כפי שנדרש בחשבונית. שיעור המע״מ בישראל
+            הוא 18% מינואר 2025; 17% נשאר לבחירה לתמחורים ולחשבוניות ישנות.
+          </Text>
+        </>
+      ) : (
+        <Text style={s.hint}>הזן מחיר בסיס כדי לחשב.</Text>
+      )}
+    </View>
+  );
+}
+
 // Map tool id → mini-app component.
 export const MINI_APPS = {
   "vending-roi": VendingRoi,
@@ -704,6 +1316,12 @@ export const MINI_APPS = {
   "zmanim-routine": ZmanimRoutine,
   "json-validator": JsonValidator,
   "qr-gen": QrGenerator,
+  // Phase 2 batch
+  "transit-load": TransitLoadCalc,
+  "prompt-builder": PromptBuilder,
+  "fps-slowmo": SlowMoFps,
+  "expense-split": DormSplitter,
+  "vat-calc": VatDiscount,
 };
 
 const s = StyleSheet.create({
@@ -720,7 +1338,7 @@ const s = StyleSheet.create({
     minHeight: 52,
   },
   fieldSuffix: { fontFamily: FONTS.semibold, fontSize: 12, color: INK_MUTED },
-  fieldInput: { flex: 1, fontFamily: FONTS.bold, fontSize: 18, color: INK, minHeight: 52 },
+  fieldInput: { flex: 1, fontFamily: FONTS.bold, fontSize: 18, color: INK, minHeight: 52, ...NO_OUTLINE },
 
   statRow: { flexDirection: "row", gap: 8 },
   stat: { flex: 1, backgroundColor: CARD, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 6, alignItems: "center" },
@@ -752,6 +1370,7 @@ const s = StyleSheet.create({
     fontSize: 12,
     color: "#D7E3F4",
     textAlignVertical: "top",
+    ...NO_OUTLINE,
   },
   banner: { borderRadius: 14, padding: 12 },
   bannerText: { fontFamily: FONTS.bold, fontSize: 13, textAlign: "right" },
@@ -802,8 +1421,67 @@ const s = StyleSheet.create({
     fontFamily: FONTS.regular,
     fontSize: 14,
     color: INK,
+    ...NO_OUTLINE,
   },
   qrWrap: { alignItems: "center", paddingVertical: 8 },
   qrGrid: { backgroundColor: WHITE, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: "#E7EAEE" },
   qrCell: { width: 8, height: 8, backgroundColor: "transparent" },
+
+  // --- Phase 2 batch ---
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, justifyContent: "flex-end" },
+  chip: {
+    minHeight: 34,
+    paddingHorizontal: 12,
+    borderRadius: 17,
+    backgroundColor: CARD,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  chipText: { fontFamily: FONTS.semibold, fontSize: 12, color: INK_SOFT },
+
+  stepperRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: CARD,
+    borderRadius: 14,
+    padding: 5,
+    minHeight: 56,
+  },
+  stepBtn: {
+    width: 48,
+    height: 46,
+    borderRadius: 12,
+    backgroundColor: WHITE,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stepBtnText: { fontFamily: FONTS.bold, fontSize: 22, color: BLUE, lineHeight: 26 },
+  stepValue: { flex: 1, textAlign: "center", fontFamily: FONTS.bold, fontSize: 17, color: INK },
+
+  loadTrack: { height: 12, borderRadius: 6, backgroundColor: CARD, overflow: "hidden" },
+  loadFill: { height: "100%", borderRadius: 6 },
+  loadMetaRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  loadMeta: { fontFamily: FONTS.semibold, fontSize: 11.5, color: INK_SOFT },
+
+  textField: {
+    backgroundColor: CARD,
+    borderRadius: 14,
+    minHeight: 52,
+    paddingHorizontal: 14,
+    fontFamily: FONTS.medium,
+    fontSize: 14,
+    color: INK,
+    ...NO_OUTLINE,
+  },
+  promptBox: { backgroundColor: "#0E1729", borderRadius: 14, padding: 14 },
+  promptText: { fontFamily: FONTS.regular, fontSize: 13, color: "#D7E3F4", textAlign: "right", lineHeight: 21 },
+
+  resultInline: { fontFamily: FONTS.bold, fontSize: 18, color: BLUE },
+
+  bigBtn: { minHeight: 54, borderRadius: 16, backgroundColor: BLUE, alignItems: "center", justifyContent: "center" },
+  bigBtnText: { fontFamily: FONTS.bold, fontSize: 15, color: WHITE },
+
+  msgPreview: { backgroundColor: CARD, borderRadius: 14, padding: 12 },
+  msgPreviewText: { fontFamily: FONTS.regular, fontSize: 12.5, color: INK_SOFT, textAlign: "right", lineHeight: 20 },
 });

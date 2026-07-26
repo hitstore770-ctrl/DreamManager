@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
+  PanResponder,
   Platform,
   ScrollView,
   StyleSheet,
@@ -12,7 +13,15 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, { FadeInDown, FadeInUp, LinearTransition } from "react-native-reanimated";
+import Animated, {
+  FadeInDown,
+  FadeInUp,
+  LinearTransition,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 
 import { MINI_APPS } from "../components/tools/MiniApps";
 import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
@@ -21,9 +30,9 @@ import { STORAGE_KEYS } from "../utils/storageKeys";
 import { usePersistentState } from "../utils/usePersistentState";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 
-// כלים — a 120-utility directory: fixed search, a pinned favorites row,
-// eight collapsible category accordions, and a sheet hosting the built
-// mini-apps. Long-press any tool to favorite it.
+// כלים — a 121-utility directory: fixed search, a pinned favorites row,
+// eight collapsible category accordions, and a swipe-to-dismiss sheet hosting
+// the built mini-apps. Long-press any tool to favorite it.
 
 const WHITE = "#FFFFFF";
 const BG = "#F4F5F7";
@@ -71,9 +80,46 @@ export default function ToolsScreen() {
     toastTimer.current = setTimeout(() => setToast(null), 2400);
   };
 
+  // Sheet drag-to-dismiss. The handlers live on the grabber strip only, so
+  // taps on the header buttons and scrolling inside the tool still work.
+  const dragY = useSharedValue(0);
+  const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: dragY.value }] }));
+
+  const dismissSheet = () => {
+    dragY.value = 0;
+    setActiveTool(null);
+  };
+
+  const dragPan = useRef(
+    PanResponder.create({
+      // Claim on touch-start: the TouchableWithoutFeedback wrapping the sheet
+      // takes the responder otherwise, and the move events never arrive here.
+      // Safe because this strip holds only the grabber — no buttons.
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_e, g) => g.dy > 4 && Math.abs(g.dy) > Math.abs(g.dx),
+      onPanResponderMove: (_e, g) => {
+        dragY.value = Math.max(0, g.dy);
+      },
+      onPanResponderRelease: (_e, g) => {
+        if (g.dy > 110 || g.vy > 0.9) {
+          hapticLight();
+          dragY.value = withTiming(700, { duration: 180 }, (finished) => {
+            if (finished) runOnJS(dismissSheet)();
+          });
+        } else {
+          dragY.value = withTiming(0, { duration: 160 });
+        }
+      },
+      onPanResponderTerminate: () => {
+        dragY.value = withTiming(0, { duration: 160 });
+      },
+    })
+  ).current;
+
   const openTool = (tool) => {
     if (IMPLEMENTED.has(tool.id)) {
       hapticLight();
+      dragY.value = 0;
       setActiveTool(tool);
       return;
     }
@@ -229,15 +275,17 @@ export default function ToolsScreen() {
         </Animated.View>
       )}
 
-      <Modal visible={!!activeTool} transparent animationType="slide" onRequestClose={() => setActiveTool(null)}>
+      <Modal visible={!!activeTool} transparent animationType="slide" onRequestClose={dismissSheet}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-          <TouchableWithoutFeedback onPress={() => setActiveTool(null)}>
+          <TouchableWithoutFeedback onPress={dismissSheet}>
             <View style={s.backdrop}>
               <TouchableWithoutFeedback onPress={() => {}}>
-                <View style={[s.sheet, { paddingBottom: insets.bottom + 16 }]}>
-                  <View style={s.grabber} />
+                <Animated.View style={[s.sheet, { paddingBottom: insets.bottom + 16 }, sheetStyle]}>
+                  <View testID="sheet-grabber" style={s.grabZone} {...dragPan.panHandlers}>
+                    <View style={s.grabber} />
+                  </View>
                   <View style={s.sheetHead}>
-                    <TouchableOpacity style={s.closeBtn} onPress={() => setActiveTool(null)} activeOpacity={0.7}>
+                    <TouchableOpacity style={s.closeBtn} onPress={dismissSheet} activeOpacity={0.7}>
                       <Text style={s.closeBtnText}>✕</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -259,7 +307,7 @@ export default function ToolsScreen() {
                   >
                     {ActiveMini && <ActiveMini />}
                   </ScrollView>
-                </View>
+                </Animated.View>
               </TouchableWithoutFeedback>
             </View>
           </TouchableWithoutFeedback>
@@ -405,7 +453,9 @@ const s = StyleSheet.create({
 
   backdrop: { flex: 1, backgroundColor: "rgba(16,20,26,0.5)", justifyContent: "flex-end" },
   sheet: { backgroundColor: WHITE, borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 16, paddingTop: 8 },
-  grabber: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: "#E3E6EA", marginBottom: 10 },
+  // A tall-enough strip so the swipe-down gesture is easy to grab by thumb.
+  grabZone: { paddingTop: 8, paddingBottom: 14, alignItems: "center" },
+  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: "#D8DDE3" },
   sheetHead: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 },
   sheetTitle: { flex: 1, fontFamily: FONTS.bold, fontSize: 17, color: INK, textAlign: "right" },
   closeBtn: { width: 40, height: 40, borderRadius: 13, backgroundColor: BG, alignItems: "center", justifyContent: "center" },
