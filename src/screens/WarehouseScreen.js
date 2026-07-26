@@ -5,7 +5,7 @@ import ToolsSheet, { SheetRow, ToolsFab } from "../components/business/ToolsShee
 import { useBusiness } from "../context/BusinessContext";
 import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
 import { CATEGORIES, LOW_STOCK, applyDamage, catOf, shekel, uid } from "../utils/posStore";
-import { buildZReportText } from "../utils/zReport";
+import { buildZReportText, lastCloseTs } from "../utils/zReport";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 
 // המחסן — the master inventory. Rows are dense but every touch target is a
@@ -23,7 +23,7 @@ const GREEN = "#34C759";
 const EMPTY_FORM = { name: "", cost: "", price: "", qty: "", category: CATEGORIES[0].key };
 
 export default function WarehouseScreen({ onGoToPos }) {
-  const { inventory, setInventory, setSales, sales } = useBusiness();
+  const { inventory, setInventory, setSales, sales, closes } = useBusiness();
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -69,7 +69,7 @@ export default function WarehouseScreen({ onGoToPos }) {
     hapticLight();
     setSheetOpen(false);
     try {
-      await Share.share({ message: buildZReportText(sales) });
+      await Share.share({ message: buildZReportText(sales, new Date(), lastCloseTs(closes)) });
     } catch {
       /* user cancelled */
     }

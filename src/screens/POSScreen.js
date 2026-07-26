@@ -17,7 +17,7 @@ import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
 import { monthKey, shekel, todayKey, uid } from "../utils/posStore";
 import { playCaching } from "../utils/sound";
 import { usePersistentState } from "../utils/usePersistentState";
-import { buildZReportText } from "../utils/zReport";
+import { buildZReportText, lastCloseTs } from "../utils/zReport";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 
 // ---------------------------------------------------------------------------
@@ -60,7 +60,7 @@ export default function POSScreen() {
   // Sales ledger is shared with the other business modules via context; only
   // the cart + last transaction are POS-private (persisted so a mid-sale
   // crash on the counter phone loses nothing).
-  const { sales, setSales } = useBusiness();
+  const { sales, setSales, closes } = useBusiness();
   const [cart, setCart, cartLoaded] = usePersistentState("@dreammanager/pos-cart", []);
   const [lastTx, setLastTx] = usePersistentState("@dreammanager/pos-last-tx", null);
 
@@ -333,7 +333,7 @@ export default function POSScreen() {
     hapticLight();
     setSheetOpen(false);
     try {
-      await Share.share({ message: buildZReportText(sales) });
+      await Share.share({ message: buildZReportText(sales, new Date(), lastCloseTs(closes)) });
     } catch {
       /* user cancelled */
     }

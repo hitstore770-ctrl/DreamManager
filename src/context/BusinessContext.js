@@ -12,10 +12,24 @@ const BusinessContext = createContext(null);
 export function BusinessProvider({ children }) {
   const [sales, setSales, salesLoaded] = usePersistentState(STORAGE_KEYS.posSales, []);
   const [inventory, setInventory, invLoaded] = usePersistentState(STORAGE_KEYS.posInventory, []);
+  // Customer credit tabs (הקפות) — legacy shape {id, name, owed, paid}.
+  const [debts, setDebts, debtsLoaded] = usePersistentState(STORAGE_KEYS.posDebts, []);
+  // Register-close archive: [{id, day, ts, revenue, txCount, units, topItem}].
+  const [closes, setCloses, closesLoaded] = usePersistentState(STORAGE_KEYS.posRegisterCloses, []);
 
   return (
     <BusinessContext.Provider
-      value={{ sales, setSales, inventory, setInventory, loaded: salesLoaded && invLoaded }}
+      value={{
+        sales,
+        setSales,
+        inventory,
+        setInventory,
+        debts,
+        setDebts,
+        closes,
+        setCloses,
+        loaded: salesLoaded && invLoaded && debtsLoaded && closesLoaded,
+      }}
     >
       {children}
     </BusinessContext.Provider>

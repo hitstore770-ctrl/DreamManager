@@ -20,6 +20,15 @@ export function hapticSuccess() {
   }
 }
 
+// Heavy thump — big commitments like closing the register for the day.
+export function hapticHeavy() {
+  try {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+  } catch {
+    /* no-op on web */
+  }
+}
+
 // Warning buzz — destructive actions: removing an item, clearing the cart,
 // logging damage.
 export function hapticWarning() {

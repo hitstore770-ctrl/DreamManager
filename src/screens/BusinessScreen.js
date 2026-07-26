@@ -1,19 +1,19 @@
 import { useState } from "react";
-import { ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
-import { BusinessProvider, useBusiness } from "../context/BusinessContext";
+import { BusinessProvider } from "../context/BusinessContext";
+import DebtsScreen from "./DebtsScreen";
 import POSScreen from "./POSScreen";
 import WarehouseScreen from "./WarehouseScreen";
+import ZReportScreen from "./ZReportScreen";
 import { hapticLight } from "../utils/haptics";
-import { shekel, todayKey } from "../utils/posStore";
-import { buildZReportText } from "../utils/zReport";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 
-// "העסק שלי" shell: a pill sub-navigation over 8 business modules. POS and
-// Warehouse are fully built; the rest are scaffolded for Phase 3 (דוח Z is a
-// working mini-module since the data is already in context).
+// "העסק שלי" shell: a pill sub-navigation over 8 business modules. POS,
+// Warehouse, customer tabs (הקפות) and the Z-report are fully built; the
+// remaining four are scaffolded for a later phase.
 
 const WHITE = "#FFFFFF";
 const CARD = "#F4F5F7";
@@ -46,46 +46,6 @@ function ModuleScaffold({ emoji, title }) {
   );
 }
 
-// דוח Z mini-module: live daily summary + WhatsApp share. Cheap to make real
-// because the sales ledger is already in context.
-function ZReportModule() {
-  const { sales } = useBusiness();
-  const day = todayKey();
-  const todays = sales.filter((r) => r.day === day && r.kind !== "damage");
-  const revenue = todays.reduce((sum, r) => sum + (r.total || 0), 0);
-  const txCount = new Set(todays.map((r) => r.eventId || r.id)).size;
-
-  const shareZ = async () => {
-    hapticLight();
-    try {
-      await Share.share({ message: buildZReportText(sales) });
-    } catch {
-      /* user cancelled */
-    }
-  };
-
-  return (
-    <View style={{ flex: 1, padding: 16 }}>
-      <View style={s.zCard}>
-        <Text style={s.zTitle}>🧾 דוח Z — היום</Text>
-        <View style={s.zStatsRow}>
-          <View style={s.zStat}>
-            <Text style={s.zStatValue}>{txCount}</Text>
-            <Text style={s.zStatLabel}>עסקאות</Text>
-          </View>
-          <View style={s.zStat}>
-            <Text style={s.zStatValue}>{shekel(revenue)}</Text>
-            <Text style={s.zStatLabel}>פדיון היום</Text>
-          </View>
-        </View>
-        <TouchableOpacity style={s.zShareBtn} onPress={shareZ} activeOpacity={0.8}>
-          <Text style={s.zShareText}>שיתוף ל-WhatsApp 📤</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-}
-
 function BusinessShell() {
   const insets = useSafeAreaInsets();
   const [module, setModule] = useState("pos");
@@ -102,8 +62,10 @@ function BusinessShell() {
         return <POSScreen />;
       case "inventory":
         return <WarehouseScreen onGoToPos={() => setModule("pos")} />;
+      case "tabs":
+        return <DebtsScreen />;
       case "zreport":
-        return <ZReportModule />;
+        return <ZReportScreen />;
       default: {
         const m = MODULES.find((x) => x.key === module);
         return <ModuleScaffold emoji={m.emoji} title={m.label} />;
@@ -186,28 +148,4 @@ const s = StyleSheet.create({
   scaffoldTitle: { fontFamily: FONTS.bold, fontSize: 20, color: INK, marginBottom: 10 },
   scaffoldPill: { backgroundColor: BLUE + "12", borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 },
   scaffoldPillText: { fontFamily: FONTS.bold, fontSize: 13, color: BLUE },
-
-  zCard: {
-    backgroundColor: CARD,
-    borderRadius: 16,
-    padding: 18,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  zTitle: { fontFamily: FONTS.bold, fontSize: 17, color: INK, textAlign: "right", marginBottom: 14 },
-  zStatsRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
-  zStat: { flex: 1, backgroundColor: WHITE, borderRadius: 14, paddingVertical: 14, alignItems: "center" },
-  zStatValue: { fontFamily: FONTS.bold, fontSize: 20, color: INK },
-  zStatLabel: { fontFamily: FONTS.regular, fontSize: 12, color: INK_MUTED, marginTop: 2 },
-  zShareBtn: {
-    minHeight: 48,
-    borderRadius: 14,
-    backgroundColor: "#25D366",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  zShareText: { fontFamily: FONTS.bold, fontSize: 15, color: WHITE },
 });
