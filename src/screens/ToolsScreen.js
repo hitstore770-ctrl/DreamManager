@@ -30,15 +30,20 @@ import Icon from "../components/Icon";
 import { FLUID, SCREEN_IN, listEntry } from "../utils/motion";
 import ToolRenderer from "../components/tools/ToolRenderer";
 import { useSettings } from "../context/SettingsContext";
-import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
-import { ALL_TOOLS, IMPLEMENTED, TOOL_CATEGORIES, TOOL_COUNT, toolById } from "../utils/toolsCatalog";
+import { hapticLight, hapticSuccess } from "../utils/haptics";
+import { ALL_TOOLS, TOOL_CATEGORIES, TOOL_COUNT, toolById } from "../utils/toolsCatalog";
 import { STORAGE_KEYS } from "../utils/storageKeys";
 import { usePersistentState } from "../utils/usePersistentState";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 
-// כלים — a 121-utility directory: fixed search, a pinned favorites row,
-// eight collapsible category accordions, and a swipe-to-dismiss sheet hosting
-// the built mini-apps. Long-press any tool to favorite it.
+// כלים — four collapsible category accordions over a fixed search and a
+// pinned favourites row, with a swipe-to-dismiss sheet hosting the tool.
+// Long-press any tool to favourite it.
+//
+// Every tile in the grid opens something. The hub used to carry ~90 catalogue
+// entries with no code behind them, which meant most taps produced a "coming
+// soon" toast; those entries are gone, and with them the ready/pending
+// distinction the UI used to draw.
 
 const WHITE = "#FFFFFF";
 const BG = "#F4F6F9";
@@ -52,7 +57,11 @@ export default function ToolsScreen() {
   const insets = useSafeAreaInsets();
   const { compactMode: compact } = useSettings();
   const [query, setQuery] = useState("");
-  const [openSections, setOpenSections] = useState({ vending: true });
+  // All four sections start open: at 43 tools the whole hub fits in a scroll,
+  // and hiding three quarters of it behind taps helps nobody.
+  const [openSections, setOpenSections] = useState(() =>
+    TOOL_CATEGORIES.reduce((acc, c) => ({ ...acc, [c.key]: true }), {})
+  );
   const [activeTool, setActiveTool] = useState(null);
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
@@ -124,14 +133,9 @@ export default function ToolsScreen() {
   ).current;
 
   const openTool = (tool) => {
-    if (IMPLEMENTED.has(tool.id)) {
-      hapticLight();
-      dragY.value = 0;
-      setActiveTool(tool);
-      return;
-    }
-    hapticWarning();
-    flash(`${tool.name} — בקרוב`);
+    hapticLight();
+    dragY.value = 0;
+    setActiveTool(tool);
   };
 
   const toggleFavorite = (tool) => {
@@ -162,7 +166,7 @@ export default function ToolsScreen() {
           </Text>
         </View>
         <View style={s.readyPill}>
-          <Text style={s.readyPillText}>{IMPLEMENTED.size} פעילים</Text>
+          <Text style={s.readyPillText}>{TOOL_CATEGORIES.length} קטגוריות</Text>
         </View>
       </View>
 
@@ -240,16 +244,14 @@ export default function ToolsScreen() {
 
             {TOOL_CATEGORIES.map((cat) => {
               const isOpen = !!openSections[cat.key];
-              const ready = cat.tools.filter((t) => IMPLEMENTED.has(t.id)).length;
+
               return (
                 <Animated.View key={cat.key} layout={FLUID} style={s.section}>
                   <Bounce style={s.sectionHead} onPress={() => toggleSection(cat.key)} scaleTo={0.98}>
                     <Text style={[s.chevron, isOpen && { transform: [{ rotate: "90deg" }] }]}>›</Text>
                     <View style={{ flex: 1, alignItems: "flex-end" }}>
                       <Text style={s.sectionLabel}>{cat.label}</Text>
-                      <Text style={s.sectionMeta}>
-                        {cat.tools.length} כלים{ready ? ` · ${ready} פעילים` : ""}
-                      </Text>
+                      <Text style={s.sectionMeta}>{cat.tools.length} כלים</Text>
                     </View>
                     <View style={[s.sectionBadge, { backgroundColor: cat.color + "16" }]}>
                       <Icon name={cat.icon} size={20} color={cat.color} />
@@ -319,7 +321,6 @@ export default function ToolsScreen() {
 }
 
 function ToolCard({ tool, index, fav, onPress, onLongPress, showCategory }) {
-  const ready = IMPLEMENTED.has(tool.id);
   return (
     <Animated.View entering={listEntry(index)} style={s.cardWrap}>
       <Bounce
@@ -328,11 +329,6 @@ function ToolCard({ tool, index, fav, onPress, onLongPress, showCategory }) {
         onLongPress={onLongPress}
         delayLongPress={320}
       >
-        {ready && (
-          <View style={s.readyDot}>
-            <Icon name="check" size={10} color="#0E7490" />
-          </View>
-        )}
         {fav && <View style={s.favStar}><Icon name="star" size={11} color={GOLD} /></View>}
         <View style={[s.cardIcon, { backgroundColor: (tool.color || BLUE) + "14" }]}>
           <Icon name={tool.icon || "circle"} size={21} color={tool.color || BLUE} />
@@ -430,18 +426,6 @@ const s = StyleSheet.create({
   cardIcon: { width: 42, height: 42, borderRadius: 13, alignItems: "center", justifyContent: "center", marginBottom: 6 },
   cardName: { fontFamily: FONTS.semibold, fontSize: 11, color: INK, textAlign: "center", lineHeight: 15 },
   cardCat: { fontFamily: FONTS.regular, fontSize: 9, color: INK_MUTED, textAlign: "center", marginTop: 3 },
-  readyDot: {
-    position: "absolute",
-    top: 7,
-    left: 7,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: GOLD,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  readyDotText: { fontFamily: FONTS.bold, fontSize: 10, color: "#3A2E08" },
   favStar: { position: "absolute", top: 6, right: 7, fontSize: 11 },
 
   empty: { alignItems: "center", paddingTop: 60, gap: 10 },

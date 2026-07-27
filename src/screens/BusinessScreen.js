@@ -12,6 +12,7 @@ import { FLUID, SCREEN_IN } from "../utils/motion";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import { CARD_SHADOW, UI } from "../utils/ui";
 import BizDashboardScreen from "./BizDashboardScreen";
+import BizToolsScreen from "./BizToolsScreen";
 import DebtsScreen from "./DebtsScreen";
 import POSScreen from "./POSScreen";
 import PricingScreen from "./PricingScreen";
@@ -20,7 +21,8 @@ import SuppliersScreen from "./SuppliersScreen";
 import WarehouseScreen from "./WarehouseScreen";
 import ZReportScreen from "./ZReportScreen";
 
-// "העסק שלי" — a pill sub-navigation over eight business modules, all live.
+// "העסק שלי" — a pill sub-navigation over nine business modules, all live.
+// The last of them holds the three tools that moved here out of the Tools hub.
 
 const MODULES = [
   { key: "pos", label: "קופה", icon: "shopping-cart" },
@@ -31,6 +33,7 @@ const MODULES = [
   { key: "deals", label: "מבצעים", icon: "target" },
   { key: "pricing", label: "תמחור", icon: "tag" },
   { key: "dash", label: "דשבורד", icon: "bar-chart-2" },
+  { key: "biztools", label: "כלים", icon: "sliders" },
 ];
 
 function BusinessShell() {
@@ -53,6 +56,8 @@ function BusinessShell() {
         return <PricingScreen />;
       case "suppliers":
         return <SuppliersScreen />;
+      case "biztools":
+        return <BizToolsScreen />;
       case "dash":
       default:
         return <BizDashboardScreen />;

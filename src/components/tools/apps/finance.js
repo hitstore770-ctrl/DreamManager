@@ -176,12 +176,22 @@ export function DormSplitter() {
 // ---------------------------------------------------------------------------
 // K. מע״מ והנחה אקספרס
 // ---------------------------------------------------------------------------
-// Israeli VAT moved to 18% in January 2025; 17% stays selectable for older
-// invoices and price lists.
-const VAT_RATES = [
-  { key: "18", label: "מע״מ 18%" },
-  { key: "17", label: "מע״מ 17%" },
+// Every denomination in circulation. Agorot are held as integers so the sum
+// never picks up floating-point dust: 0.1 + 0.2 is not 0.3 in binary, and a
+// till count that reads ₪0.30000000000000004 is worthless.
+const DENOMS = [
+  { agorot: 10, label: "10 אג׳", kind: "coin" },
+  { agorot: 50, label: "½ ₪", kind: "coin" },
+  { agorot: 100, label: "1 ₪", kind: "coin" },
+  { agorot: 200, label: "2 ₪", kind: "coin" },
+  { agorot: 500, label: "5 ₪", kind: "coin" },
+  { agorot: 1000, label: "10 ₪", kind: "coin" },
+  { agorot: 2000, label: "20 ₪", kind: "note" },
+  { agorot: 5000, label: "50 ₪", kind: "note" },
+  { agorot: 10000, label: "100 ₪", kind: "note" },
+  { agorot: 20000, label: "200 ₪", kind: "note" },
 ];
+
 export function TillCounter() {
   const [counts, setCounts] = useState({});
   const [expected, setExpected] = useState("");

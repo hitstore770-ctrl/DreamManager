@@ -1,4 +1,13 @@
+import { AgeInDays, PomodoroTimer, TimezoneConverter } from "./apps/time";
+import { AiImageGenerator, TextToSpeech } from "./apps/ai";
 import { AliImportCalc } from "./apps/importing";
+import {
+  AspectRatio,
+  DroneFlightTime,
+  SlowMoFps,
+  TimelapseCalc,
+  VideoSizeEstimator,
+} from "./apps/video";
 import {
   BillSplitTip,
   DormSplitter,
@@ -7,27 +16,10 @@ import {
   QuickTip,
   RoasCalc,
   RuleOf72,
-  TillCounter,
 } from "./apps/finance";
-import { AiImageGenerator, TextToSpeech } from "./apps/ai";
-import {
-  DiscountCalc,
-  DiscountStacking,
-  MarkupVsMargin,
-  ProfitMargin,
-  VatDiscount,
-  VatExtract,
-} from "./apps/pricing";
-import { Base64Tool, JsonValidator, QrGenerator, RegexTester, RnUiGenerator, UuidGenerator } from "./apps/dev";
-import {
-  ContrastChecker,
-  GoldenRatio,
-  GradientGenerator,
-  IconSizeGuide,
-  RgbToHex,
-  RnBoilerplate,
-} from "./apps/design";
+import { CalorieDensity, StudyPace, ZmanimRoutine } from "./apps/school";
 import { CarDepreciation, DeliveryRoute, FuelTripCost } from "./apps/cars";
+import { ChangeBreakdown, OhmsLaw, PowerLoad, TransitLoadCalc } from "./apps/vending";
 import {
   DecisionPicker,
   PasswordGenerator,
@@ -37,112 +29,79 @@ import {
   WhatsAppDirect,
   WordScrambler,
 } from "./apps/utils";
-import { AgeInDays, PomodoroTimer, TimezoneConverter } from "./apps/time";
+import {
+  DiscountCalc,
+  DiscountStacking,
+  MarkupVsMargin,
+  ProfitMargin,
+  VatDiscount,
+  VatExtract,
+} from "./apps/pricing";
 import { PromptBuilder } from "./apps/prompts";
-import {
-  AspectRatio,
-  DroneFlightTime,
-  SlowMoFps,
-  TimelapseCalc,
-  VideoSizeEstimator,
-} from "./apps/video";
-import {
-  ChangeBreakdown,
-  InventoryForecast,
-  OhmsLaw,
-  PowerLoad,
-  TransitLoadCalc,
-  VendingRoi,
-} from "./apps/vending";
-import { CalorieDensity, StudyPace, ZmanimRoutine } from "./apps/school";
+import { QrGenerator } from "./apps/marketing";
 
 // The single map from a catalogue tool id to the component that implements it.
 //
 // One entry per tool, grouped by the file it lives in. Adding a tool is: write
-// the component in the matching ./apps file, add one line here, and add its id
-// to IMPLEMENTED in utils/toolsCatalog. Nothing else in the app changes, and no
-// file has to grow to hold all 120 — which is exactly why this is a lookup
-// table and not a switch: a switch would put every tool's code in one module.
+// the component in the matching ./apps file and add one line here. Nothing
+// else in the app changes, and no file has to grow to hold them all — which is
+// why this is a lookup table and not a switch.
+//
+// TillCounter, InventoryForecast and VendingRoi are deliberately absent: they
+// live in the "העסק שלי" tab now and are imported straight by BusinessScreen,
+// so they no longer surface in the Tools hub.
 
 export const TOOL_APPS = {
-  // vending — מכונות שתייה וטרנזיט
-  "vending-roi": VendingRoi,
-  "transit-load": TransitLoadCalc,
-  "ohms-law": OhmsLaw,
-  "restock-planner": InventoryForecast,
+  // מכונות ורכבים
   "coin-float": ChangeBreakdown,
   "power-load": PowerLoad,
-
-  // cars — רכב ומסלולים
+  "ohms-law": OhmsLaw,
   "fuel-cost": FuelTripCost,
   "car-depreciation": CarDepreciation,
   "route-planner": DeliveryRoute,
+  "loan-calc": LoanCalc,
+  "transit-load": TransitLoadCalc,
 
-  // video — וידאו ועריכה
+  // הפקה ורחפנים
   "video-size": VideoSizeEstimator,
-  "fps-slowmo": SlowMoFps,
   "drone-flight": DroneFlightTime,
   "timelapse-calc": TimelapseCalc,
   "aspect-ratio": AspectRatio,
+  "storage-conv": StorageConverter,
+  "fps-slowmo": SlowMoFps,
 
-  // dev — פיתוח וקוד
-  "rn-ui-gen": RnUiGenerator,
-  "json-validator": JsonValidator,
-  "uuid-gen": UuidGenerator,
-  "regex-tester": RegexTester,
-  "base64": Base64Tool,
-
-  // design — צבע ותבניות
-  "gradient-gen": GradientGenerator,
-  "rn-boilerplate": RnBoilerplate,
-  "contrast-check": ContrastChecker,
-  "hex-color": RgbToHex,
-  "icon-sizes": IconSizeGuide,
-  "golden-ratio": GoldenRatio,
-
-  // import — ייבוא וסחר
-  "ali-import": AliImportCalc,
-
-  // school — פנימייה וסדר יום
-  "zmanim-routine": ZmanimRoutine,
-  "calorie-density": CalorieDensity,
-  "study-split": StudyPace,
-
-  // finance — פיננסים מהירים
-  "expense-split": DormSplitter,
+  // שיווק ופיננסים
+  "qr-gen": QrGenerator,
+  "wa-direct": WhatsAppDirect,
+  "ai-image": AiImageGenerator,
+  roas: RoasCalc,
   "vat-calc": VatDiscount,
-  "till-count": TillCounter,
-  "license-tracker": LicenseTracker,
   "margin-calc": ProfitMargin,
-  "loan-calc": LoanCalc,
   "discount-calc": DiscountCalc,
   "markup-margin": MarkupVsMargin,
-  "tip-split": BillSplitTip,
   "vat-extract": VatExtract,
-  "discount-stack": DiscountStacking,
-  "roas": RoasCalc,
   "rule-72": RuleOf72,
-  "tip-quick": QuickTip,
-
-  // prompts — פרומפטים
+  "discount-stack": DiscountStacking,
+  "percent-calc": PercentDiff,
+  "ali-import": AliImportCalc,
   "prompt-builder": PromptBuilder,
 
-  // utils — כלי עזר
-  "qr-gen": QrGenerator,
-  "percent-calc": PercentDiff,
-  "random-picker": DecisionPicker,
-  "text-counter": TextAnalyzer,
-  "pomodoro": PomodoroTimer,
+  // אישי ופנימייה
+  "expense-split": DormSplitter,
+  "license-tracker": LicenseTracker,
+  pomodoro: PomodoroTimer,
+  "calorie-density": CalorieDensity,
+  "study-split": StudyPace,
   "world-clock": TimezoneConverter,
-  "wa-direct": WhatsAppDirect,
-  "storage-conv": StorageConverter,
+  "tip-split": BillSplitTip,
+  "tip-quick": QuickTip,
+  tts: TextToSpeech,
   "password-gen": PasswordGenerator,
   "age-days": AgeInDays,
-  "scrambler": WordScrambler,
-
-  // ai — בינה מלאכותית ומדיה
-  "ai-image": AiImageGenerator,
-  "tts": TextToSpeech,
+  scrambler: WordScrambler,
+  "zmanim-routine": ZmanimRoutine,
+  "random-picker": DecisionPicker,
+  "text-counter": TextAnalyzer,
 };
 
 // True when a tool id has a real implementation behind it.
