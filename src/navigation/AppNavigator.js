@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import Icon from "../components/Icon";
 import { useAuth } from "../context/AuthContext";
+import ContextualAiChatScreen from "../screens/ContextualAiChatScreen";
 import LoginScreen from "../screens/LoginScreen";
 import NoteEditorScreen from "../screens/NoteEditorScreen";
 import NotesHubScreen from "../screens/NotesHubScreen";
@@ -113,6 +114,13 @@ export default function AppNavigator() {
           <RootStack.Screen
             name="NoteEditor"
             component={NoteEditorScreen}
+            options={{ animation: "slide_from_bottom" }}
+          />
+          {/* Per-item AI thread. Opened with { threadId, title, itemData }
+              from any details screen — see the usage block in the file. */}
+          <RootStack.Screen
+            name="ContextualAiChat"
+            component={ContextualAiChatScreen}
             options={{ animation: "slide_from_bottom" }}
           />
         </>
