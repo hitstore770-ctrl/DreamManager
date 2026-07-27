@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import * as Clipboard from "expo-clipboard";
+import { Linking, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 import Icon from "../../Icon";
 import { hapticLight, hapticSuccess, hapticWarning } from "../../../utils/haptics";
@@ -19,6 +20,9 @@ import {
   Stat,
   WHITE,
   s,
+  Field,
+  Chips,
+  useCalcHaptic,
 } from "../kit";
 
 // General-purpose utilities.
@@ -653,3 +657,230 @@ const u = StyleSheet.create({
   zoneCity: { fontFamily: FONTS.bold, fontSize: 14.5, color: INK, textAlign: "right" },
   zoneMeta: { fontFamily: FONTS.regular, fontSize: 11, color: INK_MUTED, textAlign: "right", marginTop: 2 },
 });
+
+// ---------------------------------------------------------------------------
+// F. וואטסאפ ללא שמירה
+// ---------------------------------------------------------------------------
+
+// wa.me wants digits only, in full international form with no plus sign. An
+// Israeli number typed the local way (050-1234567) has to lose its leading
+// zero and gain the country code, which is the step people get wrong.
+function toWaNumber(raw, countryCode) {
+  const digits = (raw || "").replace(/\D/g, "");
+  if (!digits) return null;
+  if (digits.startsWith("00")) return digits.slice(2);
+  if (digits.startsWith(countryCode)) return digits;
+  if (digits.startsWith("0")) return countryCode + digits.slice(1);
+  return countryCode + digits;
+}
+
+const COUNTRIES = [
+  { key: "972", label: "ישראל +972" },
+  { key: "1", label: "ארה״ב +1" },
+  { key: "44", label: "בריטניה +44" },
+];
+
+export function WhatsAppDirect() {
+  const [raw, setRaw] = useState("");
+  const [country, setCountry] = useState("972");
+  const [message, setMessage] = useState("");
+  const [failed, setFailed] = useState(false);
+
+  const number = toWaNumber(raw, country);
+  const url = number
+    ? `https://wa.me/${number}${message.trim() ? `?text=${encodeURIComponent(message.trim())}` : ""}`
+    : null;
+
+  const openChat = async () => {
+    if (!url) {
+      hapticWarning();
+      return;
+    }
+    hapticSuccess();
+    setFailed(false);
+    try {
+      await Linking.openURL(url);
+    } catch {
+      setFailed(true);
+    }
+  };
+
+  const copyLink = async () => {
+    if (!url) return;
+    await Clipboard.setStringAsync(url);
+    hapticLight();
+  };
+
+  return (
+    <View style={{ gap: 12 }}>
+      <Segment options={COUNTRIES} value={country} onChange={(v) => { hapticLight(); setCountry(v); }} />
+
+      <View>
+        <Text style={s.fieldLabel}>מספר טלפון</Text>
+        <View style={s.fieldRow}>
+          <TextInput
+            testID="wa-number"
+            style={s.fieldInput}
+            value={raw}
+            onChangeText={(v) => { setRaw(v); setFailed(false); }}
+            placeholder="050-1234567"
+            placeholderTextColor={INK_MUTED}
+            keyboardType="phone-pad"
+            textAlign="center"
+          />
+        </View>
+      </View>
+
+      <View>
+        <Text style={s.fieldLabel}>הודעה פותחת (לא חובה)</Text>
+        <TextInput
+          testID="wa-message"
+          style={t.area}
+          value={message}
+          onChangeText={setMessage}
+          placeholder="היי, אפשר לקבל פרטים?"
+          placeholderTextColor={INK_MUTED}
+          multiline
+          textAlign="right"
+          textAlignVertical="top"
+        />
+      </View>
+
+      {number ? (
+        <View style={[s.banner, { backgroundColor: CARD }]}>
+          <Text testID="wa-resolved" style={[s.bannerText, { color: INK, textAlign: "left" }]}>+{number}</Text>
+          <Text style={[s.bannerSub, { color: INK_MUTED, textAlign: "left" }]}>{url}</Text>
+        </View>
+      ) : (
+        !!raw && <Text style={[s.hint, { color: RED }]}>המספר לא תקין — נדרשות ספרות בלבד.</Text>
+      )}
+
+      <TouchableOpacity
+        style={[s.bigBtn, { backgroundColor: number ? "#25D366" : INK_MUTED }]}
+        onPress={openChat}
+        activeOpacity={0.85}
+        disabled={!number}
+      >
+        <BtnLabel icon="message-circle" text="פתח צ׳אט בוואטסאפ" style={s.bigBtnText} />
+      </TouchableOpacity>
+
+      <TouchableOpacity style={[s.bigBtn, { backgroundColor: CARD }]} onPress={copyLink} activeOpacity={0.85}>
+        <BtnLabel icon="copy" text="העתק את הקישור" color={INK_SOFT} style={[s.bigBtnText, { color: INK_SOFT }]} />
+      </TouchableOpacity>
+
+      {failed && (
+        <View style={[s.banner, { backgroundColor: RED + "14" }]}>
+          <Text style={[s.bannerText, { color: RED }]}>לא הצלחנו לפתוח את וואטסאפ</Text>
+          <Text style={[s.bannerSub, { color: RED }]}>
+            ייתכן שהאפליקציה לא מותקנת. אפשר להעתיק את הקישור ולפתוח אותו בדפדפן.
+          </Text>
+        </View>
+      )}
+
+      <Text style={s.hint}>
+        הקישור נפתח ישירות בשיחה בלי להוסיף את המספר לאנשי הקשר. אפס מוביל מוחלף בקידומת המדינה — 
+        050-1234567 הופך ל-972501234567.
+      </Text>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// G. ממיר נפח דיגיטלי
+// ---------------------------------------------------------------------------
+
+// Binary units. Storage vendors sell in powers of ten (a "1TB" drive is 10^12
+// bytes) while operating systems report powers of two, which is the whole
+// reason a new drive looks smaller than the box promised.
+const SIZE_UNITS = [
+  { key: "KB", label: "KB", pow: 1 },
+  { key: "MB", label: "MB", pow: 2 },
+  { key: "GB", label: "GB", pow: 3 },
+  { key: "TB", label: "TB", pow: 4 },
+];
+
+export function StorageConverter() {
+  const [amount, setAmount] = useState("");
+  const [from, setFrom] = useState("GB");
+  const [to, setTo] = useState("MB");
+
+  const r = useMemo(() => {
+    const n = parseFloat(amount);
+    if (!Number.isFinite(n)) return { ready: false };
+    const f = SIZE_UNITS.find((u) => u.key === from);
+    const tUnit = SIZE_UNITS.find((u) => u.key === to);
+    const bytes = n * 1024 ** f.pow;
+    const converted = bytes / 1024 ** tUnit.pow;
+    const decimalBytes = n * 1000 ** f.pow;
+    const trim = (x) =>
+      Number.isInteger(x) ? String(x) : String(Math.round(x * 1000) / 1000);
+    return {
+      ready: true,
+      converted: trim(converted),
+      bytes,
+      all: SIZE_UNITS.map((u) => ({ key: u.key, value: trim(bytes / 1024 ** u.pow) })),
+      // How much smaller the same number looks once the OS counts in binary.
+      decimalGap: Math.round((1 - bytes / decimalBytes) * 1000) / 10,
+    };
+  }, [amount, from, to]);
+
+  useCalcHaptic(r.ready ? parseFloat(r.converted) : 0);
+
+  const swap = () => {
+    hapticLight();
+    setFrom(to);
+    setTo(from);
+  };
+
+  return (
+    <View style={{ gap: 12 }}>
+      <View>
+        <Text style={s.fieldLabel}>כמות</Text>
+        <View style={s.fieldRow}>
+          <TextInput
+            testID="storage-amount"
+            style={s.fieldInput}
+            value={amount}
+            onChangeText={setAmount}
+            placeholder="1.5"
+            placeholderTextColor={INK_MUTED}
+            keyboardType="numeric"
+            textAlign="center"
+          />
+        </View>
+      </View>
+
+      <Text style={s.fieldLabel}>מיחידה</Text>
+      <Segment options={SIZE_UNITS} value={from} onChange={(v) => { hapticLight(); setFrom(v); }} />
+      <Text style={s.fieldLabel}>ליחידה</Text>
+      <Segment options={SIZE_UNITS} value={to} onChange={(v) => { hapticLight(); setTo(v); }} />
+
+      <TouchableOpacity style={[s.actionBtn, { backgroundColor: CARD }]} onPress={swap} activeOpacity={0.85}>
+        <BtnLabel icon="repeat" text="החלף כיוון" color={INK_SOFT} style={[s.actionText, { color: INK_SOFT }]} />
+      </TouchableOpacity>
+
+      {!r.ready ? (
+        <Text style={s.hint}>הזן כמות כדי להמיר.</Text>
+      ) : (
+        <>
+          <View style={[t.verdict, { backgroundColor: BLUE + "12" }]}>
+            <Text testID="storage-result" style={[t.verdictValue, { color: BLUE }]}>{r.converted}</Text>
+            <Text style={t.verdictLabel}>{to}</Text>
+          </View>
+
+          {r.all.map((u) => (
+            <View key={u.key} style={s.routineRow}>
+              <Text style={[s.routineTime, u.key === to && { color: BLUE }]}>{u.value}</Text>
+              <Text style={[s.routineLabel, { flex: 1 }]}>{u.key}</Text>
+            </View>
+          ))}
+
+          <Text style={s.hint}>
+            ההמרה בינארית (1024). יצרני הדיסקים סופרים באלפים, ולכן כונן שנמכר כ-1TB מוצג במערכת
+            ההפעלה כ-{r.decimalGap}% פחות — זה ההסבר לפער ולא תקלה.
+          </Text>
+        </>
+      )}
+    </View>
+  );
+}

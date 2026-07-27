@@ -1,24 +1,38 @@
 import { AliImportCalc } from "./apps/importing";
+import { BillSplitTip, DormSplitter, LicenseTracker, LoanCalc, TillCounter } from "./apps/finance";
 import {
-  DormSplitter,
-  LicenseTracker,
-  LoanCalc,
+  DiscountCalc,
+  MarkupVsMargin,
   ProfitMargin,
-  TillCounter,
   VatDiscount,
-} from "./apps/finance";
+  VatExtract,
+} from "./apps/pricing";
 import { Base64Tool, JsonValidator, QrGenerator, RegexTester, RnUiGenerator, UuidGenerator } from "./apps/dev";
-import { ContrastChecker, GradientGenerator, RnBoilerplate } from "./apps/design";
+import {
+  ContrastChecker,
+  GradientGenerator,
+  IconSizeGuide,
+  RgbToHex,
+  RnBoilerplate,
+} from "./apps/design";
 import { CarDepreciation, DeliveryRoute, FuelTripCost } from "./apps/cars";
 import {
   DecisionPicker,
   PercentDiff,
   PomodoroTimer,
+  StorageConverter,
   TextAnalyzer,
   TimezoneConverter,
+  WhatsAppDirect,
 } from "./apps/utils";
 import { PromptBuilder } from "./apps/prompts";
-import { DroneFlightTime, SlowMoFps, TimelapseCalc, VideoSizeEstimator } from "./apps/video";
+import {
+  AspectRatio,
+  DroneFlightTime,
+  SlowMoFps,
+  TimelapseCalc,
+  VideoSizeEstimator,
+} from "./apps/video";
 import {
   ChangeBreakdown,
   InventoryForecast,
@@ -56,6 +70,7 @@ export const TOOL_APPS = {
   "fps-slowmo": SlowMoFps,
   "drone-flight": DroneFlightTime,
   "timelapse-calc": TimelapseCalc,
+  "aspect-ratio": AspectRatio,
 
   // dev — פיתוח וקוד
   "rn-ui-gen": RnUiGenerator,
@@ -68,6 +83,8 @@ export const TOOL_APPS = {
   "gradient-gen": GradientGenerator,
   "rn-boilerplate": RnBoilerplate,
   "contrast-check": ContrastChecker,
+  "hex-color": RgbToHex,
+  "icon-sizes": IconSizeGuide,
 
   // import — ייבוא וסחר
   "ali-import": AliImportCalc,
@@ -84,6 +101,10 @@ export const TOOL_APPS = {
   "license-tracker": LicenseTracker,
   "margin-calc": ProfitMargin,
   "loan-calc": LoanCalc,
+  "discount-calc": DiscountCalc,
+  "markup-margin": MarkupVsMargin,
+  "tip-split": BillSplitTip,
+  "vat-extract": VatExtract,
 
   // prompts — פרומפטים
   "prompt-builder": PromptBuilder,
@@ -95,6 +116,8 @@ export const TOOL_APPS = {
   "text-counter": TextAnalyzer,
   "pomodoro": PomodoroTimer,
   "world-clock": TimezoneConverter,
+  "wa-direct": WhatsAppDirect,
+  "storage-conv": StorageConverter,
 };
 
 // True when a tool id has a real implementation behind it.

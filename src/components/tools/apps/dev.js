@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import * as Clipboard from "expo-clipboard";
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+
+import QRCode from "react-native-qrcode-svg";
 
 import Icon from "../../Icon";
 import Slider from "../Slider";
 import { NOTES_FONTS as FONTS } from "../../../utils/notesTheme";
+import { CARD_SHADOW } from "../../../utils/ui";
 import { hapticLight, hapticSuccess, hapticWarning } from "../../../utils/haptics";
 import {
   BLUE,
@@ -213,96 +216,149 @@ export function JsonValidator() {
 }
 
 // ---------------------------------------------------------------------------
-// מחולל ברקודים/QR — deterministic preview, explicitly not scannable
+// מחולל QR — a real, scannable code via react-native-qrcode-svg
 // ---------------------------------------------------------------------------
-const QR_SIZE = 25;
 
-function buildMatrix(text) {
-  const grid = Array.from({ length: QR_SIZE }, () => Array(QR_SIZE).fill(false));
-  const finder = (r0, c0) => {
-    for (let r = 0; r < 7; r++) {
-      for (let c = 0; c < 7; c++) {
-        const edge = r === 0 || r === 6 || c === 0 || c === 6;
-        const core = r >= 2 && r <= 4 && c >= 2 && c <= 4;
-        grid[r0 + r][c0 + c] = edge || core;
-      }
-    }
-  };
-  finder(0, 0);
-  finder(0, QR_SIZE - 7);
-  finder(QR_SIZE - 7, 0);
-  for (let i = 8; i < QR_SIZE - 8; i++) {
-    grid[6][i] = i % 2 === 0;
-    grid[i][6] = i % 2 === 0;
-  }
-  let h = 2166136261;
-  for (let i = 0; i < text.length; i++) {
-    h ^= text.charCodeAt(i);
-    h = Math.imul(h, 16777619) >>> 0;
-  }
-  const reserved = (r, c) =>
-    (r < 8 && c < 8) || (r < 8 && c >= QR_SIZE - 8) || (r >= QR_SIZE - 8 && c < 8) || r === 6 || c === 6;
-  for (let r = 0; r < QR_SIZE; r++) {
-    for (let c = 0; c < QR_SIZE; c++) {
-      if (reserved(r, c)) continue;
-      h ^= h << 13; h >>>= 0;
-      h ^= h >> 17;
-      h ^= h << 5; h >>>= 0;
-      grid[r][c] = (h & 1) === 1;
-    }
-  }
-  return grid;
-}
+// Error-correction level trades capacity for damage tolerance. L holds the
+// most data; H still scans with about 30% of the code obscured, which is what
+// you want on a sticker stuck to a machine.
+const QR_LEVELS = [
+  { key: "L", label: "L · 7%" },
+  { key: "M", label: "M · 15%" },
+  { key: "Q", label: "Q · 25%" },
+  { key: "H", label: "H · 30%" },
+];
+
+const QR_PRESETS = [
+  { label: "אתר", value: "https://770jlm.co.il" },
+  { label: "וואטסאפ", value: "https://wa.me/972500000000" },
+  { label: "וויפי", value: "WIFI:T:WPA;S:NETWORK;P:PASSWORD;;" },
+  { label: "טלפון", value: "tel:+972500000000" },
+];
 
 export function QrGenerator() {
   const [text, setText] = useState("https://770jlm.co.il");
-  const matrix = useMemo(() => buildMatrix(text || " "), [text]);
+  const [level, setLevel] = useState("M");
+  const [copied, setCopied] = useState(false);
+
+  const value = text.trim();
 
   const copy = async () => {
+    if (!value) return;
+    await Clipboard.setStringAsync(value);
+    hapticSuccess();
+    setCopied(true);
+  };
+
+  const share = async () => {
+    if (!value) return;
     hapticLight();
     try {
-      await Clipboard.setStringAsync(text);
+      await Share.share({ message: value });
     } catch {
-      /* clipboard unavailable */
+      /* the user dismissed the sheet */
     }
   };
 
   return (
     <View style={{ gap: 12 }}>
-      <TextInput
-        style={s.qrInput}
-        value={text}
-        onChangeText={setText}
-        placeholder="טקסט / קישור / מספר טלפון"
-        placeholderTextColor={INK_MUTED}
-        textAlign="right"
-        autoCapitalize="none"
-      />
-      <View style={s.qrWrap}>
-        <View style={s.qrGrid}>
-          {matrix.map((row, r) => (
-            <View key={r} style={{ flexDirection: "row" }}>
-              {row.map((on, c) => (
-                <View key={c} style={[s.qrCell, on && { backgroundColor: INK }]} />
-              ))}
-            </View>
-          ))}
-        </View>
+      <View style={qr.stage}>
+        {value ? (
+          <View testID="qr-canvas" style={qr.quiet}>
+            <QRCode
+              value={value}
+              size={196}
+              color={INK}
+              backgroundColor={WHITE}
+              ecl={level}
+            />
+          </View>
+        ) : (
+          <View style={[qr.quiet, qr.empty]}>
+            <Icon name="grid" size={34} color={INK_MUTED} />
+            <Text style={qr.emptyText}>הזן טקסט או כתובת</Text>
+          </View>
+        )}
       </View>
-      <View style={[s.banner, { backgroundColor: GOLD + "16" }]}>
-        <Text style={[s.bannerText, { color: "#0E7490" }]}>תצוגה מקדימה — הקוד אינו סָריק</Text>
-        <Text style={[s.bannerSub, { color: "#0E7490" }]}>
-          קוד QR אמיתי דורש ספריית קידוד ייעודית שלא מותקנת כדי לא לסכן את הבילד. בינתיים אפשר להעתיק את
-          הטקסט ולהפיק ממנו קוד בכל שירות.
-        </Text>
+
+      <View>
+        <Text style={s.fieldLabel}>תוכן הקוד</Text>
+        <TextInput
+          testID="qr-input"
+          style={qr.input}
+          value={text}
+          onChangeText={(v) => { setText(v); setCopied(false); }}
+          placeholder="https://example.com"
+          placeholderTextColor={INK_MUTED}
+          autoCapitalize="none"
+          autoCorrect={false}
+          multiline
+          textAlign="left"
+          textAlignVertical="top"
+        />
       </View>
-      <TouchableOpacity style={s.actionBtn} onPress={copy} activeOpacity={0.85}>
-        <BtnLabel icon="copy" text="העתק את הטקסט" style={s.actionText} />
-      </TouchableOpacity>
+
+      <View style={s.chipRow}>
+        {QR_PRESETS.map((preset) => (
+          <TouchableOpacity
+            key={preset.label}
+            style={s.chip}
+            onPress={() => { hapticLight(); setText(preset.value); setCopied(false); }}
+            activeOpacity={0.8}
+          >
+            <Text style={s.chipText}>{preset.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <Text style={s.fieldLabel}>רמת תיקון שגיאות</Text>
+      <Segment options={QR_LEVELS} value={level} onChange={(v) => { hapticLight(); setLevel(v); }} />
+
+      <View style={s.row}>
+        <TouchableOpacity
+          style={[s.actionBtn, copied && { backgroundColor: GREEN }]}
+          onPress={copy}
+          activeOpacity={0.85}
+        >
+          <BtnLabel icon={copied ? "check" : "copy"} text={copied ? "הועתק" : "העתק תוכן"} style={s.actionText} />
+        </TouchableOpacity>
+        <TouchableOpacity style={[s.actionBtn, { backgroundColor: CARD }]} onPress={share} activeOpacity={0.85}>
+          <BtnLabel icon="share-2" text="שתף" color={INK_SOFT} style={[s.actionText, { color: INK_SOFT }]} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={s.statRow}>
+        <Stat label="תווים" value={value.length} color={BLUE} />
+        <Stat label="רמת תיקון" value={level} />
+      </View>
+
+      <Text style={s.hint}>
+        הקוד אמיתי וניתן לסריקה. רמה גבוהה יותר שורדת יותר נזק והתלכלכות אבל דורשת יותר מודולים, לכן
+        לקוד שמודבק על מכונה עדיף H ולקישור ארוך עדיף L.
+      </Text>
     </View>
   );
 }
 
+const qr = StyleSheet.create({
+  stage: { alignItems: "center", paddingVertical: 4 },
+  // A quiet zone of at least four modules is part of the spec — without the
+  // white margin many scanners simply will not lock on.
+  quiet: { backgroundColor: WHITE, padding: 18, borderRadius: 24, ...CARD_SHADOW },
+  empty: { width: 232, height: 232, alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: CARD },
+  emptyText: { fontFamily: FONTS.medium, fontSize: 12.5, color: INK_MUTED },
+  input: {
+    backgroundColor: CARD,
+    borderRadius: 14,
+    padding: 14,
+    minHeight: 80,
+    fontFamily: "monospace",
+    fontSize: 13,
+    color: INK,
+    lineHeight: 20,
+    ...NO_OUTLINE,
+  },
+});
 // ---------------------------------------------------------------------------
 // D. מחולל UUID
 // ---------------------------------------------------------------------------

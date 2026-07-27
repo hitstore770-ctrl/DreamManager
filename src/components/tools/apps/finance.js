@@ -3,8 +3,6 @@ import * as Clipboard from "expo-clipboard";
 import { Linking, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 import Icon from "../../Icon";
-import Slider from "../Slider";
-import { useSettings } from "../../../context/SettingsContext";
 import { hapticLight, hapticSuccess, hapticWarning } from "../../../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../../../utils/notesTheme";
 import { shekel } from "../../../utils/posStore";
@@ -21,7 +19,6 @@ import {
   INK_SOFT,
   NO_OUTLINE,
   RED,
-  Segment,
   Stat,
   Stepper,
   WHITE,
@@ -185,146 +182,6 @@ const VAT_RATES = [
   { key: "18", label: "מע״מ 18%" },
   { key: "17", label: "מע״מ 17%" },
 ];
-
-export function VatDiscount() {
-  // Seeded from the default VAT rate in Settings.
-  const { vatRate } = useSettings();
-  const defaultRate = String(Math.max(0, parseFloat(vatRate) || 18));
-  const [base, setBase] = useState("100");
-  const [discount, setDiscount] = useState(10);
-  const [vatOn, setVatOn] = useState(true);
-  const [rate, setRate] = useState(defaultRate);
-  // "add" treats the base as net and adds VAT on top; "extract" treats it as a
-  // gross price that already includes VAT and works backwards to the net.
-  const [mode, setMode] = useState("add");
-
-  // No useCalcHaptic here: the discount slider already taps per step, and
-  // stacking a second pulse on the same drag feels buzzy.
-  const r = useMemo(() => {
-    const b = parseFloat(base) || 0;
-    const off = b * (discount / 100);
-    const afterDiscount = b - off;
-    const vatPct = parseFloat(rate) || 0;
-    const round2 = (n) => Math.round(n * 100) / 100;
-
-    let net;
-    let vat;
-    let final;
-    if (!vatOn) {
-      net = afterDiscount;
-      vat = 0;
-      final = afterDiscount;
-    } else if (mode === "extract") {
-      // Dividing by (1 + rate) is the only correct way back: taking rate% off
-      // a gross price undershoots the VAT it actually contains.
-      net = afterDiscount / (1 + vatPct / 100);
-      vat = afterDiscount - net;
-      final = afterDiscount;
-    } else {
-      net = afterDiscount;
-      vat = afterDiscount * (vatPct / 100);
-      final = afterDiscount + vat;
-    }
-
-    return {
-      ready: b > 0,
-      extracting: vatOn && mode === "extract",
-      off: round2(off),
-      afterDiscount: round2(afterDiscount),
-      net: round2(net),
-      vat: round2(vat),
-      final: round2(final),
-      rounded: Math.round(final),
-    };
-  }, [base, discount, vatOn, rate, mode]);
-
-  return (
-    <View style={{ gap: 12 }}>
-      <View style={s.row}>
-        <Field label="מחיר בסיס" value={base} onChange={setBase} placeholder="100" suffix="₪" />
-      </View>
-      <Chips options={[50, 100, 250, 500]} onPick={(v) => setBase(String(v))} active={base} />
-
-      <Slider label="אחוז הנחה" value={discount} min={0} max={100} step={1} onChange={setDiscount} format={(v) => `${v}%`} />
-      <Chips options={[0, 5, 10, 15, 20, 25, 50]} onPick={setDiscount} active={discount} />
-
-      <TouchableOpacity
-        style={s.checkRow}
-        onPress={() => { hapticLight(); setVatOn((v) => !v); }}
-        activeOpacity={0.75}
-      >
-        <View style={[s.checkbox, vatOn && { backgroundColor: BLUE, borderColor: BLUE }]}>
-          {vatOn && <Icon name="check" size={13} color={WHITE} />}
-        </View>
-        <Text style={s.checkLabel}>כלול מע״מ בחישוב</Text>
-      </TouchableOpacity>
-      {vatOn && (
-        <Segment
-          options={[
-            { key: "add", label: "הוסף מע״מ" },
-            { key: "extract", label: "חלץ מע״מ" },
-          ]}
-          value={mode}
-          onChange={(v) => { hapticLight(); setMode(v); }}
-        />
-      )}
-      {vatOn && (
-        <Segment
-          options={
-            VAT_RATES.some((r) => r.key === defaultRate)
-              ? VAT_RATES
-              : [{ key: defaultRate, label: `מע״מ ${defaultRate}%` }, ...VAT_RATES]
-          }
-          value={rate}
-          onChange={setRate}
-        />
-      )}
-
-      {r.ready ? (
-        <>
-          <View style={s.statRow}>
-            <Stat label="לתשלום" value={shekel(r.final)} color={BLUE} big />
-            <Stat label={r.extracting ? "מחיר לפני מע״מ" : "מחיר אחרי הנחה"} value={shekel(r.extracting ? r.net : r.afterDiscount)} />
-          </View>
-          <View style={s.statRow}>
-            <Stat label="ההנחה שווה" value={shekel(r.off)} color={GREEN} />
-            <Stat label={vatOn ? `מע״מ ${rate}%` : "ללא מע״מ"} value={shekel(r.vat)} color={vatOn ? GOLD : INK_MUTED} />
-            <Stat label="עיגול לשקל" value={shekel(r.rounded)} />
-          </View>
-          <Text style={s.hint}>
-            ההנחה מחושבת קודם, והמע״מ נגבה על המחיר שאחרי ההנחה — כפי שנדרש בחשבונית. שיעור המע״מ בישראל
-            הוא 18% מינואר 2025; 17% נשאר לבחירה לתמחורים ולחשבוניות ישנות.
-          </Text>
-        </>
-      ) : (
-        <Text style={s.hint}>הזן מחיר בסיס כדי לחשב.</Text>
-      )}
-    </View>
-  );
-}
-
-// Map tool id → mini-app component.
-
-// ---------------------------------------------------------------------------
-// C. ספירת קופה
-// ---------------------------------------------------------------------------
-
-// Every denomination in circulation. Agorot are held as integers so the sum
-// never picks up floating-point dust: 0.1 + 0.2 is not 0.3 in binary, and a
-// till count that reads ₪0.30000000000000004 is worthless.
-const DENOMS = [
-  { agorot: 10, label: "10 אג׳", kind: "coin" },
-  { agorot: 50, label: "½ ₪", kind: "coin" },
-  { agorot: 100, label: "1 ₪", kind: "coin" },
-  { agorot: 200, label: "2 ₪", kind: "coin" },
-  { agorot: 500, label: "5 ₪", kind: "coin" },
-  { agorot: 1000, label: "10 ₪", kind: "coin" },
-  { agorot: 2000, label: "20 ₪", kind: "note" },
-  { agorot: 5000, label: "50 ₪", kind: "note" },
-  { agorot: 10000, label: "100 ₪", kind: "note" },
-  { agorot: 20000, label: "200 ₪", kind: "note" },
-];
-
 export function TillCounter() {
   const [counts, setCounts] = useState({});
   const [expected, setExpected] = useState("");
@@ -583,77 +440,6 @@ export function LicenseTracker() {
 
 // ---------------------------------------------------------------------------
 // E. מחשבון מתח רווחים
-// ---------------------------------------------------------------------------
-export function ProfitMargin() {
-  const [cost, setCost] = useState("");
-  const [price, setPrice] = useState("");
-
-  const r = useMemo(() => {
-    const c = parseFloat(cost);
-    const p = parseFloat(price);
-    if (!Number.isFinite(c) || !Number.isFinite(p) || p <= 0) return { ready: false };
-    const profit = p - c;
-    const round2 = (n) => Math.round(n * 100) / 100;
-    return {
-      ready: true,
-      profit: round2(profit),
-      // Margin is profit over the selling price. Markup is profit over cost —
-      // a different, larger number, and confusing the two is how shops end up
-      // pricing below their target.
-      margin: round2((profit / p) * 100),
-      markup: c > 0 ? round2((profit / c) * 100) : null,
-      multiplier: c > 0 ? round2(p / c) : null,
-      loss: profit < 0,
-    };
-  }, [cost, price]);
-
-  useCalcHaptic(r.margin);
-
-  const tone = !r.ready ? INK_SOFT : r.loss ? RED : r.margin >= 30 ? GREEN : GOLD;
-
-  return (
-    <View style={{ gap: 12 }}>
-      <View style={s.row}>
-        <Field testID="margin-cost" label="מחיר עלות" value={cost} onChange={setCost} placeholder="6" suffix="₪" />
-        <Field testID="margin-price" label="מחיר מכירה" value={price} onChange={setPrice} placeholder="10" suffix="₪" />
-      </View>
-
-      {!r.ready ? (
-        <Text style={s.hint}>הזן מחיר עלות ומחיר מכירה כדי לחשב את מתח הרווח.</Text>
-      ) : (
-        <>
-          <View style={[m.verdict, { backgroundColor: tone + "12" }]}>
-            <Text testID="margin-result" style={[m.verdictValue, { color: tone }]}>{r.margin}%</Text>
-            <Text style={m.verdictLabel}>
-              {r.loss ? "מכירה בהפסד" : "מתח רווח גולמי מהמחיר"}
-            </Text>
-          </View>
-
-          <View style={s.statRow}>
-            <Stat label="רווח ליחידה" value={shekel(r.profit)} color={tone} />
-            <Stat label="אחוז תוספת על העלות" value={r.markup === null ? "—" : `${r.markup}%`} />
-            <Stat label="מכפיל" value={r.multiplier === null ? "—" : `×${r.multiplier}`} />
-          </View>
-
-          <Text style={s.hint}>
-            מתח הרווח מחושב מתוך מחיר המכירה, ולא מתוך העלות. תוספת של 100% על העלות היא מתח רווח של
-            50% בלבד — הבלבול בין השניים הוא הסיבה הנפוצה לתמחור נמוך מהיעד.
-          </Text>
-        </>
-      )}
-    </View>
-  );
-}
-
-const m = StyleSheet.create({
-  verdict: { borderRadius: 24, paddingVertical: 20, alignItems: "center", gap: 4 },
-  verdictValue: { fontFamily: FONTS.bold, fontSize: 34 },
-  verdictLabel: { fontFamily: FONTS.medium, fontSize: 12.5, color: INK_SOFT },
-});
-
-// ---------------------------------------------------------------------------
-// F. מחשבון הלוואות ומימון
-// ---------------------------------------------------------------------------
 export function LoanCalc() {
   const [amount, setAmount] = useState("");
   const [annualRate, setAnnualRate] = useState("6");
@@ -753,3 +539,98 @@ export function LoanCalc() {
     </View>
   );
 }
+
+// ---------------------------------------------------------------------------
+// G. מחשבון הנחות
+export function BillSplitTip() {
+  const [bill, setBill] = useState("");
+  const [tipPct, setTipPct] = useState("12");
+  const [people, setPeople] = useState("2");
+  const [roundUp, setRoundUp] = useState(false);
+
+  const r = useMemo(() => {
+    const amount = parseFloat(bill);
+    const pct = parseFloat(tipPct);
+    const n = parseInt(people, 10);
+    if (!Number.isFinite(amount) || !Number.isFinite(pct) || amount < 0) return { ready: false };
+    const heads = Number.isFinite(n) && n > 0 ? n : 1;
+    const tip = amount * (Math.max(0, pct) / 100);
+    const total = amount + tip;
+    const exact = total / heads;
+    const per = roundUp ? Math.ceil(exact) : Math.round(exact * 100) / 100;
+    const round2 = (x) => Math.round(x * 100) / 100;
+    return {
+      ready: true,
+      tip: round2(tip),
+      total: round2(total),
+      exact: round2(exact),
+      per,
+      heads,
+      collected: round2(per * heads),
+      extra: round2(per * heads - total),
+      noPeople: !Number.isFinite(n) || n <= 0,
+    };
+  }, [bill, tipPct, people, roundUp]);
+
+  useCalcHaptic(r.per);
+
+  return (
+    <View style={{ gap: 12 }}>
+      <View style={s.row}>
+        <Field testID="tip-bill" label="סכום החשבון" value={bill} onChange={setBill} placeholder="240" suffix="₪" />
+        <Field testID="tip-pct" label="טיפ" value={tipPct} onChange={setTipPct} placeholder="12" suffix="%" />
+        <Field testID="tip-people" label="סועדים" value={people} onChange={setPeople} placeholder="4" suffix="אנשים" />
+      </View>
+      <Chips options={[0, 10, 12, 15, 18, 20]} onPick={(v) => setTipPct(String(v))} active={tipPct} />
+
+      <TouchableOpacity
+        style={s.checkRow}
+        onPress={() => { hapticLight(); setRoundUp((v) => !v); }}
+        activeOpacity={0.75}
+      >
+        <View style={[s.checkbox, roundUp && { backgroundColor: BLUE, borderColor: BLUE }]}>
+          {roundUp && <Icon name="check" size={13} color={WHITE} />}
+        </View>
+        <Text style={s.checkLabel}>עגל כל תשלום לשקל שלם</Text>
+      </TouchableOpacity>
+
+      {!r.ready ? (
+        <Text style={s.hint}>הזן את סכום החשבון ואחוז טיפ.</Text>
+      ) : (
+        <>
+          <View style={[m.verdict, { backgroundColor: BLUE + "12" }]}>
+            <Text testID="tip-per" style={[m.verdictValue, { color: BLUE }]}>{shekel(r.per)}</Text>
+            <Text style={m.verdictLabel}>לכל אחד · {r.heads} סועדים</Text>
+          </View>
+
+          <View style={s.statRow}>
+            <Stat label="סה״כ עם טיפ" value={shekel(r.total)} />
+            <Stat label="הטיפ" value={shekel(r.tip)} color={GREEN} />
+            <Stat label="חלוקה מדויקת" value={shekel(r.exact)} />
+          </View>
+
+          {r.noPeople && (
+            <View style={[s.banner, { backgroundColor: GOLD + "16" }]}>
+              <Text style={[s.bannerText, { color: "#8A6D00" }]}>מספר סועדים לא תקין — חושב לאדם אחד</Text>
+            </View>
+          )}
+
+          {roundUp && r.extra > 0 && (
+            <Text style={s.hint}>
+              העיגול אוסף {shekel(r.extra)} מעל החשבון — שווה להשאיר את העודף כתוספת לטיפ.
+            </Text>
+          )}
+        </>
+      )}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// J. חילוץ מע״מ
+
+const m = StyleSheet.create({
+  verdict: { borderRadius: 24, paddingVertical: 20, alignItems: "center", gap: 4 },
+  verdictValue: { fontFamily: FONTS.bold, fontSize: 34 },
+  verdictLabel: { fontFamily: FONTS.medium, fontSize: 12.5, color: INK_SOFT },
+});

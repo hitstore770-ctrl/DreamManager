@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
+import { hapticLight } from "../../../utils/haptics";
+import { NOTES_FONTS as FONTS } from "../../../utils/notesTheme";
 import {
   BLUE,
   CARD,
@@ -339,3 +341,170 @@ export function TimelapseCalc() {
     </View>
   );
 }
+
+// ---------------------------------------------------------------------------
+// E. יחס מידות מסך
+// ---------------------------------------------------------------------------
+
+function gcd(a, b) {
+  let x = Math.abs(Math.round(a));
+  let y = Math.abs(Math.round(b));
+  while (y) {
+    const t = y;
+    y = x % y;
+    x = t;
+  }
+  return x || 1;
+}
+
+const RATIO_PRESETS = [
+  { label: "16:9", w: "1920", h: "1080" },
+  { label: "9:16", w: "1080", h: "1920" },
+  { label: "1:1", w: "1080", h: "1080" },
+  { label: "4:5", w: "1080", h: "1350" },
+  { label: "4K", w: "3840", h: "2160" },
+  { label: "2.39:1", w: "2048", h: "858" },
+];
+
+// Common ratios in decimal, so an odd resolution can be named rather than
+// reduced to something like 683:384 that means nothing to an editor.
+const NAMED = [
+  { name: "1:1 · ריבוע", value: 1 },
+  { name: "4:5 · פוסט אנכי", value: 0.8 },
+  { name: "9:16 · ריל / סטורי", value: 9 / 16 },
+  { name: "4:3 · קלאסי", value: 4 / 3 },
+  { name: "3:2 · סטילס", value: 1.5 },
+  { name: "16:9 · רחב", value: 16 / 9 },
+  { name: "2.39:1 · סינמסקופ", value: 2.39 },
+];
+
+export function AspectRatio() {
+  const [w, setW] = useState("1920");
+  const [h, setH] = useState("1080");
+  const [targetW, setTargetW] = useState("");
+
+  const r = useMemo(() => {
+    const width = parseFloat(w);
+    const height = parseFloat(h);
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+      return { ready: false };
+    }
+    const g = gcd(width, height);
+    const rw = Math.round(width / g);
+    const rh = Math.round(height / g);
+    const decimal = width / height;
+
+    // A reduced pair with huge terms is technically right but useless; fall
+    // back to naming the nearest standard ratio.
+    const messy = rw > 40 || rh > 40;
+    const nearest = NAMED.reduce(
+      (best, n) => (Math.abs(n.value - decimal) < Math.abs(best.value - decimal) ? n : best),
+      NAMED[0]
+    );
+
+    const tw = parseFloat(targetW);
+    const scaled = Number.isFinite(tw) && tw > 0 ? Math.round(tw / decimal) : null;
+
+    return {
+      ready: true,
+      rw,
+      rh,
+      messy,
+      decimal: Math.round(decimal * 1000) / 1000,
+      nearest,
+      close: Math.abs(nearest.value - decimal) < 0.01,
+      megapixels: Math.round((width * height) / 10000) / 100,
+      portrait: height > width,
+      scaled,
+    };
+  }, [w, h, targetW]);
+
+  useCalcHaptic(r.decimal);
+
+  return (
+    <View style={{ gap: 12 }}>
+      <View style={s.row}>
+        <Field testID="ar-w" label="רוחב" value={w} onChange={setW} placeholder="1920" suffix="px" />
+        <Field testID="ar-h" label="גובה" value={h} onChange={setH} placeholder="1080" suffix="px" />
+      </View>
+
+      <View style={s.chipRow}>
+        {RATIO_PRESETS.map((p) => (
+          <TouchableOpacity
+            key={p.label}
+            style={s.chip}
+            onPress={() => { hapticLight(); setW(p.w); setH(p.h); }}
+            activeOpacity={0.8}
+          >
+            <Text style={s.chipText}>{p.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {!r.ready ? (
+        <Text style={s.hint}>הזן רוחב וגובה בפיקסלים.</Text>
+      ) : (
+        <>
+          <View style={[ar.verdict, { backgroundColor: BLUE + "12" }]}>
+            <Text testID="ar-result" style={[ar.ratio, { color: BLUE }]}>
+              {r.messy ? r.nearest.name.split(" ")[0] : `${r.rw}:${r.rh}`}
+            </Text>
+            <Text style={ar.verdictLabel}>
+              {r.messy ? `היחס המדויק אינו סטנדרטי — הקרוב ביותר` : r.nearest.name}
+            </Text>
+          </View>
+
+          {/* A box drawn at the real proportions, so the shape is visible. */}
+          <View style={ar.stage}>
+            <View
+              style={[
+                ar.box,
+                r.portrait
+                  ? { height: 130, width: 130 * r.decimal }
+                  : { width: 200, height: 200 / r.decimal },
+              ]}
+            >
+              <Text style={ar.boxText}>{r.messy ? `${r.decimal}` : `${r.rw}:${r.rh}`}</Text>
+            </View>
+          </View>
+
+          <View style={s.statRow}>
+            <Stat label="יחס עשרוני" value={r.decimal} />
+            <Stat label="מגה-פיקסל" value={r.megapixels} />
+            <Stat label="כיוון" value={r.portrait ? "אנכי" : "אופקי"} color={GOLD} />
+          </View>
+
+          <Field testID="ar-target" label="רוחב יעד — לחישוב גובה תואם" value={targetW} onChange={setTargetW} placeholder="1080" suffix="px" />
+          {r.scaled !== null && (
+            <View style={[s.banner, { backgroundColor: GREEN + "14" }]}>
+              <Text testID="ar-scaled" style={[s.bannerText, { color: GREEN }]}>
+                {targetW} × {r.scaled} שומר על אותו יחס
+              </Text>
+            </View>
+          )}
+
+          <Text style={s.hint}>
+            היחס מצומצם במחלק המשותף הגדול ביותר. כשהתוצאה יוצאת עם מספרים גדולים מדי מכדי להיות
+            שימושית, מוצג במקומה היחס הסטנדרטי הקרוב.
+          </Text>
+        </>
+      )}
+    </View>
+  );
+}
+
+const ar = StyleSheet.create({
+  verdict: { borderRadius: 24, paddingVertical: 18, alignItems: "center", gap: 4 },
+  ratio: { fontFamily: FONTS.bold, fontSize: 36 },
+  verdictLabel: { fontFamily: FONTS.medium, fontSize: 12.5, color: INK_SOFT, textAlign: "center" },
+  stage: { alignItems: "center", justifyContent: "center", paddingVertical: 8, minHeight: 150 },
+  box: {
+    backgroundColor: BLUE + "18",
+    borderWidth: 2,
+    borderColor: BLUE,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  boxText: { fontFamily: FONTS.bold, fontSize: 13, color: BLUE },
+});

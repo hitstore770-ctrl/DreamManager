@@ -15,6 +15,9 @@ import {
   RED,
   Segment,
   s,
+  BLUE,
+  INK,
+  WHITE,
 } from "../kit";
 
 // Colour and scaffolding tools: things that produce a value you paste into a
@@ -570,4 +573,269 @@ const ct = StyleSheet.create({
   verdict: { borderRadius: 24, paddingVertical: 18, alignItems: "center", gap: 4 },
   ratio: { fontFamily: FONTS.bold, fontSize: 34 },
   verdictLabel: { fontFamily: FONTS.medium, fontSize: 12.5, color: INK_SOFT, textAlign: "center", paddingHorizontal: 16 },
+});
+
+// ---------------------------------------------------------------------------
+// D. ממיר RGB ל-HEX
+// ---------------------------------------------------------------------------
+
+function clampChannel(raw) {
+  const n = parseInt((raw || "").replace(/\D/g, ""), 10);
+  if (!Number.isFinite(n)) return null;
+  return Math.min(255, Math.max(0, n));
+}
+
+function toHex(n) {
+  return n.toString(16).padStart(2, "0").toUpperCase();
+}
+
+// HSL is what design tools show, so deriving it here saves a round trip.
+function rgbToHsl(r, g, b) {
+  const rn = r / 255;
+  const gn = g / 255;
+  const bn = b / 255;
+  const max = Math.max(rn, gn, bn);
+  const min = Math.min(rn, gn, bn);
+  const l = (max + min) / 2;
+  if (max === min) return { h: 0, sat: 0, l: Math.round(l * 100) };
+  const d = max - min;
+  const sat = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h;
+  if (max === rn) h = ((gn - bn) / d + (gn < bn ? 6 : 0)) / 6;
+  else if (max === gn) h = ((bn - rn) / d + 2) / 6;
+  else h = ((rn - gn) / d + 4) / 6;
+  return { h: Math.round(h * 360), sat: Math.round(sat * 100), l: Math.round(l * 100) };
+}
+
+const RGB_PRESETS = [
+  { label: "וויולט", r: "124", g: "58", b: "237" },
+  { label: "ציאן", r: "6", g: "182", b: "212" },
+  { label: "קורל", r: "255", g: "78", b: "80" },
+  { label: "דיו", r: "17", g: "24", b: "39" },
+];
+
+export function RgbToHex() {
+  const [r, setR] = useState("124");
+  const [g, setG] = useState("58");
+  const [b, setB] = useState("237");
+  const [copied, setCopied] = useState(false);
+
+  const R = clampChannel(r);
+  const G = clampChannel(g);
+  const B = clampChannel(b);
+  const valid = R !== null && G !== null && B !== null;
+
+  const hex = valid ? `#${toHex(R)}${toHex(G)}${toHex(B)}` : null;
+  const hsl = valid ? rgbToHsl(R, G, B) : null;
+
+  const copy = async () => {
+    if (!hex) return;
+    await Clipboard.setStringAsync(hex);
+    hapticSuccess();
+    setCopied(true);
+  };
+
+  const setAll = (preset) => {
+    hapticLight();
+    setR(preset.r);
+    setG(preset.g);
+    setB(preset.b);
+    setCopied(false);
+  };
+
+  return (
+    <View style={{ gap: 12 }}>
+      <View style={[rgb.preview, { backgroundColor: hex || CARD }]}>
+        {valid ? (
+          <Text
+            testID="rgb-hex"
+            style={[rgb.previewText, { color: (R * 299 + G * 587 + B * 114) / 1000 > 140 ? "#111827" : "#FFFFFF" }]}
+          >
+            {hex}
+          </Text>
+        ) : (
+          <Text style={[rgb.previewText, { color: INK_MUTED }]}>ערכים לא תקינים</Text>
+        )}
+      </View>
+
+      <View style={s.row}>
+        {[
+          { label: "R", value: r, set: setR, testID: "rgb-r" },
+          { label: "G", value: g, set: setG, testID: "rgb-g" },
+          { label: "B", value: b, set: setB, testID: "rgb-b" },
+        ].map((ch) => (
+          <View key={ch.label} style={{ flex: 1 }}>
+            <Text style={s.fieldLabel}>{ch.label}</Text>
+            <View style={s.fieldRow}>
+              <TextInput
+                testID={ch.testID}
+                style={s.fieldInput}
+                value={ch.value}
+                onChangeText={(v) => { ch.set(v); setCopied(false); }}
+                placeholder="0"
+                placeholderTextColor={INK_MUTED}
+                keyboardType="numeric"
+                maxLength={3}
+                textAlign="center"
+              />
+            </View>
+          </View>
+        ))}
+      </View>
+
+      <View style={s.chipRow}>
+        {RGB_PRESETS.map((p) => (
+          <TouchableOpacity key={p.label} style={s.chip} onPress={() => setAll(p)} activeOpacity={0.8}>
+            <View style={[rgb.dot, { backgroundColor: `rgb(${p.r}, ${p.g}, ${p.b})` }]} />
+            <Text style={s.chipText}>{p.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {valid && (
+        <View style={s.statRow}>
+          <Text style={rgb.row}>rgb({R}, {G}, {B})</Text>
+        </View>
+      )}
+      {valid && (
+        <View style={s.statRow}>
+          <Text style={rgb.row}>hsl({hsl.h}, {hsl.sat}%, {hsl.l}%)</Text>
+        </View>
+      )}
+
+      <TouchableOpacity
+        style={[s.bigBtn, copied && { backgroundColor: GREEN }]}
+        onPress={copy}
+        activeOpacity={0.85}
+        disabled={!valid}
+      >
+        <BtnLabel icon={copied ? "check" : "copy"} text={copied ? "הועתק" : "העתק HEX"} style={s.bigBtnText} />
+      </TouchableOpacity>
+
+      <Text style={s.hint}>
+        כל ערוץ מוגבל ל-0 עד 255 — מספר גדול יותר פשוט נחתך, כי אין לו ייצוג בבייט אחד. צבע הטקסט על
+        הריבוע נבחר אוטומטית לפי בהירות הרקע כדי שיישאר קריא.
+      </Text>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// E. מידות אייקונים
+// ---------------------------------------------------------------------------
+
+const ICON_SPECS = [
+  {
+    store: "מקור לייצוא",
+    icon: "image",
+    rows: [
+      { size: "1024 × 1024", use: "קובץ המקור — מכאן נגזרות כל השאר", note: "PNG, ללא שקיפות" },
+    ],
+  },
+  {
+    store: "App Store · iOS",
+    icon: "smartphone",
+    rows: [
+      { size: "1024 × 1024", use: "אייקון החנות", note: "חובה, ללא שקיפות וללא פינות מעוגלות" },
+      { size: "180 × 180", use: "אייקון אפליקציה — iPhone @3x", note: "60pt" },
+      { size: "120 × 120", use: "אייקון אפליקציה — iPhone @2x", note: "60pt" },
+      { size: "167 × 167", use: "iPad Pro", note: "83.5pt @2x" },
+      { size: "152 × 152", use: "iPad", note: "76pt @2x" },
+    ],
+  },
+  {
+    store: "Google Play · Android",
+    icon: "play",
+    rows: [
+      { size: "512 × 512", use: "אייקון החנות", note: "PNG 32-bit עם ערוץ אלפא" },
+      { size: "432 × 432", use: "אייקון אדפטיבי — שכבה", note: "התוכן בתוך 264px מרכזיים" },
+      { size: "192 × 192", use: "xxxhdpi", note: "" },
+      { size: "144 × 144", use: "xxhdpi", note: "" },
+      { size: "96 × 96", use: "xhdpi", note: "" },
+    ],
+  },
+  {
+    store: "Expo · app.json",
+    icon: "layers",
+    rows: [
+      { size: "1024 × 1024", use: "icon", note: "משמש לשתי הפלטפורמות" },
+      { size: "1024 × 1024", use: "android.adaptiveIcon.foregroundImage", note: "שוליים בטוחים" },
+      { size: "1284 × 2778", use: "splash", note: "או תמונה מרכזית על רקע אחיד" },
+    ],
+  },
+];
+
+export function IconSizeGuide() {
+  const [copied, setCopied] = useState(null);
+
+  const copySize = async (size) => {
+    const digits = size.replace(/[^0-9]/g, " ").trim().split(/\s+/)[0];
+    await Clipboard.setStringAsync(digits);
+    hapticLight();
+    setCopied(size);
+  };
+
+  return (
+    <View style={{ gap: 12 }}>
+      <View style={[s.banner, { backgroundColor: BLUE + "12" }]}>
+        <Text style={[s.bannerText, { color: BLUE }]}>עצבו פעם אחת ב-1024 ורדו משם</Text>
+        <Text style={[s.bannerSub, { color: INK_SOFT }]}>
+          הקטנה שומרת על חדות, הגדלה לא. שמרו את המקור כווקטור אם אפשר.
+        </Text>
+      </View>
+
+      {ICON_SPECS.map((group) => (
+        <View key={group.store} style={{ gap: 8 }}>
+          <View style={ic.head}>
+            <Icon name={group.icon} size={16} color={BLUE} />
+            <Text style={ic.headText}>{group.store}</Text>
+          </View>
+          {group.rows.map((row) => (
+            <TouchableOpacity
+              key={`${group.store}-${row.size}-${row.use}`}
+              style={ic.row}
+              onPress={() => copySize(row.size)}
+              activeOpacity={0.8}
+            >
+              <Icon name={copied === row.size ? "check" : "copy"} size={14} color={copied === row.size ? GREEN : INK_MUTED} />
+              <View style={{ flex: 1 }}>
+                <Text style={ic.use}>{row.use}</Text>
+                {!!row.note && <Text style={ic.note}>{row.note}</Text>}
+              </View>
+              <Text style={ic.size}>{row.size}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ))}
+
+      <Text style={s.hint}>
+        אפל דוחה אייקון עם שקיפות או עם פינות מעוגלות שנצרבו לתמונה — המערכת מעגלת בעצמה. גוגל דווקא
+        מצפה לאלפא, ובאייקון אדפטיבי חותכת את השוליים, ולכן הלוגו צריך להישאר במרכז.
+      </Text>
+    </View>
+  );
+}
+
+const rgb = StyleSheet.create({
+  preview: { height: 120, borderRadius: 24, alignItems: "center", justifyContent: "center" },
+  previewText: { fontFamily: FONTS.bold, fontSize: 26, letterSpacing: 1 },
+  dot: { width: 14, height: 14, borderRadius: 7 },
+  row: { flex: 1, fontFamily: "monospace", fontSize: 13, color: INK_SOFT, textAlign: "center" },
+});
+
+const ic = StyleSheet.create({
+  head: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
+  headText: { fontFamily: FONTS.bold, fontSize: 14, color: INK },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: CARD,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    minHeight: 56,
+  },
+  use: { fontFamily: FONTS.semibold, fontSize: 13, color: INK, textAlign: "right" },
+  note: { fontFamily: FONTS.regular, fontSize: 10.5, color: INK_MUTED, textAlign: "right", marginTop: 2 },
+  size: { fontFamily: "monospace", fontSize: 12.5, color: BLUE },
 });
