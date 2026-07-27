@@ -499,3 +499,107 @@ const mm = StyleSheet.create({
   halfLabel: { fontFamily: FONTS.semibold, fontSize: 12.5, color: INK_SOFT },
   halfHint: { fontFamily: FONTS.regular, fontSize: 10.5, color: INK_MUTED },
 });
+
+// ---------------------------------------------------------------------------
+// F. כפל מבצעים
+// ---------------------------------------------------------------------------
+export function DiscountStacking() {
+  const [price, setPrice] = useState("");
+  const [first, setFirst] = useState("20");
+  const [second, setSecond] = useState("10");
+  const [third, setThird] = useState("");
+
+  const r = useMemo(() => {
+    const base = parseFloat(price);
+    if (!Number.isFinite(base) || base < 0) return { ready: false };
+
+    const steps = [first, second, third]
+      .map((v) => parseFloat(v))
+      .filter((v) => Number.isFinite(v) && v > 0)
+      .map((v) => Math.min(100, v));
+
+    // Stacked discounts apply one after another to the running price. Adding
+    // the percentages together is the classic mistake: 20% then 10% is not
+    // 30% off, because the second cut is taken from an already-reduced price.
+    let running = base;
+    const chain = steps.map((pct) => {
+      const off = running * (pct / 100);
+      running -= off;
+      return { pct, off: Math.round(off * 100) / 100, after: Math.round(running * 100) / 100 };
+    });
+
+    const naiveTotal = steps.reduce((sum, p) => sum + p, 0);
+    const naivePrice = base * (1 - Math.min(100, naiveTotal) / 100);
+    const effective = base > 0 ? (1 - running / base) * 100 : 0;
+    const round2 = (n) => Math.round(n * 100) / 100;
+
+    return {
+      ready: true,
+      chain,
+      final: round2(running),
+      saved: round2(base - running),
+      effective: round2(effective),
+      naiveTotal: round2(Math.min(100, naiveTotal)),
+      naivePrice: round2(naivePrice),
+      gap: round2(running - naivePrice),
+      none: steps.length === 0,
+    };
+  }, [price, first, second, third]);
+
+  useCalcHaptic(r.final);
+
+  return (
+    <View style={{ gap: 12 }}>
+      <Field testID="stack-price" label="מחיר מקורי" value={price} onChange={setPrice} placeholder="500" suffix="₪" />
+      <View style={s.row}>
+        <Field testID="stack-1" label="הנחה ראשונה" value={first} onChange={setFirst} placeholder="20" suffix="%" />
+        <Field testID="stack-2" label="הנחה שנייה" value={second} onChange={setSecond} placeholder="10" suffix="%" />
+        <Field testID="stack-3" label="שלישית" value={third} onChange={setThird} placeholder="—" suffix="%" />
+      </View>
+
+      {!r.ready ? (
+        <Text style={s.hint}>הזן מחיר מקורי ואת אחוזי ההנחה שמצטברים.</Text>
+      ) : r.none ? (
+        <Text style={s.hint}>הזן לפחות אחוז הנחה אחד.</Text>
+      ) : (
+        <>
+          <View style={[st.verdict, { backgroundColor: BLUE + "12" }]}>
+            <Text testID="stack-final" style={[st.verdictValue, { color: BLUE }]}>{shekel(r.final)}</Text>
+            <Text style={st.verdictLabel}>מחיר סופי · הנחה אפקטיבית {r.effective}%</Text>
+          </View>
+
+          <Text style={s.sectionLabel}>שרשרת ההנחות</Text>
+          {r.chain.map((step, i) => (
+            <View key={i} style={s.routineRow}>
+              <Text style={s.routineTime}>{shekel(step.after)}</Text>
+              <Text style={[s.routineLabel, { flex: 1 }]}>
+                הנחה {i + 1} · {step.pct}% ({shekel(step.off)})
+              </Text>
+            </View>
+          ))}
+
+          <View style={s.statRow}>
+            <Stat label="סה״כ נחסך" value={shekel(r.saved)} color={GREEN} />
+            <Stat label="הנחה אפקטיבית" value={`${r.effective}%`} color={BLUE} />
+          </View>
+
+          <View style={[s.banner, { backgroundColor: GOLD + "16" }]}>
+            <Text style={[s.bannerText, { color: "#8A6D00" }]}>
+              לא {r.naiveTotal}% — אלא {r.effective}%
+            </Text>
+            <Text style={[s.bannerSub, { color: "#8A6D00" }]}>
+              חיבור פשוט של האחוזים היה נותן {shekel(r.naivePrice)}, נמוך ב-{shekel(Math.abs(r.gap))} מהמחיר
+              האמיתי. ההנחה השנייה נלקחת ממחיר שכבר הוזל.
+            </Text>
+          </View>
+        </>
+      )}
+    </View>
+  );
+}
+
+const st = StyleSheet.create({
+  verdict: { borderRadius: 24, paddingVertical: 20, alignItems: "center", gap: 4 },
+  verdictValue: { fontFamily: FONTS.bold, fontSize: 34 },
+  verdictLabel: { fontFamily: FONTS.medium, fontSize: 12.5, color: INK_SOFT, textAlign: "center" },
+});

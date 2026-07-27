@@ -1,7 +1,18 @@
 import { AliImportCalc } from "./apps/importing";
-import { BillSplitTip, DormSplitter, LicenseTracker, LoanCalc, TillCounter } from "./apps/finance";
+import {
+  BillSplitTip,
+  DormSplitter,
+  LicenseTracker,
+  LoanCalc,
+  QuickTip,
+  RoasCalc,
+  RuleOf72,
+  TillCounter,
+} from "./apps/finance";
+import { AiImageGenerator, TextToSpeech } from "./apps/ai";
 import {
   DiscountCalc,
+  DiscountStacking,
   MarkupVsMargin,
   ProfitMargin,
   VatDiscount,
@@ -10,6 +21,7 @@ import {
 import { Base64Tool, JsonValidator, QrGenerator, RegexTester, RnUiGenerator, UuidGenerator } from "./apps/dev";
 import {
   ContrastChecker,
+  GoldenRatio,
   GradientGenerator,
   IconSizeGuide,
   RgbToHex,
@@ -18,13 +30,14 @@ import {
 import { CarDepreciation, DeliveryRoute, FuelTripCost } from "./apps/cars";
 import {
   DecisionPicker,
+  PasswordGenerator,
   PercentDiff,
-  PomodoroTimer,
   StorageConverter,
   TextAnalyzer,
-  TimezoneConverter,
   WhatsAppDirect,
+  WordScrambler,
 } from "./apps/utils";
+import { AgeInDays, PomodoroTimer, TimezoneConverter } from "./apps/time";
 import { PromptBuilder } from "./apps/prompts";
 import {
   AspectRatio,
@@ -85,6 +98,7 @@ export const TOOL_APPS = {
   "contrast-check": ContrastChecker,
   "hex-color": RgbToHex,
   "icon-sizes": IconSizeGuide,
+  "golden-ratio": GoldenRatio,
 
   // import — ייבוא וסחר
   "ali-import": AliImportCalc,
@@ -105,6 +119,10 @@ export const TOOL_APPS = {
   "markup-margin": MarkupVsMargin,
   "tip-split": BillSplitTip,
   "vat-extract": VatExtract,
+  "discount-stack": DiscountStacking,
+  "roas": RoasCalc,
+  "rule-72": RuleOf72,
+  "tip-quick": QuickTip,
 
   // prompts — פרומפטים
   "prompt-builder": PromptBuilder,
@@ -118,6 +136,13 @@ export const TOOL_APPS = {
   "world-clock": TimezoneConverter,
   "wa-direct": WhatsAppDirect,
   "storage-conv": StorageConverter,
+  "password-gen": PasswordGenerator,
+  "age-days": AgeInDays,
+  "scrambler": WordScrambler,
+
+  // ai — בינה מלאכותית ומדיה
+  "ai-image": AiImageGenerator,
+  "tts": TextToSpeech,
 };
 
 // True when a tool id has a real implementation behind it.

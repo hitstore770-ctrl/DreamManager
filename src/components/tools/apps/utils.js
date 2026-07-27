@@ -3,6 +3,7 @@ import * as Clipboard from "expo-clipboard";
 import { Linking, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 import Icon from "../../Icon";
+import Slider from "../Slider";
 import { hapticLight, hapticSuccess, hapticWarning } from "../../../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../../../utils/notesTheme";
 import {
@@ -31,130 +32,6 @@ import {
 // A. טיימר פומודורו
 // ---------------------------------------------------------------------------
 
-const PRESETS = [
-  { key: "focus", label: "פוקוס", minutes: 25 },
-  { key: "short", label: "הפסקה", minutes: 5 },
-  { key: "long", label: "הפסקה ארוכה", minutes: 15 },
-];
-
-function mmss(totalSeconds) {
-  const m = Math.floor(totalSeconds / 60);
-  const sec = totalSeconds % 60;
-  return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-}
-
-export function PomodoroTimer() {
-  const [preset, setPreset] = useState("focus");
-  const [left, setLeft] = useState(25 * 60);
-  const [running, setRunning] = useState(false);
-  const [rounds, setRounds] = useState(0);
-
-  const total = PRESETS.find((p) => p.key === preset).minutes * 60;
-
-  // Count down off wall-clock time rather than by decrementing once per tick:
-  // setInterval drifts, and a backgrounded tab throttles it badly. Storing the
-  // deadline means the display is always right, however irregular the ticks.
-  const deadline = useRef(null);
-
-  useEffect(() => {
-    if (!running) return undefined;
-    if (deadline.current === null) deadline.current = Date.now() + left * 1000;
-    const id = setInterval(() => {
-      const remaining = Math.max(0, Math.round((deadline.current - Date.now()) / 1000));
-      setLeft(remaining);
-      if (remaining === 0) {
-        setRunning(false);
-        deadline.current = null;
-        setRounds((n) => n + 1);
-        hapticSuccess();
-      }
-    }, 250);
-    return () => clearInterval(id);
-  }, [running, left]);
-
-  const start = () => {
-    if (left === 0) return;
-    hapticLight();
-    deadline.current = Date.now() + left * 1000;
-    setRunning(true);
-  };
-
-  const pause = () => {
-    hapticLight();
-    deadline.current = null;
-    setRunning(false);
-  };
-
-  const reset = () => {
-    hapticWarning();
-    deadline.current = null;
-    setRunning(false);
-    setLeft(total);
-  };
-
-  const pickPreset = (key) => {
-    const next = PRESETS.find((p) => p.key === key);
-    deadline.current = null;
-    setRunning(false);
-    setPreset(key);
-    setLeft(next.minutes * 60);
-  };
-
-  const pct = total ? ((total - left) / total) * 100 : 0;
-  const done = left === 0;
-
-  return (
-    <View style={{ gap: 14 }}>
-      <Segment
-        options={PRESETS.map((p) => ({ key: p.key, label: p.label }))}
-        value={preset}
-        onChange={pickPreset}
-      />
-
-      <View style={[t.clockCard, done && { backgroundColor: GREEN + "12" }]}>
-        <Text style={[t.clock, done && { color: GREEN }, running && { color: BLUE }]}>{mmss(left)}</Text>
-        <Text style={t.clockSub}>
-          {done ? "הסבב הושלם" : running ? "רץ" : "מוכן"}
-          {rounds > 0 ? ` · ${rounds} סבבים היום` : ""}
-        </Text>
-        <View style={t.track}>
-          <View
-            style={[t.fill, { width: `${pct}%`, backgroundColor: done ? GREEN : BLUE }]}
-          />
-        </View>
-      </View>
-
-      <View style={s.row}>
-        {running ? (
-          <TouchableOpacity style={[s.actionBtn, { backgroundColor: GOLD }]} onPress={pause} activeOpacity={0.85}>
-            <BtnLabel icon="pause" text="השהה" style={s.actionText} />
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={[s.actionBtn, done && { backgroundColor: INK_MUTED }]}
-            onPress={start}
-            activeOpacity={0.85}
-            disabled={done}
-          >
-            <BtnLabel icon="play" text={left === total ? "התחל" : "המשך"} style={s.actionText} />
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity style={[s.actionBtn, { backgroundColor: CARD }]} onPress={reset} activeOpacity={0.85}>
-          <BtnLabel icon="rotate-ccw" text="איפוס" color={INK_SOFT} style={[s.actionText, { color: INK_SOFT }]} />
-        </TouchableOpacity>
-      </View>
-
-      <Text style={s.hint}>
-        הספירה מבוססת על שעון המכשיר ולא על מונה פנימי, כך שהזמן נשאר מדויק גם אם המסך כבה או שעברת
-        לאפליקציה אחרת באמצע הסבב.
-      </Text>
-    </View>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// B. מונה מילים ותווים
-// ---------------------------------------------------------------------------
 export function TextAnalyzer() {
   const [text, setText] = useState("");
 
@@ -218,6 +95,7 @@ export function TextAnalyzer() {
 // ---------------------------------------------------------------------------
 // C. פערי אחוזים
 // ---------------------------------------------------------------------------
+
 export function PercentDiff() {
   const [a, setA] = useState("");
   const [b, setB] = useState("");
@@ -325,6 +203,7 @@ export function PercentDiff() {
 // ---------------------------------------------------------------------------
 // D. בוחר אקראי
 // ---------------------------------------------------------------------------
+
 export function DecisionPicker() {
   const [raw, setRaw] = useState("");
   const [winner, setWinner] = useState(null);
@@ -477,194 +356,7 @@ const t = StyleSheet.create({
 // of the year — New York is on EDT from March to November and London on BST —
 // so the zone is stored and the live abbreviation is read back from the
 // platform rather than hardcoded.
-const ZONES = [
-  { id: "Asia/Jerusalem", city: "ירושלים", icon: "home" },
-  { id: "America/New_York", city: "ניו יורק", icon: "map-pin" },
-  { id: "Europe/London", city: "לונדון", icon: "map-pin" },
-  { id: "Europe/Berlin", city: "ברלין", icon: "map-pin" },
-  { id: "Asia/Shanghai", city: "גואנגזו", icon: "package" },
-  { id: "America/Los_Angeles", city: "לוס אנג׳לס", icon: "map-pin" },
-];
 
-function zoneParts(date, timeZone) {
-  try {
-    const fmt = new Intl.DateTimeFormat("en-GB", {
-      timeZone,
-      hour: "2-digit",
-      minute: "2-digit",
-      weekday: "short",
-      day: "2-digit",
-      month: "2-digit",
-      hour12: false,
-      timeZoneName: "short",
-    });
-    const parts = fmt.formatToParts(date).reduce((acc, p) => ({ ...acc, [p.type]: p.value }), {});
-    return {
-      ok: true,
-      time: `${parts.hour}:${parts.minute}`,
-      day: `${parts.weekday} ${parts.day}/${parts.month}`,
-      abbr: parts.timeZoneName || "",
-    };
-  } catch {
-    // No ICU data on this build — say so instead of printing a wrong time.
-    return { ok: false };
-  }
-}
-
-// Difference in whole minutes between a zone's wall clock and the device's.
-function offsetMinutes(date, timeZone) {
-  try {
-    const asZone = new Date(date.toLocaleString("en-US", { timeZone }));
-    const asLocal = new Date(date.toLocaleString("en-US"));
-    return Math.round((asZone - asLocal) / 60000);
-  } catch {
-    return null;
-  }
-}
-
-export function TimezoneConverter() {
-  const [useNow, setUseNow] = useState(true);
-  const [hh, setHh] = useState("");
-  const [mm, setMm] = useState("");
-  const [tick, setTick] = useState(0);
-
-  // Only re-render on a clock tick while actually showing "now".
-  useEffect(() => {
-    if (!useNow) return undefined;
-    const id = setInterval(() => setTick((n) => n + 1), 1000);
-    return () => clearInterval(id);
-  }, [useNow]);
-
-  const base = useMemo(() => {
-    if (useNow) return new Date();
-    const h = Math.min(23, Math.max(0, parseInt(hh, 10) || 0));
-    const m = Math.min(59, Math.max(0, parseInt(mm, 10) || 0));
-    // The typed time is read as Israel local time, since that is where the
-    // user is; everything else is derived from that instant.
-    const now = new Date();
-    const israelOffset = offsetMinutes(now, "Asia/Jerusalem") ?? 0;
-    const utcMs = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), h, m);
-    const deviceOffset = -now.getTimezoneOffset();
-    return new Date(utcMs - (israelOffset - deviceOffset) * 60000 + now.getTimezoneOffset() * 60000);
-  }, [useNow, hh, mm, tick]);
-
-  const rows = useMemo(
-    () => ZONES.map((z) => ({ ...z, ...zoneParts(base, z.id), offset: offsetMinutes(base, z.id) })),
-    [base]
-  );
-
-  const israelOffset = rows[0]?.offset ?? 0;
-  const supported = rows[0]?.ok;
-
-  return (
-    <View style={{ gap: 12 }}>
-      <Segment
-        options={[
-          { key: "now", label: "עכשיו" },
-          { key: "manual", label: "שעה ידנית" },
-        ]}
-        value={useNow ? "now" : "manual"}
-        onChange={(v) => { hapticLight(); setUseNow(v === "now"); }}
-      />
-
-      {!useNow && (
-        <View style={s.row}>
-          <View style={{ flex: 1 }}>
-            <Text style={s.fieldLabel}>שעה (בישראל)</Text>
-            <View style={s.fieldRow}>
-              <TextInput
-                testID="tz-hh"
-                style={s.fieldInput}
-                value={hh}
-                onChangeText={setHh}
-                placeholder="14"
-                placeholderTextColor={INK_MUTED}
-                keyboardType="numeric"
-                maxLength={2}
-                textAlign="center"
-              />
-            </View>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={s.fieldLabel}>דקות</Text>
-            <View style={s.fieldRow}>
-              <TextInput
-                testID="tz-mm"
-                style={s.fieldInput}
-                value={mm}
-                onChangeText={setMm}
-                placeholder="30"
-                placeholderTextColor={INK_MUTED}
-                keyboardType="numeric"
-                maxLength={2}
-                textAlign="center"
-              />
-            </View>
-          </View>
-        </View>
-      )}
-
-      {!supported ? (
-        <View style={[t.verdict, { backgroundColor: CARD }]}>
-          <Icon name="alert-triangle" size={22} color={GOLD} />
-          <Text style={t.verdictLabel}>
-            הבילד הזה לא כולל נתוני אזורי זמן, ולכן אי אפשר להציג המרה אמינה.
-          </Text>
-        </View>
-      ) : (
-        rows.map((z) => {
-          const diff = z.offset === null ? null : Math.round((z.offset - israelOffset) / 60);
-          const home = z.id === "Asia/Jerusalem";
-          return (
-            <View key={z.id} style={[u.zoneRow, home && { backgroundColor: BLUE + "10" }]}>
-              <View style={{ alignItems: "flex-start" }}>
-                <Text testID={`tz-${z.id}`} style={[u.zoneTime, home && { color: BLUE }]}>{z.time}</Text>
-                <Text style={u.zoneDay}>{z.day}</Text>
-              </View>
-              <View style={{ flex: 1, alignItems: "flex-end" }}>
-                <Text style={u.zoneCity}>{z.city}</Text>
-                <Text style={u.zoneMeta}>
-                  {z.abbr}
-                  {diff !== null && !home ? ` · ${diff > 0 ? "+" : ""}${diff} שעות מישראל` : ""}
-                </Text>
-              </View>
-              <Icon name={z.icon} size={16} color={home ? BLUE : INK_MUTED} />
-            </View>
-          );
-        })
-      )}
-
-      <Text style={s.hint}>
-        ההמרה משתמשת באזורי זמן ולא בהיסטים קבועים, כך שהיא נכונה גם בשעון קיץ. הקיצור לצד כל עיר
-        (IST/IDT, EST/EDT, GMT/BST) משתנה לפי התאריך.
-      </Text>
-    </View>
-  );
-}
-
-const u = StyleSheet.create({
-  zoneRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: CARD,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    minHeight: 62,
-  },
-  zoneTime: { fontFamily: FONTS.bold, fontSize: 21, color: INK },
-  zoneDay: { fontFamily: FONTS.regular, fontSize: 10.5, color: INK_MUTED },
-  zoneCity: { fontFamily: FONTS.bold, fontSize: 14.5, color: INK, textAlign: "right" },
-  zoneMeta: { fontFamily: FONTS.regular, fontSize: 11, color: INK_MUTED, textAlign: "right", marginTop: 2 },
-});
-
-// ---------------------------------------------------------------------------
-// F. וואטסאפ ללא שמירה
-// ---------------------------------------------------------------------------
-
-// wa.me wants digits only, in full international form with no plus sign. An
-// Israeli number typed the local way (050-1234567) has to lose its leading
-// zero and gain the country code, which is the step people get wrong.
 function toWaNumber(raw, countryCode) {
   const digits = (raw || "").replace(/\D/g, "");
   if (!digits) return null;
@@ -792,6 +484,7 @@ export function WhatsAppDirect() {
 // Binary units. Storage vendors sell in powers of ten (a "1TB" drive is 10^12
 // bytes) while operating systems report powers of two, which is the whole
 // reason a new drive looks smaller than the box promised.
+
 const SIZE_UNITS = [
   { key: "KB", label: "KB", pow: 1 },
   { key: "MB", label: "MB", pow: 2 },
@@ -884,3 +577,251 @@ export function StorageConverter() {
     </View>
   );
 }
+
+
+// ---------------------------------------------------------------------------
+// F. מחולל סיסמאות
+// ---------------------------------------------------------------------------
+
+const LOWER = "abcdefghijkmnopqrstuvwxyz";
+const UPPER = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+// l, I, 1, O and 0 are left out on purpose: a password you cannot read back
+// off a screen is a password you will type wrong.
+const DIGITS = "23456789";
+const SYMBOLS = "!@#$%^&*-_=+?";
+
+// crypto.getRandomValues where available. Math.random is seeded from the clock
+// and is not safe for anything you would call a password.
+function secureIndex(max) {
+  const c = typeof globalThis !== "undefined" ? globalThis.crypto : undefined;
+  if (c && typeof c.getRandomValues === "function") {
+    const buf = new Uint32Array(1);
+    // Reject the tail of the range, otherwise the modulo skews the first few
+    // characters of the alphabet toward being more likely.
+    const limit = Math.floor(0xffffffff / max) * max;
+    let v;
+    do {
+      c.getRandomValues(buf);
+      [v] = buf;
+    } while (v >= limit);
+    return v % max;
+  }
+  return Math.floor(Math.random() * max);
+}
+
+export function PasswordGenerator() {
+  const [length, setLength] = useState(16);
+  const [useDigits, setUseDigits] = useState(true);
+  const [useSymbols, setUseSymbols] = useState(true);
+  const [useUpper, setUseUpper] = useState(true);
+  const [password, setPassword] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const alphabet =
+    LOWER + (useUpper ? UPPER : "") + (useDigits ? DIGITS : "") + (useSymbols ? SYMBOLS : "");
+
+  const roll = () => {
+    let out = "";
+    for (let i = 0; i < length; i += 1) out += alphabet[secureIndex(alphabet.length)];
+    setPassword(out);
+    setCopied(false);
+  };
+
+  // Regenerate whenever the recipe changes, so what is shown always matches
+  // the settings above it.
+  useEffect(roll, [length, useDigits, useSymbols, useUpper]);
+
+  const copy = async () => {
+    if (!password) return;
+    await Clipboard.setStringAsync(password);
+    hapticSuccess();
+    setCopied(true);
+  };
+
+  // Entropy in bits: length x log2(alphabet). Under 60 is weak; over 100 is
+  // beyond anything worth brute-forcing.
+  const bits = Math.round(length * (Math.log(alphabet.length) / Math.log(2)));
+  const strength = bits >= 100 ? "חזקה מאוד" : bits >= 75 ? "חזקה" : bits >= 60 ? "סבירה" : "חלשה";
+  const tone = bits >= 75 ? GREEN : bits >= 60 ? GOLD : RED;
+
+  return (
+    <View style={{ gap: 12 }}>
+      <View style={pw.box}>
+        <Text testID="pw-value" style={pw.value} selectable>{password}</Text>
+      </View>
+
+      <View style={s.statRow}>
+        <Stat label="אורך" value={length} color={BLUE} />
+        <Stat label="ביטים של אנטרופיה" value={bits} color={tone} />
+        <Stat label="חוזק" value={strength} color={tone} />
+      </View>
+
+      <Slider label="אורך הסיסמה" value={length} min={8} max={32} step={1} onChange={setLength} />
+
+      {[
+        { label: "אותיות גדולות", on: useUpper, set: setUseUpper },
+        { label: "ספרות", on: useDigits, set: setUseDigits },
+        { label: "תווים מיוחדים", on: useSymbols, set: setUseSymbols },
+      ].map((opt) => (
+        <TouchableOpacity
+          key={opt.label}
+          style={s.checkRow}
+          onPress={() => { hapticLight(); opt.set((v) => !v); }}
+          activeOpacity={0.75}
+        >
+          <View style={[s.checkbox, opt.on && { backgroundColor: BLUE, borderColor: BLUE }]}>
+            {opt.on && <Icon name="check" size={13} color={WHITE} />}
+          </View>
+          <Text style={s.checkLabel}>{opt.label}</Text>
+        </TouchableOpacity>
+      ))}
+
+      <View style={s.row}>
+        <TouchableOpacity style={s.actionBtn} onPress={() => { hapticSuccess(); roll(); }} activeOpacity={0.85}>
+          <BtnLabel icon="refresh-cw" text="סיסמה חדשה" style={s.actionText} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[s.actionBtn, copied ? { backgroundColor: GREEN } : { backgroundColor: CARD }]}
+          onPress={copy}
+          activeOpacity={0.85}
+        >
+          <BtnLabel
+            icon={copied ? "check" : "copy"}
+            text={copied ? "הועתק" : "העתק"}
+            color={copied ? WHITE : INK_SOFT}
+            style={[s.actionText, !copied && { color: INK_SOFT }]}
+          />
+        </TouchableOpacity>
+      </View>
+
+      <Text style={s.hint}>
+        התווים נבחרים מ-crypto.getRandomValues ולא מ-Math.random, שנגזר משעון המערכת. תווים שקל
+        להתבלבל ביניהם — l, I, 1, O, 0 — הוצאו מהמאגר כדי שאפשר יהיה להקליד את הסיסמה מהמסך.
+      </Text>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// G. מערבל אותיות
+// ---------------------------------------------------------------------------
+
+// Fisher-Yates. The naive sort(() => Math.random() - 0.5) is not a uniform
+// shuffle and leaves letters near where they started.
+function shuffle(chars) {
+  const a = [...chars];
+  for (let i = a.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Keeping the first and last letter is the classic readable scramble: the word
+// stays recognisable while the middle is jumbled.
+function scrambleWord(word, keepEnds) {
+  if (word.length < (keepEnds ? 4 : 2)) return word;
+  if (!keepEnds) return shuffle([...word]).join("");
+  const middle = shuffle([...word.slice(1, -1)]).join("");
+  return word[0] + middle + word[word.length - 1];
+}
+
+export function WordScrambler() {
+  const [text, setText] = useState("");
+  const [keepEnds, setKeepEnds] = useState(true);
+  const [nonce, setNonce] = useState(0);
+  const [copied, setCopied] = useState(false);
+
+  const out = useMemo(() => {
+    void nonce;
+    return text.replace(/\S+/g, (word) => scrambleWord(word, keepEnds));
+  }, [text, keepEnds, nonce]);
+
+  const copy = async () => {
+    if (!out) return;
+    await Clipboard.setStringAsync(out);
+    hapticSuccess();
+    setCopied(true);
+  };
+
+  return (
+    <View style={{ gap: 12 }}>
+      <View>
+        <Text style={s.fieldLabel}>טקסט</Text>
+        <TextInput
+          testID="scramble-input"
+          style={t.area}
+          value={text}
+          onChangeText={(v) => { setText(v); setCopied(false); }}
+          placeholder="כתוב כאן משפט והאותיות יתערבבו"
+          placeholderTextColor={INK_MUTED}
+          multiline
+          textAlign="right"
+          textAlignVertical="top"
+        />
+      </View>
+
+      <TouchableOpacity
+        style={s.checkRow}
+        onPress={() => { hapticLight(); setKeepEnds((v) => !v); setCopied(false); }}
+        activeOpacity={0.75}
+      >
+        <View style={[s.checkbox, keepEnds && { backgroundColor: BLUE, borderColor: BLUE }]}>
+          {keepEnds && <Icon name="check" size={13} color={WHITE} />}
+        </View>
+        <Text style={s.checkLabel}>שמור על האות הראשונה והאחרונה</Text>
+      </TouchableOpacity>
+
+      {!!out && (
+        <View style={[t.verdict, { backgroundColor: CARD, paddingHorizontal: 16 }]}>
+          <Text testID="scramble-output" style={sc.output}>{out}</Text>
+        </View>
+      )}
+
+      <View style={s.row}>
+        <TouchableOpacity
+          style={[s.actionBtn, !text.trim() && { backgroundColor: INK_MUTED }]}
+          onPress={() => { hapticLight(); setNonce((n) => n + 1); setCopied(false); }}
+          activeOpacity={0.85}
+          disabled={!text.trim()}
+        >
+          <BtnLabel icon="shuffle" text="ערבב שוב" style={s.actionText} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[s.actionBtn, copied ? { backgroundColor: GREEN } : { backgroundColor: CARD }]}
+          onPress={copy}
+          activeOpacity={0.85}
+        >
+          <BtnLabel
+            icon={copied ? "check" : "copy"}
+            text={copied ? "הועתק" : "העתק"}
+            color={copied ? WHITE : INK_SOFT}
+            style={[s.actionText, !copied && { color: INK_SOFT }]}
+          />
+        </TouchableOpacity>
+      </View>
+
+      <Text style={s.hint}>
+        הערבוב הוא Fisher-Yates. מיון עם השוואה אקראית נראה דומה אבל אינו אחיד ומשאיר אותיות קרוב
+        למקום המקורי. עם שמירת הקצוות המילה נשארת קריאה למרות הבלגן באמצע.
+      </Text>
+    </View>
+  );
+}
+
+const pw = StyleSheet.create({
+  box: {
+    backgroundColor: "#0E1729",
+    borderRadius: 24,
+    paddingVertical: 22,
+    paddingHorizontal: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 92,
+  },
+  value: { fontFamily: "monospace", fontSize: 18, color: "#D7E3F4", textAlign: "center", letterSpacing: 1 },
+});
+
+const sc = StyleSheet.create({
+  output: { fontFamily: FONTS.medium, fontSize: 15, color: INK, textAlign: "right", lineHeight: 24 },
+});

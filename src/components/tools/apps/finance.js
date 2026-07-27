@@ -634,3 +634,271 @@ const m = StyleSheet.create({
   verdictValue: { fontFamily: FONTS.bold, fontSize: 34 },
   verdictLabel: { fontFamily: FONTS.medium, fontSize: 12.5, color: INK_SOFT },
 });
+
+// ---------------------------------------------------------------------------
+// F. החזר השקעה בפרסום — ROAS
+// ---------------------------------------------------------------------------
+export function RoasCalc() {
+  const [spend, setSpend] = useState("");
+  const [revenue, setRevenue] = useState("");
+  const [margin, setMargin] = useState("40");
+
+  const r = useMemo(() => {
+    const cost = parseFloat(spend);
+    const rev = parseFloat(revenue);
+    if (!Number.isFinite(cost) || !Number.isFinite(rev)) return { ready: false };
+    // Zero spend has no return to measure — an infinite ROAS is not a result.
+    if (cost <= 0) return { ready: true, noSpend: true };
+
+    const roas = rev / cost;
+    const marginPct = Math.min(100, Math.max(0, parseFloat(margin) || 0));
+    const grossProfit = rev * (marginPct / 100);
+    const round2 = (n) => Math.round(n * 100) / 100;
+    return {
+      ready: true,
+      noSpend: false,
+      roas: round2(roas),
+      pct: Math.round(roas * 100),
+      profit: round2(rev - cost),
+      // The number that decides whether a campaign is actually worth running:
+      // revenue pays for the goods first, and only what is left pays the ads.
+      netProfit: round2(grossProfit - cost),
+      // Break-even ROAS is 1 / margin — below this, more spend loses money.
+      breakEven: marginPct > 0 ? round2(100 / marginPct) : null,
+      profitable: grossProfit > cost,
+      cpa: null,
+    };
+  }, [spend, revenue, margin]);
+
+  useCalcHaptic(r.roas);
+
+  const tone = !r.ready || r.noSpend ? INK_SOFT : r.profitable ? GREEN : RED;
+
+  return (
+    <View style={{ gap: 12 }}>
+      <View style={s.row}>
+        <Field testID="roas-spend" label="הוצאה על פרסום" value={spend} onChange={setSpend} placeholder="1000" suffix="₪" />
+        <Field testID="roas-revenue" label="הכנסה מהקמפיין" value={revenue} onChange={setRevenue} placeholder="4200" suffix="₪" />
+      </View>
+      <Field testID="roas-margin" label="מתח רווח על המוצר" value={margin} onChange={setMargin} placeholder="40" suffix="%" />
+
+      {!r.ready ? (
+        <Text style={s.hint}>הזן כמה הוצאת על הפרסום וכמה הכנסת ממנו.</Text>
+      ) : r.noSpend ? (
+        <View style={[s.banner, { backgroundColor: GOLD + "16" }]}>
+          <Text style={[s.bannerText, { color: "#8A6D00" }]}>ללא הוצאה אין מה למדוד</Text>
+          <Text style={[s.bannerSub, { color: "#8A6D00" }]}>
+            ROAS הוא יחס בין הכנסה להוצאה. כשההוצאה אפס היחס אינו מוגדר.
+          </Text>
+        </View>
+      ) : (
+        <>
+          <View style={[m.verdict, { backgroundColor: tone + "12" }]}>
+            <Text testID="roas-result" style={[m.verdictValue, { color: tone }]}>×{r.roas}</Text>
+            <Text style={m.verdictLabel}>{r.pct}% החזר על ההוצאה</Text>
+          </View>
+
+          <View style={s.statRow}>
+            <Stat label="הכנסה פחות פרסום" value={shekel(r.profit)} />
+            <Stat label="רווח נטו אמיתי" value={shekel(r.netProfit)} color={tone} />
+            <Stat label="ROAS לאיזון" value={r.breakEven === null ? "—" : `×${r.breakEven}`} color={GOLD} />
+          </View>
+
+          <View style={[s.banner, { backgroundColor: tone + "14" }]}>
+            <Text style={[s.bannerText, { color: tone }]}>
+              {r.profitable ? "הקמפיין רווחי" : "הקמפיין מפסיד כסף"}
+            </Text>
+            <Text style={[s.bannerSub, { color: tone }]}>
+              {r.profitable
+                ? `אחרי עלות הסחורה נשארו ${shekel(r.netProfit)}. אפשר להגדיל תקציב כל עוד ה-ROAS נשאר מעל ×${r.breakEven}.`
+                : `ההכנסה נראית גבוהה מההוצאה, אבל אחרי עלות הסחורה נשאר ${shekel(r.netProfit)}. צריך ROAS של ×${r.breakEven} לפחות רק כדי לא להפסיד.`}
+            </Text>
+          </View>
+
+          <Text style={s.hint}>
+            ROAS לבדו מטעה: מכירה של 4,200 ₪ במתח רווח של {margin}% מכניסה לכיס פחות מהמספר הגולמי.
+            נקודת האיזון היא 1 חלקי מתח הרווח.
+          </Text>
+        </>
+      )}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// G. כלל ה-72
+// ---------------------------------------------------------------------------
+export function RuleOf72() {
+  const [rate, setRate] = useState("");
+  const [amount, setAmount] = useState("10000");
+
+  const r = useMemo(() => {
+    const pct = parseFloat(rate);
+    if (!Number.isFinite(pct)) return { ready: false };
+    if (pct <= 0) return { ready: true, noGrowth: true };
+
+    const approx = 72 / pct;
+    // The exact answer, so the size of the shortcut's error is visible rather
+    // than assumed. Below ~6% and above ~15% the rule of 72 drifts.
+    const exact = Math.log(2) / Math.log(1 + pct / 100);
+    const round1 = (n) => Math.round(n * 10) / 10;
+    const principal = parseFloat(amount) || 0;
+
+    const table = [1, 2, 3, 4].map((doublings) => ({
+      doublings,
+      years: round1(exact * doublings),
+      value: Math.round(principal * 2 ** doublings),
+    }));
+
+    return {
+      ready: true,
+      noGrowth: false,
+      approx: round1(approx),
+      exact: round1(exact),
+      gap: round1(Math.abs(approx - exact)),
+      accurate: Math.abs(approx - exact) < 0.3,
+      table,
+      principal,
+    };
+  }, [rate, amount]);
+
+  useCalcHaptic(r.approx);
+
+  return (
+    <View style={{ gap: 12 }}>
+      <View style={s.row}>
+        <Field testID="r72-rate" label="תשואה שנתית" value={rate} onChange={setRate} placeholder="8" suffix="%" />
+        <Field testID="r72-amount" label="סכום התחלתי" value={amount} onChange={setAmount} placeholder="10000" suffix="₪" />
+      </View>
+      <Chips options={[3, 5, 8, 10, 12]} onPick={(v) => setRate(String(v))} active={rate} />
+
+      {!r.ready ? (
+        <Text style={s.hint}>הזן תשואה שנתית משוערת באחוזים.</Text>
+      ) : r.noGrowth ? (
+        <View style={[s.banner, { backgroundColor: GOLD + "16" }]}>
+          <Text style={[s.bannerText, { color: "#8A6D00" }]}>בלי תשואה הכסף לא מכפיל את עצמו</Text>
+          <Text style={[s.bannerSub, { color: "#8A6D00" }]}>
+            כלל ה-72 מחלק ב-אחוז התשואה, ולכן דורש תשואה גדולה מאפס.
+          </Text>
+        </View>
+      ) : (
+        <>
+          <View style={[m.verdict, { backgroundColor: BLUE + "12" }]}>
+            <Text testID="r72-years" style={[m.verdictValue, { color: BLUE }]}>{r.approx}</Text>
+            <Text style={m.verdictLabel}>שנים עד להכפלת הסכום</Text>
+          </View>
+
+          <View style={s.statRow}>
+            <Stat label="לפי כלל ה-72" value={`${r.approx} שנ׳`} />
+            <Stat label="חישוב מדויק" value={`${r.exact} שנ׳`} color={GREEN} />
+            <Stat label="פער" value={`${r.gap} שנ׳`} color={r.accurate ? INK_SOFT : GOLD} />
+          </View>
+
+          {r.principal > 0 && (
+            <>
+              <Text style={s.sectionLabel}>מסלול ההכפלות</Text>
+              {r.table.map((row) => (
+                <View key={row.doublings} style={s.routineRow}>
+                  <Text style={s.routineTime}>{shekel(row.value)}</Text>
+                  <Text style={[s.routineLabel, { flex: 1 }]}>
+                    אחרי {row.years} שנים · הכפלה {row.doublings}
+                  </Text>
+                </View>
+              ))}
+            </>
+          )}
+
+          <Text style={s.hint}>
+            כלל ה-72 הוא קיצור דרך לחישוב בראש והוא מדויק בעיקר בטווח 6% עד 10%. כאן מוצג גם החישוב
+            המדויק — ln(2) חלקי ln(1+תשואה) — כדי שהפער יהיה גלוי.
+          </Text>
+        </>
+      )}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// H. מחשבון טיפים
+// ---------------------------------------------------------------------------
+
+const TIP_STEPS = [10, 12, 15, 20];
+
+export function QuickTip() {
+  const [bill, setBill] = useState("");
+  const [pct, setPct] = useState(12);
+
+  const r = useMemo(() => {
+    const amount = parseFloat(bill);
+    if (!Number.isFinite(amount) || amount < 0) return { ready: false };
+    const tip = amount * (pct / 100);
+    const round2 = (n) => Math.round(n * 100) / 100;
+    return {
+      ready: true,
+      tip: round2(tip),
+      total: round2(amount + tip),
+      rounded: Math.ceil(amount + tip),
+      roundedTip: round2(Math.ceil(amount + tip) - amount),
+    };
+  }, [bill, pct]);
+
+  useCalcHaptic(r.total);
+
+  return (
+    <View style={{ gap: 12 }}>
+      <Field testID="qt-bill" label="סכום החשבון" value={bill} onChange={setBill} placeholder="240" suffix="₪" />
+
+      <View style={qt.steps}>
+        {TIP_STEPS.map((step) => {
+          const active = step === pct;
+          return (
+            <TouchableOpacity
+              key={step}
+              testID={`qt-${step}`}
+              style={[qt.step, active && { backgroundColor: BLUE }]}
+              onPress={() => { hapticLight(); setPct(step); }}
+              activeOpacity={0.85}
+            >
+              <Text style={[qt.stepText, active && { color: WHITE }]}>{step}%</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {!r.ready ? (
+        <Text style={s.hint}>הזן את סכום החשבון ובחר אחוז טיפ.</Text>
+      ) : (
+        <>
+          <View style={[m.verdict, { backgroundColor: BLUE + "12" }]}>
+            <Text testID="qt-total" style={[m.verdictValue, { color: BLUE }]}>{shekel(r.total)}</Text>
+            <Text style={m.verdictLabel}>סה״כ לתשלום</Text>
+          </View>
+
+          <View style={s.statRow}>
+            <Stat label="הטיפ" value={shekel(r.tip)} color={GREEN} big />
+            <Stat label="עיגול כלפי מעלה" value={shekel(r.rounded)} />
+            <Stat label="הטיפ בעיגול" value={shekel(r.roundedTip)} color={GOLD} />
+          </View>
+
+          <Text style={s.hint}>
+            עיגול הסכום הסופי כלפי מעלה נותן טיפ של {shekel(r.roundedTip)} — לרוב הדרך הכי מהירה לסגור
+            חשבון בלי לחשב עודף.
+          </Text>
+        </>
+      )}
+    </View>
+  );
+}
+
+const qt = StyleSheet.create({
+  steps: { flexDirection: "row", gap: 8 },
+  step: {
+    flex: 1,
+    minHeight: 56,
+    borderRadius: 16,
+    backgroundColor: CARD,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stepText: { fontFamily: FONTS.bold, fontSize: 17, color: INK_SOFT },
+});

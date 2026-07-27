@@ -18,6 +18,7 @@ import {
   BLUE,
   INK,
   WHITE,
+  Stat,
 } from "../kit";
 
 // Colour and scaffolding tools: things that produce a value you paste into a
@@ -838,4 +839,146 @@ const ic = StyleSheet.create({
   use: { fontFamily: FONTS.semibold, fontSize: 13, color: INK, textAlign: "right" },
   note: { fontFamily: FONTS.regular, fontSize: 10.5, color: INK_MUTED, textAlign: "right", marginTop: 2 },
   size: { fontFamily: "monospace", fontSize: 12.5, color: BLUE },
+});
+
+// ---------------------------------------------------------------------------
+// F. יחס הפז לעיצוב
+// ---------------------------------------------------------------------------
+
+const PHI = 1.618033988749895;
+
+const GOLDEN_PRESETS = [320, 375, 390, 430];
+
+export function GoldenRatio() {
+  const [width, setWidth] = useState("375");
+  const [mode, setMode] = useState("height");
+
+  const r = useMemo(() => {
+    const w = parseFloat(width);
+    if (!Number.isFinite(w) || w <= 0) return { ready: false };
+    const round = (n) => Math.round(n * 10) / 10;
+    // Dividing by phi gives the shorter side; multiplying gives the longer.
+    const shorter = w / PHI;
+    const longer = w * PHI;
+
+    // The classic split of a container into a major and minor section.
+    const majorPart = round(w / PHI);
+    const minorPart = round(w - w / PHI);
+
+    // A modular type scale stepped by phi, rounded to whole pixels because
+    // fractional font sizes render inconsistently across platforms.
+    const base = 16;
+    const scale = [-2, -1, 0, 1, 2, 3].map((step) => ({
+      step,
+      size: Math.round(base * PHI ** (step / 2)),
+    }));
+
+    return {
+      ready: true,
+      shorter: round(shorter),
+      longer: round(longer),
+      result: mode === "height" ? round(shorter) : round(longer),
+      majorPart,
+      minorPart,
+      scale,
+      w,
+    };
+  }, [width, mode]);
+
+  return (
+    <View style={{ gap: 12 }}>
+      <View>
+        <Text style={s.fieldLabel}>רוחב האלמנט</Text>
+        <View style={s.fieldRow}>
+          <Text style={s.fieldSuffix}>px</Text>
+          <TextInput
+            testID="golden-width"
+            style={s.fieldInput}
+            value={width}
+            onChangeText={setWidth}
+            placeholder="375"
+            placeholderTextColor={INK_MUTED}
+            keyboardType="numeric"
+            textAlign="center"
+          />
+        </View>
+      </View>
+
+      <Segment
+        options={[
+          { key: "height", label: "גובה נמוך מהרוחב" },
+          { key: "tall", label: "גובה גבוה מהרוחב" },
+        ]}
+        value={mode}
+        onChange={(v) => { hapticLight(); setMode(v); }}
+      />
+
+      <View style={s.chipRow}>
+        {GOLDEN_PRESETS.map((w) => (
+          <TouchableOpacity
+            key={w}
+            style={s.chip}
+            onPress={() => { hapticLight(); setWidth(String(w)); }}
+            activeOpacity={0.8}
+          >
+            <Text style={s.chipText}>{w}px</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {!r.ready ? (
+        <Text style={s.hint}>הזן רוחב בפיקסלים.</Text>
+      ) : (
+        <>
+          <View style={[gr.verdict, { backgroundColor: BLUE + "12" }]}>
+            <Text testID="golden-result" style={[gr.verdictValue, { color: BLUE }]}>{r.result}px</Text>
+            <Text style={gr.verdictLabel}>גובה מומלץ לרוחב {r.w}px</Text>
+          </View>
+
+          {/* The rectangle at its real proportions, with the golden split. */}
+          <View style={gr.stage}>
+            <View style={[gr.box, { width: 240, height: 240 / (mode === "height" ? PHI : 1 / PHI) }]}>
+              <View style={[gr.major, { flex: PHI }]}>
+                <Text style={gr.boxLabel}>{r.majorPart}px</Text>
+              </View>
+              <View style={[gr.minor, { flex: 1 }]}>
+                <Text style={gr.boxLabel}>{r.minorPart}px</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={s.statRow}>
+            <Stat label="הצלע הקצרה" value={`${r.shorter}px`} />
+            <Stat label="הצלע הארוכה" value={`${r.longer}px`} color={GOLD} />
+          </View>
+
+          <Text style={s.sectionLabel}>סולם טיפוגרפי לפי היחס</Text>
+          {r.scale.map((row) => (
+            <View key={row.step} style={s.routineRow}>
+              <Text style={[s.routineTime, row.step === 0 && { color: BLUE }]}>{row.size}px</Text>
+              <Text style={[s.routineLabel, { flex: 1 }]}>
+                {row.step === 0 ? "בסיס · גוף טקסט" : row.step > 0 ? `כותרת ${row.step}` : `משני ${-row.step}`}
+              </Text>
+            </View>
+          ))}
+
+          <Text style={s.hint}>
+            היחס הוא 1.618. לחלוקת מלבן: הצד הארוך חלקי 1.618 נותן את החלק הגדול, והשארית את הקטן.
+            הסולם הטיפוגרפי כאן קופץ בשורש היחס בכל צעד, אחרת הפער בין הגדלים גדול מדי לממשק.
+          </Text>
+        </>
+      )}
+    </View>
+  );
+}
+
+const gr = StyleSheet.create({
+  verdict: { borderRadius: 24, paddingVertical: 20, alignItems: "center", gap: 4 },
+  verdictValue: { fontFamily: FONTS.bold, fontSize: 36 },
+  verdictLabel: { fontFamily: FONTS.medium, fontSize: 12.5, color: INK_SOFT },
+  stage: { alignItems: "center", paddingVertical: 6 },
+  box: { borderRadius: 16, overflow: "hidden", borderWidth: 2, borderColor: BLUE },
+  major: { backgroundColor: BLUE + "22", alignItems: "center", justifyContent: "center" },
+  minor: { backgroundColor: BLUE + "0C", alignItems: "center", justifyContent: "center" },
+  boxLabel: { fontFamily: FONTS.semibold, fontSize: 12, color: BLUE },
 });
