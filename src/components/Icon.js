@@ -1,4 +1,8 @@
-import { Feather, Ionicons } from "@expo/vector-icons";
+// Import each family by its own entry point, not the "@expo/vector-icons"
+// barrel: the barrel pulls in all 26 icon fonts (~4MB of TTF) whether or not
+// they are used. These two paths register only Feather and Ionicons.
+import Feather from "@expo/vector-icons/Feather";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { UI } from "../utils/ui";
 

@@ -6,13 +6,13 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NavigationContainer } from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useFonts } from "expo-font";
-import {
-  Assistant_300Light,
-  Assistant_400Regular,
-  Assistant_500Medium,
-  Assistant_600SemiBold,
-  Assistant_700Bold,
-} from "@expo-google-fonts/assistant";
+// Per-weight entry points, not the package barrel: the barrel registers all
+// seven Assistant weights as assets even though the app loads five.
+import { Assistant_300Light } from "@expo-google-fonts/assistant/300Light";
+import { Assistant_400Regular } from "@expo-google-fonts/assistant/400Regular";
+import { Assistant_500Medium } from "@expo-google-fonts/assistant/500Medium";
+import { Assistant_600SemiBold } from "@expo-google-fonts/assistant/600SemiBold";
+import { Assistant_700Bold } from "@expo-google-fonts/assistant/700Bold";
 
 import ErrorBoundary from "./src/components/ErrorBoundary";
 import PinLock from "./src/components/PinLock";
