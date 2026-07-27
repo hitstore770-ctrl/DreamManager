@@ -98,7 +98,7 @@ export default function ExpressPOS() {
     <View>
       {locked && (
         <View style={styles.lockBanner}>
-          <Text style={styles.lockText}>🔒 היום נעול (דו״ח Z הופק)</Text>
+ <Text style={styles.lockText}> היום נעול (דו״ח Z הופק)</Text>
         </View>
       )}
 

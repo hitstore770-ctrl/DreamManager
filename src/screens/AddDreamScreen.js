@@ -151,7 +151,7 @@ export default function AddDreamScreen({ navigation }) {
         </View>
 
         <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} activeOpacity={0.85}>
-          <Text style={styles.submitButtonText}>הוסף פרויקט 💪</Text>
+ <Text style={styles.submitButtonText}>הוסף פרויקט </Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>

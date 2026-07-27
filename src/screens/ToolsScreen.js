@@ -41,9 +41,9 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 // the built mini-apps. Long-press any tool to favorite it.
 
 const WHITE = "#FFFFFF";
-const BG = "#F9FAFC";
+const BG = "#F4F6F9";
 const INK = "#111827";
-const INK_SOFT = "#4B5563";
+const INK_SOFT = "#6B7280";
 const INK_MUTED = "#9CA3AF";
 const BLUE = "#7C3AED";
 const GOLD = "#06B6D4";
@@ -131,7 +131,7 @@ export default function ToolsScreen() {
       return;
     }
     hapticWarning();
-    flash(`${tool.emoji} ${tool.name} — בקרוב 🚧`);
+    flash(`${tool.name} — בקרוב`);
   };
 
   const toggleFavorite = (tool) => {
@@ -139,11 +139,11 @@ export default function ToolsScreen() {
     if (isFav) {
       hapticLight();
       setFavorites((prev) => (prev || []).filter((id) => id !== tool.id));
-      flash(`הוסר מהמועדפים ☆`);
+      flash("הוסר מהמועדפים");
     } else {
       hapticSuccess();
       setFavorites((prev) => [...(prev || []), tool.id]);
-      flash(`${tool.emoji} ${tool.name} נוסף למועדפים ⭐`);
+      flash(`${tool.name} נוסף למועדפים`);
     }
   };
 
@@ -164,7 +164,7 @@ export default function ToolsScreen() {
           </Text>
         </View>
         <View style={s.readyPill}>
-          <Text style={s.readyPillText}>✓ {IMPLEMENTED.size} פעילים</Text>
+          <Text style={s.readyPillText}>{IMPLEMENTED.size} פעילים</Text>
         </View>
       </View>
 
@@ -173,27 +173,27 @@ export default function ToolsScreen() {
           style={s.search}
           value={query}
           onChangeText={setQuery}
-          placeholder="🔎 חיפוש כלי..."
+          placeholder="חיפוש כלי..."
           placeholderTextColor={INK_MUTED}
           textAlign="right"
           autoCapitalize="none"
         />
         {!!query && (
           <TouchableOpacity style={s.clearBtn} onPress={() => { hapticLight(); setQuery(""); }} activeOpacity={0.7}>
-            <Text style={s.clearBtnText}>✕</Text>
+            <Icon name="x" size={14} color={INK_MUTED} />
           </TouchableOpacity>
         )}
       </View>
 
       <ScrollView
-        contentContainerStyle={{ padding: compact ? 6 : 12, paddingBottom: insets.bottom + 100 }}
+        contentContainerStyle={{ padding: compact ? 6 : 12, paddingBottom: insets.bottom + 120 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         {searchResults ? (
           searchResults.length === 0 ? (
             <Animated.View entering={FadeInUp.duration(260)} style={s.empty}>
-              <Text style={{ fontSize: 38 }}>🔍</Text>
+              <Icon name="search" size={38} color={INK_MUTED} />
               <Text style={s.emptyText}>לא נמצא כלי בשם הזה</Text>
             </Animated.View>
           ) : (
@@ -222,7 +222,7 @@ export default function ToolsScreen() {
                     <Text style={s.sectionMeta}>{favTools.length} כלים · לחיצה ארוכה להסרה</Text>
                   </View>
                   <View style={[s.sectionBadge, { backgroundColor: GOLD + "24" }]}>
-                    <Text style={{ fontSize: 20 }}>⭐</Text>
+                    <Icon name="star" size={20} color={GOLD} />
                   </View>
                 </View>
                 <View style={s.grid}>
@@ -254,7 +254,7 @@ export default function ToolsScreen() {
                       </Text>
                     </View>
                     <View style={[s.sectionBadge, { backgroundColor: cat.color + "16" }]}>
-                      <Text style={{ fontSize: 20 }}>{cat.emoji}</Text>
+                      <Icon name={cat.icon} size={20} color={cat.color} />
                     </View>
                   </Bounce>
 
@@ -296,17 +296,17 @@ export default function ToolsScreen() {
                   </View>
                   <View style={s.sheetHead}>
                     <TouchableOpacity style={s.closeBtn} onPress={dismissSheet} activeOpacity={0.7}>
-                      <Text style={s.closeBtnText}>✕</Text>
+                      <Icon name="x" size={17} color={INK_SOFT} />
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={s.favBtn}
                       onPress={() => activeTool && toggleFavorite(activeTool)}
                       activeOpacity={0.7}
                     >
-                      <Text style={{ fontSize: 18 }}>{activeTool && favSet.has(activeTool.id) ? "⭐" : "☆"}</Text>
+                      <Icon name="star" size={18} color={activeTool && favSet.has(activeTool.id) ? GOLD : INK_MUTED} />
                     </TouchableOpacity>
                     <Text style={s.sheetTitle} numberOfLines={1}>
-                      {activeTool?.emoji} {activeTool?.name}
+                      {activeTool?.name}
                     </Text>
                   </View>
                   <ScrollView
@@ -339,12 +339,12 @@ function ToolCard({ tool, index, fav, onPress, onLongPress, showCategory }) {
       >
         {ready && (
           <View style={s.readyDot}>
-            <Text style={s.readyDotText}>✓</Text>
+            <Icon name="check" size={10} color="#0E7490" />
           </View>
         )}
-        {fav && <Text style={s.favStar}>⭐</Text>}
+        {fav && <View style={s.favStar}><Icon name="star" size={11} color={GOLD} /></View>}
         <View style={[s.cardIcon, { backgroundColor: (tool.color || BLUE) + "14" }]}>
-          <Text style={{ fontSize: 21 }}>{tool.emoji}</Text>
+          <Icon name={tool.icon || "circle"} size={21} color={tool.color || BLUE} />
         </View>
         <Text style={s.cardName} numberOfLines={2}>{tool.name}</Text>
         {showCategory && <Text style={s.cardCat} numberOfLines={1}>{tool.categoryLabel}</Text>}
@@ -387,7 +387,7 @@ const s = StyleSheet.create({
   searchWrap: { paddingHorizontal: 12, marginBottom: 10, justifyContent: "center" },
   search: {
     backgroundColor: WHITE,
-    borderRadius: 28,
+    borderRadius: 24,
     minHeight: 52,
     paddingHorizontal: 18,
     fontFamily: FONTS.regular,
@@ -415,7 +415,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     backgroundColor: WHITE,
-    borderRadius: 28,
+    borderRadius: 24,
     padding: 14,
     minHeight: 68,
     ...SHADOW,
@@ -429,7 +429,7 @@ const s = StyleSheet.create({
   cardWrap: { width: "33.33%", padding: 5 },
   card: {
     backgroundColor: WHITE,
-    borderRadius: 28,
+    borderRadius: 24,
     paddingVertical: 15,
     paddingHorizontal: 8,
     alignItems: "center",
@@ -460,7 +460,7 @@ const s = StyleSheet.create({
     position: "absolute",
     alignSelf: "center",
     backgroundColor: INK,
-    borderRadius: 28,
+    borderRadius: 24,
     paddingHorizontal: 18,
     paddingVertical: 11,
     maxWidth: "88%",

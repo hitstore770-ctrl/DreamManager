@@ -37,7 +37,7 @@ import { usePersistentState } from "../utils/usePersistentState";
 // Hub surface: white cards on soft grey, per the Phase 2 spec.
 const BLUE_TITLE = "#7C3AED";
 const GOLD_HDR = "#06B6D4";
-const HUB_BG = "#F9FAFC";
+const HUB_BG = "#F4F6F9";
 
 // Rough reading-time estimate at ~200 words/min (min 1 minute).
 function readTime(note) {
@@ -67,26 +67,26 @@ function tagColor(tag) {
 // ── The eight scaffolded tools (functional where cheap, informative preview
 // where they need deeper wiring). Rendered in the "toolbox" sheet. ──
 const TOOLBOX = [
-  { key: "search", emoji: "🔎", label: "חיפוש מתקדם" },
-  { key: "template", emoji: "🧩", label: "מחולל תבניות" },
-  { key: "tags", emoji: "🏷️", label: "מערכת תיוג" },
-  { key: "journal", emoji: "📔", label: "יומן יומי" },
-  { key: "business", emoji: "💼", label: "שילוב עסקי" },
-  { key: "reminders", emoji: "⏰", label: "תזכורות" },
-  { key: "export", emoji: "📤", label: "ייצוא PDF/וואטסאפ" },
-  { key: "security", emoji: "🛡️", label: "אבטחת הערה" },
+  { key: "search", icon: "search", label: "חיפוש מתקדם" },
+  { key: "template", icon: "layers", label: "מחולל תבניות" },
+  { key: "tags", icon: "tag", label: "מערכת תיוג" },
+  { key: "journal", icon: "book", label: "יומן יומי" },
+  { key: "business", icon: "briefcase", label: "שילוב עסקי" },
+  { key: "reminders", icon: "bell", label: "תזכורות" },
+  { key: "export", icon: "upload", label: "ייצוא PDF/וואטסאפ" },
+  { key: "security", icon: "shield", label: "אבטחת הערה" },
 ];
 
 const TEMPLATES = [
   {
     key: "restock",
     label: "סבב מילוי מכונות",
-    body: "🥤 סבב מילוי מכונות\nמיקום: \nפחיות שהוכנסו: \nנגבה מהמכונה: \nתקלות: ",
+    body: "סבב מילוי מכונות\nמיקום: \nפחיות שהוכנסו: \nנגבה מהמכונה: \nתקלות: ",
   },
-  { key: "meeting", label: "סיכום פגישה", body: "📋 סיכום פגישה\nתאריך: \nמשתתפים: \n\nנושאים:\n• \n\nמשימות להמשך:\n• " },
-  { key: "shopping", label: "רשימת קניות", body: "🛒 רשימת קניות\n• \n• \n• " },
-  { key: "idea", label: "רעיון לעסק", body: "💡 רעיון\nהרעיון: \nקהל יעד: \nעלות משוערת: \nרווח פוטנציאלי: " },
-  { key: "daily", label: "מטלות היום", body: "✅ המשימות שלי להיום\n• \n• \n• " },
+  { key: "meeting", label: "סיכום פגישה", body: "סיכום פגישה\nתאריך: \nמשתתפים: \n\nנושאים:\n• \n\nמשימות להמשך:\n• " },
+  { key: "shopping", label: "רשימת קניות", body: "רשימת קניות\n• \n• \n• " },
+  { key: "idea", label: "רעיון לעסק", body: "רעיון\nהרעיון: \nקהל יעד: \nעלות משוערת: \nרווח פוטנציאלי: " },
+  { key: "daily", label: "מטלות היום", body: "המשימות שלי להיום\n• \n• \n• " },
 ];
 
 export default function NotesHubScreen({ navigation }) {
@@ -185,7 +185,7 @@ export default function NotesHubScreen({ navigation }) {
       const prof = todays.reduce((a, x) => a + (x.profit || 0), 0);
       createNote({
         title: `סיכום עסקי · ${gregorianToHebrew(new Date()).formatted}`,
-        body: `💼 סיכום המכירות היום\nעסקאות: ${todays.length}\nהכנסה: ${shekel(rev)}\nרווח: ${shekel(prof)}\n\nהערות:\n• `,
+        body: `סיכום המכירות היום\nעסקאות: ${todays.length}\nהכנסה: ${shekel(rev)}\nרווח: ${shekel(prof)}\n\nהערות:\n• `,
         tags: ["עסקי"],
       });
       return;
@@ -196,7 +196,7 @@ export default function NotesHubScreen({ navigation }) {
 
   const exportAll = async () => {
     const text = filtered
-      .map((n) => `📝 ${n.title || "ללא כותרת"}\n${n.isChecklist ? checklistToText(n.checklist) : n.body}`)
+      .map((n) => `${n.title || "ללא כותרת"}\n${n.isChecklist ? checklistToText(n.checklist) : n.body}`)
       .join("\n\n———\n\n");
     try {
       await Share.share({ message: text || "אין הערות לייצוא" });
@@ -213,15 +213,15 @@ export default function NotesHubScreen({ navigation }) {
     const dateStr = new Date().toLocaleDateString("he-IL");
     const title = `יומן עבודה - ${dateStr}`;
     const body = [
-      `📔 ${title}`,
+      `${title}`,
       "",
-      "🕘 09:00 — ",
-      "🕚 11:00 — ",
-      "🕐 13:00 — ",
-      "🕒 15:00 — ",
-      "🕔 17:00 — ",
+      "09:00 — ",
+      "11:00 — ",
+      "13:00 — ",
+      "15:00 — ",
+      "17:00 — ",
       "",
-      "📝 סיכום היום:",
+      "סיכום היום:",
       "",
     ].join("\n");
     createNote({ title, body, tags: ["יומן"] });
@@ -254,7 +254,7 @@ export default function NotesHubScreen({ navigation }) {
           style={s.search}
           value={query}
           onChangeText={setQuery}
-          placeholder="🔎 חיפוש בכל ההערות..."
+          placeholder="חיפוש בכל ההערות..."
           placeholderTextColor={theme.textMuted}
           textAlign="right"
         />
@@ -317,11 +317,11 @@ export default function NotesHubScreen({ navigation }) {
       </Pulse>
 
       {/* Toolbox sheet */}
-      <Sheet visible={toolbox} onClose={() => setToolbox(false)} theme={theme} title="🧰 ארגז הכלים של הפנקס">
+      <Sheet visible={toolbox} onClose={() => setToolbox(false)} theme={theme} title="ארגז הכלים של הפנקס">
         <View style={s.grid}>
           {TOOLBOX.map((t) => (
             <TouchableOpacity key={t.key} style={[s.toolCard, { backgroundColor: theme.surfaceAlt }]} onPress={() => runTool(t.key)} activeOpacity={0.85}>
-              <Text style={s.toolEmoji}>{t.emoji}</Text>
+              <Icon name={t.icon} size={26} color={BLUE_TITLE} />
               <Text style={[s.toolLabel, { color: theme.textPrimary }]}>{t.label}</Text>
             </TouchableOpacity>
           ))}
@@ -332,11 +332,11 @@ export default function NotesHubScreen({ navigation }) {
       <Sheet visible={!!actionNote} onClose={() => setActionNote(null)} theme={theme} title={actionNote?.title || "הערה"}>
         {actionNote && (
           <View style={{ gap: 8 }}>
-            <ActionRow theme={theme} label="✏️ פתח לעריכה" onPress={() => { const n = actionNote; setActionNote(null); n.locked ? setPinNote(n) : openNote(n.id); }} />
-            <ActionRow theme={theme} label={actionNote.pinned ? "📍 בטל נעיצה" : "📌 נעץ למעלה"} onPress={() => { togglePin(actionNote); setActionNote(null); }} />
-            <ActionRow theme={theme} label={actionNote.locked ? "🔓 בטל נעילה" : "🔒 נעל הערה"} onPress={() => { patch(actionNote.id, { locked: !actionNote.locked }); setActionNote(null); }} />
-            <ActionRow theme={theme} label="📤 שתף / ייצא" onPress={async () => { const n = actionNote; setActionNote(null); try { await Share.share({ message: `📝 ${n.title}\n${n.isChecklist ? checklistToText(n.checklist) : n.body}` }); } catch {} }} />
-            <ActionRow theme={theme} danger label="🗑️ מחק" onPress={() => { deleteNote(actionNote.id); setActionNote(null); }} />
+            <ActionRow theme={theme} icon="edit-2" label="פתח לעריכה" onPress={() => { const n = actionNote; setActionNote(null); n.locked ? setPinNote(n) : openNote(n.id); }} />
+            <ActionRow theme={theme} icon="bookmark" label={actionNote.pinned ? "בטל נעיצה" : "נעץ למעלה"} onPress={() => { togglePin(actionNote); setActionNote(null); }} />
+            <ActionRow theme={theme} icon={actionNote.locked ? "unlock" : "lock"} label={actionNote.locked ? "בטל נעילה" : "נעל הערה"} onPress={() => { patch(actionNote.id, { locked: !actionNote.locked }); setActionNote(null); }} />
+            <ActionRow theme={theme} icon="upload" label="שתף / ייצא" onPress={async () => { const n = actionNote; setActionNote(null); try { await Share.share({ message: `${n.title}\n${n.isChecklist ? checklistToText(n.checklist) : n.body}` }); } catch {} }} />
+            <ActionRow theme={theme} danger icon="trash-2" label="מחק" onPress={() => { deleteNote(actionNote.id); setActionNote(null); }} />
           </View>
         )}
       </Sheet>
@@ -347,7 +347,7 @@ export default function NotesHubScreen({ navigation }) {
           <View style={{ gap: 8 }}>
             <Text style={s.panelHint}>בחר תבנית מוכנה — תיווצר הערה חדשה:</Text>
             {TEMPLATES.map((t) => (
-              <ActionRow key={t.key} theme={theme} label={`🧩 ${t.label}`} onPress={() => { setPanel(null); createNote({ title: t.label, body: t.body }); }} />
+              <ActionRow key={t.key} theme={theme} icon="layers" label={t.label} onPress={() => { setPanel(null); createNote({ title: t.label, body: t.body }); }} />
             ))}
           </View>
         )}
@@ -367,15 +367,15 @@ export default function NotesHubScreen({ navigation }) {
         {panel === "export" && (
           <View style={{ gap: 8 }}>
             <Text style={s.panelHint}>ייצוא {filtered.length} ההערות המוצגות:</Text>
-            <ActionRow theme={theme} label="💬 שתף כטקסט / וואטסאפ" onPress={exportAll} />
-            <ActionRow theme={theme} label="📄 ייצוא PDF (בקרוב)" muted onPress={() => {}} />
+            <ActionRow theme={theme} icon="message-circle" label="שתף כטקסט / וואטסאפ" onPress={exportAll} />
+            <ActionRow theme={theme} icon="file-text" label="ייצוא PDF (בקרוב)" muted onPress={() => {}} />
             <Text style={s.panelHint}>ייצוא PDF מלא ישולב עם expo-print בגרסה הבאה. שיתוף הטקסט פעיל לוואטסאפ ולכל אפליקציה.</Text>
           </View>
         )}
         {panel === "reminders" && (
           <View>
             <Text style={s.panelHint}>מנוע התזכורות (מתוכנן):</Text>
-            {["⏰ תזכורת לפי שעה", "📅 תזכורת לפי תאריך עברי", "🔁 תזכורת חוזרת", "🔔 התראת דחיפה"].map((r) => (
+            {["תזכורת לפי שעה", "תזכורת לפי תאריך עברי", "תזכורת חוזרת", "התראת דחיפה"].map((r) => (
               <View key={r} style={s.scaffoldRow}><Text style={s.scaffoldText}>{r}</Text><Text style={s.soon}>בקרוב</Text></View>
             ))}
           </View>
@@ -383,8 +383,8 @@ export default function NotesHubScreen({ navigation }) {
         {panel === "security" && (
           <View>
             <Text style={s.panelHint}>אבטחת הערות:</Text>
-            <View style={s.scaffoldRow}><Text style={s.scaffoldText}>🔒 נעילת הערה + קוד</Text><Text style={[s.soon, { color: theme.success }]}>פעיל</Text></View>
-            <View style={s.scaffoldRow}><Text style={s.scaffoldText}>🔢 נעילת PIN לפנקס</Text><Text style={s.soon}>דרך ההגדרות</Text></View>
+            <View style={s.scaffoldRow}><Text style={s.scaffoldText}>נעילת הערה + קוד</Text><Text style={[s.soon, { color: theme.success }]}>פעיל</Text></View>
+            <View style={s.scaffoldRow}><Text style={s.scaffoldText}>נעילת PIN לפנקס</Text><Text style={s.soon}>דרך ההגדרות</Text></View>
             <Text style={s.panelHint}>נעל הערה מתוך העורך (אייקון המנעול) או בלחיצה ארוכה. הערה נעולה מוצגת מטושטשת ודורשת קוד ({LOCK_PIN}) לפתיחה.</Text>
           </View>
         )}
@@ -410,7 +410,7 @@ export default function NotesHubScreen({ navigation }) {
 function NoteCard({ note, index, theme, styles, onOpen, onLong, onDelete }) {
   const bg = noteBg(note.bg, theme.scheme === "dark");
   const preview = note.locked
-    ? "🔒 הערה נעולה  ***"
+    ? "הערה נעולה  ***"
     : note.isChecklist
       ? checklistToText(note.checklist).slice(0, 140)
       : (note.body || "").slice(0, 140) || "הערה ריקה";
@@ -418,7 +418,7 @@ function NoteCard({ note, index, theme, styles, onOpen, onLong, onDelete }) {
 
   const renderRightActions = () => (
     <View style={styles.deleteAction}>
-      <Text style={styles.deleteIcon}>🗑️</Text>
+      <Icon name="trash-2" size={20} color="#FFFFFF" />
       <Text style={styles.deleteLabel}>מחק</Text>
     </View>
   );
@@ -439,7 +439,7 @@ function NoteCard({ note, index, theme, styles, onOpen, onLong, onDelete }) {
           onLongPress={onLong}
         >
           <View style={styles.cardTop}>
-            {note.pinned && <Text style={styles.pin}>📌</Text>}
+            {note.pinned && <View style={styles.pin}><Icon name="bookmark" size={13} color={BLUE_TITLE} /></View>}
             <Text style={[styles.cardTitle, { color: theme.textPrimary }]} numberOfLines={1}>
               {note.title || "ללא כותרת"}
             </Text>
@@ -457,10 +457,10 @@ function NoteCard({ note, index, theme, styles, onOpen, onLong, onDelete }) {
             </View>
           )}
           <View style={styles.cardFoot}>
-            <Text style={styles.readTime}>🕐 {fmtUpdated(note.updatedAt)}</Text>
-            <Text style={styles.readTime}>⏱️ {mins} דק׳</Text>
+            <Text style={styles.readTime}>{fmtUpdated(note.updatedAt)}</Text>
+            <Text style={styles.readTime}>{mins} דק׳</Text>
             {note.isChecklist && (
-              <Text style={styles.badge}>✅ {note.checklist.filter((i) => i.done).length}/{note.checklist.length}</Text>
+              <Text style={styles.badge}>{note.checklist.filter((i) => i.done).length}/{note.checklist.length}</Text>
             )}
           </View>
         </TouchableOpacity>
@@ -479,7 +479,7 @@ function Sheet({ visible, onClose, theme, title, children }) {
             <View style={{ backgroundColor: theme.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: insets.bottom + 20, maxHeight: "80%" }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                 <Text style={{ color: theme.textPrimary, fontSize: 18, fontFamily: FONTS.bold, flex: 1, textAlign: "right" }}>{title}</Text>
-                <TouchableOpacity onPress={onClose}><Text style={{ color: theme.textMuted, fontSize: 18, fontFamily: FONTS.bold, marginStart: 12 }}>✕</Text></TouchableOpacity>
+                <Bounce onPress={onClose} style={{ marginStart: 12 }}><Icon name="x" size={18} color={theme.textMuted} /></Bounce>
               </View>
               <ScrollView showsVerticalScrollIndicator={false}>{children}</ScrollView>
             </View>
@@ -490,15 +490,38 @@ function Sheet({ visible, onClose, theme, title, children }) {
   );
 }
 
-function ActionRow({ theme, label, onPress, danger, muted }) {
+function ActionRow({ theme, label, icon, onPress, danger, muted }) {
   return (
-    <TouchableOpacity
-      style={{ backgroundColor: theme.surfaceAlt, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 16, opacity: muted ? 0.5 : 1 }}
-      onPress={onPress}
-      activeOpacity={0.7}
+    <Bounce
+      scaleTo={0.95}
+      style={{
+        flexDirection: I18nManager.isRTL ? "row" : "row-reverse",
+        alignItems: "center",
+        gap: 12,
+        backgroundColor: theme.surfaceAlt,
+        borderRadius: 16,
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        opacity: muted ? 0.5 : 1,
+      }}
+      onPress={() => {
+        hapticLight();
+        onPress();
+      }}
     >
-      <Text style={{ color: danger ? theme.danger : theme.textPrimary, fontSize: 15, fontFamily: FONTS.bold, textAlign: "right" }}>{label}</Text>
-    </TouchableOpacity>
+      <Icon name={icon || "chevron-left"} size={18} color={danger ? theme.danger : theme.accent} />
+      <Text
+        style={{
+          flex: 1,
+          color: danger ? theme.danger : theme.textPrimary,
+          fontSize: 15,
+          fontFamily: FONTS.bold,
+          textAlign: "right",
+        }}
+      >
+        {label}
+      </Text>
+    </Bounce>
   );
 }
 
@@ -523,7 +546,7 @@ function makeStyles(t, fs) {
     // stretches the filter chips into full-height bars.
     tagRowScroll: { flexGrow: 0, marginBottom: 8 },
     tagRow: { paddingHorizontal: 14, gap: 8, alignItems: "center" },
-    tag: { height: 36, paddingHorizontal: 14, borderRadius: 28, backgroundColor: t.surface, borderWidth: 1, borderColor: t.hairline, alignItems: "center", justifyContent: "center" },
+    tag: { height: 36, paddingHorizontal: 14, borderRadius: 24, backgroundColor: t.surface, borderWidth: 1, borderColor: t.hairline, alignItems: "center", justifyContent: "center" },
     tagText: { fontSize: 13 * fs, fontFamily: FONTS.semibold },
     grid: { flexDirection: "row", flexWrap: "wrap" },
     masonry: { flexDirection: "row", gap: 10, alignItems: "flex-start" },

@@ -4,23 +4,23 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeIn } from "react-native-reanimated";
 
 import Bounce from "../components/Bounce";
-import Card from "../components/Card";
 import Icon from "../components/Icon";
+
 import { BusinessProvider } from "../context/BusinessContext";
 import { hapticLight } from "../utils/haptics";
 import { FLUID, SCREEN_IN } from "../utils/motion";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
-import { CARD_SHADOW, TYPE, UI } from "../utils/ui";
+import { CARD_SHADOW, UI } from "../utils/ui";
 import BizDashboardScreen from "./BizDashboardScreen";
 import DebtsScreen from "./DebtsScreen";
 import POSScreen from "./POSScreen";
 import PricingScreen from "./PricingScreen";
 import PromosScreen from "./PromosScreen";
+import SuppliersScreen from "./SuppliersScreen";
 import WarehouseScreen from "./WarehouseScreen";
 import ZReportScreen from "./ZReportScreen";
 
-// "העסק שלי" — a pill sub-navigation over eight business modules. All are
-// live except ספקים, which is still a scaffold.
+// "העסק שלי" — a pill sub-navigation over eight business modules, all live.
 
 const MODULES = [
   { key: "pos", label: "קופה", icon: "shopping-cart" },
@@ -32,22 +32,6 @@ const MODULES = [
   { key: "pricing", label: "תמחור", icon: "tag" },
   { key: "dash", label: "דשבורד", icon: "bar-chart-2" },
 ];
-
-function ModuleScaffold({ icon, title }) {
-  return (
-    <View style={s.scaffold}>
-      <Card style={s.scaffoldCard}>
-        <View style={s.scaffoldBadge}>
-          <Icon name={icon} size={34} color={UI.violet} />
-        </View>
-        <Text style={s.scaffoldTitle}>{title}</Text>
-        <View style={s.scaffoldPill}>
-          <Text style={s.scaffoldPillText}>בבנייה · בקרוב</Text>
-        </View>
-      </Card>
-    </View>
-  );
-}
 
 function BusinessShell() {
   const insets = useSafeAreaInsets();
@@ -67,12 +51,11 @@ function BusinessShell() {
         return <PromosScreen />;
       case "pricing":
         return <PricingScreen />;
+      case "suppliers":
+        return <SuppliersScreen />;
       case "dash":
+      default:
         return <BizDashboardScreen />;
-      default: {
-        const m = MODULES.find((x) => x.key === module);
-        return <ModuleScaffold icon={m.icon} title={m.label} />;
-      }
     }
   };
 
@@ -144,23 +127,4 @@ const s = StyleSheet.create({
   },
   pillText: { fontFamily: FONTS.semibold, fontSize: 13.5, color: UI.inkSoft },
 
-  scaffold: { flex: 1, alignItems: "center", justifyContent: "center", paddingBottom: 80 },
-  scaffoldCard: { alignItems: "center", paddingVertical: 34, width: "80%" },
-  scaffoldBadge: {
-    width: 84,
-    height: 84,
-    borderRadius: 30,
-    backgroundColor: UI.violet + "12",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 18,
-  },
-  scaffoldTitle: { fontFamily: FONTS.bold, fontSize: TYPE.title, color: UI.ink, marginBottom: 12 },
-  scaffoldPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 16,
-    backgroundColor: UI.cyan + "16",
-  },
-  scaffoldPillText: { fontFamily: FONTS.semibold, fontSize: TYPE.caption, color: "#0E7490" },
 });

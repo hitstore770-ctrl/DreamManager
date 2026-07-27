@@ -8,14 +8,14 @@ export const NOTES_THEME = {
   scheme: "light",
 
   // Surfaces — clean whites and very soft greys, no heavy color blocks.
-  background: "#F9FAFC", // soft grey canvas
+  background: "#F4F6F9", // soft grey canvas
   surface: "#FFFFFF", // clean white cards
-  surfaceAlt: "#F9FAFC", // subtle raised / input fill
+  surfaceAlt: "#F4F6F9", // subtle raised / input fill
   surfaceMuted: "#EEF1F4", // chips / progress track
 
   // Ink.
   textPrimary: "#111827",
-  textSecondary: "#4B5563",
+  textSecondary: "#6B7280",
   textMuted: "#9CA3AF",
 
   // Hairlines.

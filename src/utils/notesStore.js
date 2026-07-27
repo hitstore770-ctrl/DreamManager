@@ -53,7 +53,7 @@ export function textToChecklist(text) {
 }
 
 export function checklistToText(items) {
-  return (items || []).map((i) => `${i.done ? "✓" : "•"} ${i.text}`).join("\n");
+  return (items || []).map((i) => `${i.done ? "[v]" : "[ ]"} ${i.text}`).join("\n");
 }
 
 // Pull #hashtags out of free text (Unicode-aware, so Hebrew tags work), and

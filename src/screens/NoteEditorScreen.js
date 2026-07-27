@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  I18nManager,
   Keyboard,
   KeyboardAvoidingView,
   Linking,
@@ -34,14 +35,14 @@ import HebrewDateTools from "../components/notes/HebrewDateTools";
 
 // ---------------------------------------------------------------------------
 // Dual-mode note editor:
-//  • Zen 🪶 (default): pure white page, just a title and a huge body input.
-//  • Pro ✨: soft-grey "work mode" with a rich-text toolbar that slides up
+//  • Zen (default): pure white page, just a title and a huge body input.
+//  • Pro: soft-grey "work mode" with a rich-text toolbar that slides up
 //    and pins above the keyboard (KeyboardAvoidingView).
 // The mode is remembered per note.
 // ---------------------------------------------------------------------------
 
 const ZEN_BG = "#FFFFFF";
-const PRO_BG = "#F9FAFC";
+const PRO_BG = "#F4F6F9";
 const HIGHLIGHT_BG = "#FFF3B0";
 const INK_RED = "#D32F2F";
 const INK_BLUE = "#1565C0";
@@ -51,19 +52,19 @@ const INK_BLUE = "#1565C0";
 const SMART_TEMPLATES = [
   {
     key: "restock",
-    emoji: "🥤",
+    icon: "cafe-outline",
     label: "מילוי מכונת שתייה",
     text: "מילוי מכונה: מיקום: ___ | פחיות שהוכנסו: ___ | נגבה מהמכונה: ___",
   },
   {
     key: "import",
-    emoji: "📦",
+    icon: "package",
     label: "הזמנת ייבוא",
     text: "הזמנת ייבוא: מוצר: ___ | ספק: ___ | עלות $: ___ | הגעה משוערת: ___",
   },
   {
     key: "meeting",
-    emoji: "📋",
+    icon: "clipboard",
     label: "סיכום פגישה / רעיון",
     text: "סיכום פגישה/רעיון: ",
   },
@@ -258,9 +259,9 @@ export default function NoteEditorScreen({ route, navigation }) {
 
   const noteAsText = () => {
     const content = note.isChecklist
-      ? note.checklist.map((i) => `${i.done ? "✓" : "•"} ${i.text}`).join("\n")
+      ? note.checklist.map((i) => `${i.done ? "[v]" : "[ ]"} ${i.text}`).join("\n")
       : body;
-    return `📝 ${title || "הערה"}\n\n${content}`;
+    return `${title || "הערה"}\n\n${content}`;
   };
 
   const shareNote = async () => {
@@ -365,7 +366,7 @@ export default function NoteEditorScreen({ route, navigation }) {
             onPress={() => toggleItem(item.id)}
             scaleTo={0.85}
           >
-            {item.done && <Text style={s.checkMark}>✓</Text>}
+            {item.done && <Icon name="check" size={14} color="#FFF" />}
           </Bounce>
           <TextInput
             style={[
@@ -407,7 +408,7 @@ export default function NoteEditorScreen({ route, navigation }) {
           onPress={toggleMode}
           activeOpacity={0.75}
         >
-          <Text style={[s.modePillText, pro && { color: "#FFF" }]}>{pro ? "Pro ✨" : "Zen 🪶"}</Text>
+          <Text style={[s.modePillText, pro && { color: "#FFF" }]}>{pro ? "Pro" : "Zen"}</Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }} />
         <View style={s.headerActions}>
@@ -416,17 +417,17 @@ export default function NoteEditorScreen({ route, navigation }) {
             onPress={() => { hapticLight(); patchNote({ pinned: !note.pinned }); }}
             activeOpacity={0.7}
           >
-            <Text style={s.icon}>📌</Text>
+            <Icon name="bookmark" size={19} color={theme.textPrimary} />
           </TouchableOpacity>
           <TouchableOpacity style={s.iconBtn} onPress={shareNote} activeOpacity={0.7}>
-            <Text style={s.icon}>📤</Text>
+            <Icon name="share-2" size={19} color={theme.textPrimary} />
           </TouchableOpacity>
           <TouchableOpacity
             style={[s.iconBtn, note.locked && { backgroundColor: theme.accent }]}
             onPress={() => { hapticLight(); patchNote({ locked: !note.locked }); }}
             activeOpacity={0.7}
           >
-            <Text style={s.icon}>{note.locked ? "🔒" : "🔓"}</Text>
+            <Icon name={note.locked ? "lock" : "unlock"} size={19} color={theme.textPrimary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -535,9 +536,8 @@ export default function NoteEditorScreen({ route, navigation }) {
           >
             {links.map((l) => (
               <TouchableOpacity key={l.label} style={s.linkChip} onPress={() => openLink(l)} activeOpacity={0.7}>
-                <Text style={s.linkChipText}>
-                  {l.type === "phone" ? "📞" : "🔗"} {l.label}
-                </Text>
+                <Icon name={l.type === "phone" ? "phone" : "link-2"} size={13} color={theme.accent} />
+                <Text style={s.linkChipText}>{l.label}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -608,11 +608,11 @@ export default function NoteEditorScreen({ route, navigation }) {
 
         {/* Bottom status line: date · counters · autosave */}
         <View style={[s.bottomLine, { paddingBottom: Math.max(insets.bottom, 8), backgroundColor: pro ? PRO_BG : ZEN_BG }]}>
-          <Text style={s.bottomText}>{savedAt ? "נשמר ✓" : "שמירה אוטומטית"}</Text>
+          <Text style={s.bottomText}>{savedAt ? "נשמר" : "שמירה אוטומטית"}</Text>
           <Text style={s.bottomText}>
             {counts.words} מילים · {counts.chars} תווים{sum.count > 0 ? ` · Σ ${sum.total}` : ""}
           </Text>
-          <Text style={s.bottomText} numberOfLines={1}>📅 {today.formatted}</Text>
+          <Text style={s.bottomText} numberOfLines={1}>{today.formatted}</Text>
         </View>
       </KeyboardAvoidingView>
 
@@ -622,7 +622,7 @@ export default function NoteEditorScreen({ route, navigation }) {
           <View style={s.calcBackdrop}>
             <TouchableWithoutFeedback onPress={() => {}}>
               <View style={s.calcCard}>
-                <Text style={s.calcTitle}>🧮 מחשבון מרחף</Text>
+                <View style={s.calcTitleRow}><Icon name="calculator-outline" size={17} color={theme.accent} /><Text style={s.calcTitle}>מחשבון מרחף</Text></View>
                 <View style={s.calcDisplay}>
                   <Text style={s.calcExpr}>{calcExpr || "0"}</Text>
                   <Text style={s.calcResult}>{calcValue !== null ? `= ${calcValue}` : ""}</Text>
@@ -675,15 +675,14 @@ export default function NoteEditorScreen({ route, navigation }) {
           <View style={s.calcBackdrop}>
             <TouchableWithoutFeedback onPress={() => {}}>
               <View style={s.calcCard}>
-                <Text style={s.calcTitle}>🪄 תבניות עסקיות</Text>
+                <View style={s.calcTitleRow}><Icon name="color-wand-outline" size={17} color={theme.accent} /><Text style={s.calcTitle}>תבניות עסקיות</Text></View>
                 {SMART_TEMPLATES.map((tpl) => (
                   <TouchableOpacity key={tpl.key} style={s.tplRow} onPress={() => insertTemplate(tpl)} activeOpacity={0.8}>
-                    <Text style={s.tplPlus}>＋</Text>
+                    <Icon name={tpl.icon} size={17} color={theme.accent} />
                     <View style={{ flex: 1 }}>
                       <Text style={s.tplLabel}>{tpl.label}</Text>
                       <Text style={s.tplPreview} numberOfLines={1}>{tpl.text}</Text>
                     </View>
-                    <Text style={s.tplEmoji}>{tpl.emoji}</Text>
                   </TouchableOpacity>
                 ))}
                 <TouchableOpacity
@@ -767,7 +766,7 @@ function makeStyles(t, fsScale) {
     tagPill: { backgroundColor: t.accent + "18", borderRadius: 14, paddingHorizontal: 12, paddingVertical: 6 },
     tagPillText: { color: t.accent, fontSize: 13 * fsScale, fontFamily: FONTS.bold },
 
-    mathChip: { backgroundColor: t.accent + "18", borderRadius: 28, paddingHorizontal: 14, paddingVertical: 8, marginEnd: 8 },
+    mathChip: { backgroundColor: t.accent + "18", borderRadius: 24, paddingHorizontal: 14, paddingVertical: 8, marginEnd: 8 },
     mathChipText: { color: t.accent, fontSize: 14 * fsScale, fontFamily: FONTS.bold },
 
     // Pro toolbar card (pinned above the keyboard by KeyboardAvoidingView).
@@ -794,8 +793,10 @@ function makeStyles(t, fsScale) {
 
     linksRow: { flexGrow: 0, marginBottom: 6 },
     linkChip: {
+      flexDirection: I18nManager.isRTL ? "row" : "row-reverse",
+      gap: 6,
       minHeight: 40,
-      borderRadius: 28,
+      borderRadius: 24,
       backgroundColor: t.accent + "10",
       paddingHorizontal: 14,
       alignItems: "center",
@@ -829,12 +830,11 @@ function makeStyles(t, fsScale) {
 
     calcBackdrop: { flex: 1, backgroundColor: t.overlay, justifyContent: "flex-end" },
     calcCard: { backgroundColor: t.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, ...SHADOW },
-    calcTitle: { color: t.textPrimary, fontSize: 17, fontFamily: FONTS.bold, textAlign: "right", marginBottom: 12 },
+    calcTitle: { color: t.textPrimary, fontSize: 17, fontFamily: FONTS.bold, textAlign: "right" },
+    calcTitleRow: { flexDirection: I18nManager.isRTL ? "row" : "row-reverse", alignItems: "center", gap: 8, marginBottom: 12 },
     tplRow: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: t.surfaceAlt, borderRadius: RADIUS_SM, padding: 14, marginBottom: 8, minHeight: 56 },
-    tplEmoji: { fontSize: 24 },
     tplLabel: { color: t.textPrimary, fontSize: 15 * fsScale, fontFamily: FONTS.bold, textAlign: "right" },
     tplPreview: { color: t.textMuted, fontSize: 12 * fsScale, fontFamily: FONTS.regular, textAlign: "right", marginTop: 2 },
-    tplPlus: { color: t.accent, fontSize: 22, fontFamily: FONTS.bold },
     calcDisplay: { backgroundColor: t.surfaceAlt, borderRadius: RADIUS_SM, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: t.hairline },
     calcExpr: { color: t.textPrimary, fontSize: 24, fontFamily: FONTS.bold, textAlign: "left" },
     calcResult: { color: t.accent, fontSize: 16, fontFamily: FONTS.medium, textAlign: "left", marginTop: 4 },

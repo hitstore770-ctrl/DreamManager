@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as Clipboard from "expo-clipboard";
 import { Linking, Platform, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
+import Icon from "../Icon";
 import Slider from "./Slider";
 import { useSettings } from "../../context/SettingsContext";
 import { hapticLight, hapticSuccess, hapticWarning } from "../../utils/haptics";
@@ -14,9 +15,9 @@ import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
 // renders inside the hub's bottom sheet.
 
 const WHITE = "#FFFFFF";
-const CARD = "#F9FAFC";
+const CARD = "#F4F6F9";
 const INK = "#111827";
-const INK_SOFT = "#4B5563";
+const INK_SOFT = "#6B7280";
 const INK_MUTED = "#9CA3AF";
 const BLUE = "#7C3AED";
 const GOLD = "#06B6D4";
@@ -132,6 +133,16 @@ function useCalcHaptic(value) {
     if (value === null || value === undefined || value === "") return;
     hapticLight();
   }, [value]);
+}
+
+// A button face: a vector icon and its label on one row — no emoji anywhere.
+function BtnLabel({ icon, text, style, color = WHITE }) {
+  return (
+    <View style={s.btnLabel}>
+      <Icon name={icon} size={16} color={color} />
+      <Text style={style}>{text}</Text>
+    </View>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -366,7 +377,7 @@ export function RnUiGenerator() {
         <Text style={s.snippetText}>{snippet}</Text>
       </View>
       <TouchableOpacity style={[s.actionBtn, copied && { backgroundColor: GREEN }]} onPress={copy} activeOpacity={0.85}>
-        <Text style={s.actionText}>{copied ? "✓ הועתק" : "📋 העתק את הסגנון"}</Text>
+        <BtnLabel icon={copied ? "check" : "copy"} text={copied ? "הועתק" : "העתק את הסגנון"} style={s.actionText} />
       </TouchableOpacity>
     </View>
   );
@@ -416,7 +427,7 @@ export function AliImportCalc() {
 
       <TouchableOpacity style={s.checkRow} onPress={() => { hapticLight(); setVat((v) => !v); }} activeOpacity={0.75}>
         <View style={[s.checkbox, vat && { backgroundColor: BLUE, borderColor: BLUE }]}>
-          {vat && <Text style={s.checkMark}>✓</Text>}
+          {vat && <Icon name="check" size={13} color={WHITE} />}
         </View>
         <Text style={s.checkLabel}>הוסף מע״מ {vatPct}% למחיר המכירה</Text>
       </TouchableOpacity>
@@ -431,7 +442,7 @@ export function AliImportCalc() {
             <Stat label="עלות נחיתה בשקלים" value={shekel(r.landedIls)} />
             <Stat label="רווח מהמחיר" value={`${r.marginOfPrice}%`} />
           </View>
-          <Text style={[s.hint, { color: INK_SOFT }]}>💡 מחיר מדף מומלץ (עיגול ל-5): {shekel(r.rounded)}</Text>
+          <Text style={[s.hint, { color: INK_SOFT }]}>מחיר מדף מומלץ (עיגול ל-5): {shekel(r.rounded)}</Text>
           <Text style={s.hint}>
             הרווח מחושב לפני מע״מ — המע״מ נגבה מהלקוח ומועבר למדינה, ולכן אינו חלק מהרווח.
           </Text>
@@ -448,16 +459,16 @@ export function AliImportCalc() {
 // ---------------------------------------------------------------------------
 // Daily boarding-school schedule used for the "next up" countdown.
 const ROUTINE = [
-  { at: "07:15", label: "שחרית", emoji: "🌅" },
-  { at: "08:30", label: "ארוחת בוקר", emoji: "🍞" },
-  { at: "09:15", label: "סדר א׳", emoji: "📖" },
-  { at: "12:30", label: "ארוחת צהריים", emoji: "🍽️" },
-  { at: "13:30", label: "מנוחה", emoji: "😴" },
-  { at: "15:00", label: "סדר ב׳", emoji: "📚" },
-  { at: "18:00", label: "מנחה", emoji: "🕊️" },
-  { at: "19:00", label: "ארוחת ערב", emoji: "🥗" },
-  { at: "20:00", label: "סדר ערב", emoji: "🕯️" },
-  { at: "22:30", label: "כיבוי אורות", emoji: "🌙" },
+  { at: "07:15", label: "שחרית", icon: "sunrise" },
+  { at: "08:30", label: "ארוחת בוקר", icon: "coffee" },
+  { at: "09:15", label: "סדר א׳", icon: "book-open" },
+  { at: "12:30", label: "ארוחת צהריים", icon: "restaurant-outline" },
+  { at: "13:30", label: "מנוחה", icon: "bed-outline" },
+  { at: "15:00", label: "סדר ב׳", icon: "book" },
+  { at: "18:00", label: "מנחה", icon: "sunset" },
+  { at: "19:00", label: "ארוחת ערב", icon: "restaurant-outline" },
+  { at: "20:00", label: "סדר ערב", icon: "book" },
+  { at: "22:30", label: "כיבוי אורות", icon: "moon" },
 ];
 
 function minutesOfDay(hhmm) {
@@ -513,13 +524,13 @@ export function ZmanimRoutine() {
       <View style={s.hebCard}>
         <Text style={s.hebDate}>{heb.formatted}</Text>
         <Text style={s.hebSub}>
-          {hebrewWeekday(now)} · {now.toLocaleDateString("he-IL")} · 📍 {JERUSALEM.name}
+          {hebrewWeekday(now)} · {now.toLocaleDateString("he-IL")} · {JERUSALEM.name}
         </Text>
       </View>
 
       {/* Next up */}
       <View style={s.nextCard}>
-        <Text style={s.nextEmoji}>{next.emoji}</Text>
+        <View style={s.nextBadge}><Icon name={next.icon} size={20} color={BLUE} /></View>
         <View style={{ flex: 1, alignItems: "flex-end" }}>
           <Text style={s.nextLabel}>
             הבא בתור: {next.label}
@@ -534,13 +545,13 @@ export function ZmanimRoutine() {
       {/* Key day times */}
       <View style={s.zGrid}>
         {[
-          { label: "זריחה", value: z.sunrise, emoji: "🌄" },
-          { label: "חצות", value: z.midday, emoji: "☀️" },
-          { label: "שקיעה", value: z.sunset, emoji: "🌇", gold: true },
-          { label: "צאת הכוכבים", value: z.nightfall, emoji: "🌃" },
+          { label: "זריחה", value: z.sunrise, icon: "sunrise" },
+          { label: "חצות", value: z.midday, icon: "sun" },
+          { label: "שקיעה", value: z.sunset, icon: "sunset", gold: true },
+          { label: "צאת הכוכבים", value: z.nightfall, icon: "moon" },
         ].map((r) => (
           <View key={r.label} style={[s.zTile, r.gold && { backgroundColor: GOLD + "16" }]}>
-            <Text style={{ fontSize: 17 }}>{r.emoji}</Text>
+            <Icon name={r.icon} size={18} color={r.gold ? "#0E7490" : BLUE} />
             <Text style={[s.zTileTime, r.gold && { color: "#0E7490" }]}>{fmtTime(r.value)}</Text>
             <Text style={s.zTileLabel}>{r.label}</Text>
           </View>
@@ -555,6 +566,7 @@ export function ZmanimRoutine() {
         return (
           <View key={r.at} style={[s.routineRow, isNext && { backgroundColor: BLUE + "10" }]}>
             <Text style={[s.routineTime, past && { color: INK_MUTED }, isNext && { color: BLUE }]}>{r.at}</Text>
+            <Icon name={r.icon} size={16} color={isNext ? BLUE : past ? INK_MUTED : INK_SOFT} />
             <Text
               style={[
                 s.routineLabel,
@@ -562,7 +574,7 @@ export function ZmanimRoutine() {
                 isNext && { color: BLUE, fontFamily: FONTS.bold },
               ]}
             >
-              {r.emoji} {r.label}
+              {r.label}
             </Text>
           </View>
         );
@@ -648,22 +660,22 @@ export function JsonValidator() {
         <>
           <View style={[s.banner, { backgroundColor: GREEN + "16" }]}>
             <Text style={[s.bannerText, { color: GREEN }]}>
-              ✓ JSON תקין · {result.type} · {result.keys} מפתחות · {result.size} תווים
+              JSON תקין · {result.type} · {result.keys} מפתחות · {result.size} תווים
             </Text>
           </View>
           <View style={s.row}>
             <TouchableOpacity style={s.actionBtn} onPress={format} activeOpacity={0.85}>
-              <Text style={s.actionText}>✨ עצב מחדש</Text>
+              <BtnLabel icon="align-left" text="עצב מחדש" style={s.actionText} />
             </TouchableOpacity>
             <TouchableOpacity style={[s.actionBtn, { backgroundColor: CARD }]} onPress={copy} activeOpacity={0.85}>
-              <Text style={[s.actionText, { color: INK_SOFT }]}>📋 העתק</Text>
+              <BtnLabel icon="copy" text="העתק" color={INK_SOFT} style={[s.actionText, { color: INK_SOFT }]} />
             </TouchableOpacity>
           </View>
         </>
       )}
       {result.state === "invalid" && (
         <View style={[s.banner, { backgroundColor: RED + "14" }]}>
-          <Text style={[s.bannerText, { color: RED }]}>✕ JSON לא תקין</Text>
+          <Text style={[s.bannerText, { color: RED }]}>JSON לא תקין</Text>
           <Text style={[s.bannerSub, { color: RED }]}>{result.error}</Text>
         </View>
       )}
@@ -757,7 +769,7 @@ export function QrGenerator() {
         </Text>
       </View>
       <TouchableOpacity style={s.actionBtn} onPress={copy} activeOpacity={0.85}>
-        <Text style={s.actionText}>📋 העתק את הטקסט</Text>
+        <BtnLabel icon="copy" text="העתק את הטקסט" style={s.actionText} />
       </TouchableOpacity>
     </View>
   );
@@ -832,7 +844,7 @@ export function TransitLoadCalc() {
               {r.loadedKg} ק״ג · {r.pct}% מהמטען
             </Text>
             <Text style={s.loadMeta}>
-              {r.over ? "🚨 חריגה ממשקל חוקי" : `נשארו עוד ${r.left} ארגזים`}
+              {r.over ? "חריגה ממשקל חוקי" : `נשארו עוד ${r.left} ארגזים`}
             </Text>
           </View>
 
@@ -989,7 +1001,7 @@ export function PromptBuilder() {
         onPress={copy}
         activeOpacity={0.85}
       >
-        <Text style={s.bigBtnText}>{copied ? "✓ הפרומפט הועתק" : "📋 העתק פרומפט"}</Text>
+        <BtnLabel icon={copied ? "check" : "copy"} text={copied ? "הפרומפט הועתק" : "העתק פרומפט"} style={s.bigBtnText} />
       </TouchableOpacity>
     </View>
   );
@@ -1071,7 +1083,7 @@ export function SlowMoFps() {
             return (
               <View key={speed} style={s.routineRow}>
                 <Text style={[s.routineTime, { color: smooth ? GREEN : RED }]}>
-                  {smooth ? "✓ חלק" : "✕ מגמגם"}
+                  {smooth ? "חלק" : "מגמגם"}
                 </Text>
                 <Text style={s.routineLabel}>{speed}% מהמהירות</Text>
               </View>
@@ -1119,10 +1131,10 @@ export function DormSplitter() {
   const message = useMemo(
     () =>
       [
-        `💸 ${label.trim() || "הוצאה משותפת"}`,
+        `${label.trim() || "הוצאה משותפת"}`,
         `סה״כ: ${shekel(r.sum)}`,
         `מתחלק ל-${r.n} → ${shekel(r.per)} לכל אחד`,
-        "תעבירו לי כשנוח 🙏",
+        "תעבירו לי כשנוח.",
       ].join("\n"),
     [label, r.sum, r.n, r.per]
   );
@@ -1188,7 +1200,7 @@ export function DormSplitter() {
         activeOpacity={0.75}
       >
         <View style={[s.checkbox, roundUp && { backgroundColor: BLUE, borderColor: BLUE }]}>
-          {roundUp && <Text style={s.checkMark}>✓</Text>}
+          {roundUp && <Icon name="check" size={13} color={WHITE} />}
         </View>
         <Text style={s.checkLabel}>עגל לשקל שלם (קל יותר להעביר)</Text>
       </TouchableOpacity>
@@ -1207,16 +1219,19 @@ export function DormSplitter() {
           )}
 
           <TouchableOpacity style={[s.bigBtn, { backgroundColor: "#25D366" }]} onPress={sendWhatsApp} activeOpacity={0.85}>
-            <Text style={s.bigBtnText}>💬 בקש כסף בוואטסאפ</Text>
+            <BtnLabel icon="message-circle" text="בקש כסף בוואטסאפ" style={s.bigBtnText} />
           </TouchableOpacity>
           <TouchableOpacity
             style={[s.bigBtn, { backgroundColor: CARD }, copied && { backgroundColor: GREEN }]}
             onPress={copyMessage}
             activeOpacity={0.85}
           >
-            <Text style={[s.bigBtnText, !copied && { color: INK_SOFT }]}>
-              {copied ? "✓ ההודעה הועתקה" : "📋 העתק את ההודעה"}
-            </Text>
+            <BtnLabel
+              icon={copied ? "check" : "copy"}
+              text={copied ? "ההודעה הועתקה" : "העתק את ההודעה"}
+              color={copied ? WHITE : INK_SOFT}
+              style={[s.bigBtnText, !copied && { color: INK_SOFT }]}
+            />
           </TouchableOpacity>
           <View style={s.msgPreview}>
             <Text style={s.msgPreviewText}>{message}</Text>
@@ -1284,7 +1299,7 @@ export function VatDiscount() {
         activeOpacity={0.75}
       >
         <View style={[s.checkbox, vatOn && { backgroundColor: BLUE, borderColor: BLUE }]}>
-          {vatOn && <Text style={s.checkMark}>✓</Text>}
+          {vatOn && <Icon name="check" size={13} color={WHITE} />}
         </View>
         <Text style={s.checkLabel}>הוסף מע״מ למחיר הסופי</Text>
       </TouchableOpacity>
@@ -1371,7 +1386,7 @@ const s = StyleSheet.create({
   checkMark: { color: WHITE, fontFamily: FONTS.bold, fontSize: 14 },
   checkLabel: { flex: 1, fontFamily: FONTS.medium, fontSize: 13, color: INK_SOFT, textAlign: "right" },
 
-  previewStage: { backgroundColor: "#EDF0F4", borderRadius: 28, padding: 22, marginBottom: 6 },
+  previewStage: { backgroundColor: "#EDF0F4", borderRadius: 24, padding: 22, marginBottom: 6 },
   previewTitle: { fontFamily: FONTS.bold, fontSize: 16, color: INK },
   previewSub: { fontFamily: FONTS.regular, fontSize: 12, color: INK_MUTED, marginTop: 3 },
   snippetBox: { backgroundColor: "#0E1729", borderRadius: 14, padding: 12, marginTop: 4 },
@@ -1393,8 +1408,9 @@ const s = StyleSheet.create({
   bannerSub: { fontFamily: FONTS.regular, fontSize: 11, textAlign: "right", marginTop: 4, lineHeight: 17 },
   actionBtn: { flex: 1, minHeight: 50, borderRadius: 14, backgroundColor: BLUE, alignItems: "center", justifyContent: "center" },
   actionText: { fontFamily: FONTS.bold, fontSize: 14, color: WHITE },
+  btnLabel: { flexDirection: "row", alignItems: "center", gap: 8 },
 
-  hebCard: { backgroundColor: CARD, borderRadius: 28, padding: 16, alignItems: "center" },
+  hebCard: { backgroundColor: CARD, borderRadius: 24, padding: 16, alignItems: "center" },
   hebDate: { fontFamily: FONTS.bold, fontSize: 20, color: INK, textAlign: "center" },
   hebSub: { fontFamily: FONTS.regular, fontSize: 12, color: INK_MUTED, marginTop: 4, textAlign: "center" },
 
@@ -1403,11 +1419,18 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     backgroundColor: BLUE + "0E",
-    borderRadius: 28,
+    borderRadius: 24,
     padding: 14,
     minHeight: 66,
   },
-  nextEmoji: { fontSize: 26 },
+  nextBadge: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: BLUE + "14",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   nextLabel: { fontFamily: FONTS.bold, fontSize: 15, color: BLUE },
   nextTime: { fontFamily: FONTS.medium, fontSize: 12, color: INK_SOFT, marginTop: 2 },
 
@@ -1495,7 +1518,7 @@ const s = StyleSheet.create({
 
   resultInline: { fontFamily: FONTS.bold, fontSize: 18, color: BLUE },
 
-  bigBtn: { minHeight: 54, borderRadius: 28, backgroundColor: BLUE, alignItems: "center", justifyContent: "center" },
+  bigBtn: { minHeight: 54, borderRadius: 24, backgroundColor: BLUE, alignItems: "center", justifyContent: "center" },
   bigBtnText: { fontFamily: FONTS.bold, fontSize: 15, color: WHITE },
 
   msgPreview: { backgroundColor: CARD, borderRadius: 14, padding: 12 },

@@ -76,7 +76,7 @@ export default function DreamDetailScreen({ route, navigation }) {
     setDreamPricing(dream.id, { cost: Number(cost) || 0, price: Number(price) || 0 });
     setCostInput(null);
     setPriceInput(null);
-    alert("התמחור נשמר ✓");
+    alert("התמחור נשמר ");
   };
 
   const handleAddMilestone = () => {
@@ -161,7 +161,7 @@ export default function DreamDetailScreen({ route, navigation }) {
               onPress={handlePickImage}
               activeOpacity={0.85}
             >
-              <Text style={styles.visionEditIcon}>✏️</Text>
+ <Text style={styles.visionEditIcon}></Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -170,12 +170,12 @@ export default function DreamDetailScreen({ route, navigation }) {
             onPress={handlePickImage}
             activeOpacity={0.85}
           >
-            <Text style={styles.visionAddButtonText}>הוסף תמונת השראה 📷</Text>
+ <Text style={styles.visionAddButtonText}>הוסף תמונת השראה </Text>
           </TouchableOpacity>
         )}
 
         <TouchableOpacity style={styles.exportButton} onPress={handleExport} activeOpacity={0.85}>
-          <Text style={styles.exportButtonText}>🖨️ ייצא למחברת A5</Text>
+ <Text style={styles.exportButtonText}> ייצא למחברת A5</Text>
         </TouchableOpacity>
 
         <View style={styles.card}>
@@ -279,12 +279,12 @@ export default function DreamDetailScreen({ route, navigation }) {
                   onPress={() => removeMilestone(dream.id, m.id)}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.deleteButtonText}>✕</Text>
+ <Text style={styles.deleteButtonText}></Text>
                 </TouchableOpacity>
                 <View style={styles.milestoneInfo}>
                   <Text style={styles.milestoneTitle}>{m.title}</Text>
                   <Text style={styles.milestoneMeta}>
-                    יעד: {formatAmount(m.target, dream.type)} · 🪙 {m.coins}
+                    יעד: {formatAmount(m.target, dream.type)} ·  {m.coins}
                   </Text>
                 </View>
                 <View
@@ -299,7 +299,7 @@ export default function DreamDetailScreen({ route, navigation }) {
                       { color: m.released ? "#FFFFFF" : COLORS.textPrimary },
                     ]}
                   >
-                    {m.released ? "שוחרר ✓" : "ממתין"}
+                    {m.released ? "שוחרר ": "ממתין"}
                   </Text>
                 </View>
               </View>
@@ -332,7 +332,7 @@ export default function DreamDetailScreen({ route, navigation }) {
                   style={styles.miniInput}
                   value={msCoins}
                   onChangeText={setMsCoins}
-                  placeholder="מטבעות 🪙"
+                  placeholder="מטבעות "
                   placeholderTextColor={COLORS.textMuted}
                   keyboardType="numeric"
                   textAlign="right"
@@ -388,7 +388,7 @@ export default function DreamDetailScreen({ route, navigation }) {
                     task.isCompleted && { backgroundColor: category.color },
                   ]}
                 >
-                  {task.isCompleted && <Text style={styles.checkboxMark}>✓</Text>}
+                  {task.isCompleted && <Text style={styles.checkboxMark}></Text>}
                 </View>
                 <Text style={[styles.taskText, task.isCompleted && styles.taskTextCompleted]}>
                   {task.text}

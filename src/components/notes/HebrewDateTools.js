@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { I18nManager, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 import { useSettings } from "../../context/SettingsContext";
 import {
@@ -10,12 +10,14 @@ import {
   hebrewWeekday,
   numberToHebrew,
 } from "../../utils/hebrewDate";
+import Icon from "../Icon";
 import { NOTES_FONTS as FONTS, NOTES_THEME } from "../../utils/notesTheme";
+import { computeZmanim, fmtTime, JERUSALEM } from "../../utils/zmanim";
 import { RADIUS_SM } from "../../utils/theme";
 
 // The Hebrew Calendar Pro panel: live Hebrew date, a two-way date converter, a
-// "link this note to a Hebrew date" action, plus scaffolded Zmanim and
-// Parashat Hashavua cards (both need location/weekly data wired later).
+// "link this note to a Hebrew date" action, and today's zmanim computed on the
+// device from the sun's position over Jerusalem.
 export default function HebrewDateTools({ onLink, onClose }) {
   const { fontScale } = useSettings();
   const theme = NOTES_THEME;
@@ -44,11 +46,13 @@ export default function HebrewDateTools({ onLink, onClose }) {
   const monthOptions = [];
   for (let i = 1; i <= monthsAvail; i += 1) monthOptions.push(i);
 
+  const zmanim = computeZmanim();
+
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
       <View style={s.headerRow}>
-        <Text style={s.title}>📆 לוח עברי</Text>
-        <TouchableOpacity onPress={onClose}><Text style={s.close}>✕</Text></TouchableOpacity>
+        <View style={s.titleRow}><Icon name="calendar" size={17} color={theme.accent} /><Text style={s.title}>לוח עברי</Text></View>
+        <TouchableOpacity onPress={onClose}><Icon name="x" size={17} color={theme.textMuted} /></TouchableOpacity>
       </View>
 
       {/* Today */}
@@ -69,7 +73,7 @@ export default function HebrewDateTools({ onLink, onClose }) {
         <Text style={s.result}>{gToHeb ? gToHeb.formatted : "תאריך לא תקין"}</Text>
         {gToHeb && (
           <TouchableOpacity style={[s.linkBtn, { backgroundColor: theme.accent }]} onPress={() => onLink({ iso: gDate.toISOString(), formatted: gToHeb.formatted })}>
-            <Text style={s.linkText}>🔗 קשר הערה לתאריך זה</Text>
+            <View style={s.titleRow}><Icon name="link-2" size={14} color="#FFFFFF" /><Text style={s.linkText}>קשר הערה לתאריך זה</Text></View>
           </TouchableOpacity>
         )}
       </View>
@@ -100,21 +104,25 @@ export default function HebrewDateTools({ onLink, onClose }) {
       </View>
 
       {/* Scaffolds */}
-      <Text style={s.section}>זמני היום (בקרוב)</Text>
+      <Text style={s.section}>זמני היום</Text>
       <View style={s.card2}>
-        {["🌅 זריחה", "🕛 חצות היום", "🌇 שקיעה", "✡️ צאת הכוכבים"].map((z) => (
-          <View key={z} style={s.zmanRow}>
-            <Text style={s.zmanValue}>--:--</Text>
-            <Text style={s.zmanName}>{z}</Text>
+        {[
+          { icon: "sunrise", name: "עלות השחר", value: zmanim.dawn },
+          { icon: "sun", name: "זריחה", value: zmanim.sunrise },
+          { icon: "book-open", name: "סוף זמן קריאת שמע", value: zmanim.shemaEnd },
+          { icon: "clock", name: "חצות היום", value: zmanim.midday },
+          { icon: "sunset", name: "שקיעה", value: zmanim.sunset },
+          { icon: "moon", name: "צאת הכוכבים", value: zmanim.nightfall },
+        ].map((z) => (
+          <View key={z.name} style={s.zmanRow}>
+            <Text style={s.zmanValue}>{z.value ? fmtTime(z.value) : "--:--"}</Text>
+            <View style={s.titleRow}>
+              <Icon name={z.icon} size={14} color={theme.textMuted} />
+              <Text style={s.zmanName}>{z.name}</Text>
+            </View>
           </View>
         ))}
-        <Text style={s.hint}>יחושב לפי המיקום שלך בגרסה הבאה.</Text>
-      </View>
-
-      <Text style={s.section}>פרשת השבוע (בקרוב)</Text>
-      <View style={s.card2}>
-        <Text style={s.parashaName}>📖 הפרשה תוצג כאן</Text>
-        <Text style={s.hint}>שילוב לוח הפרשות השבועי מתוכנן לגרסה הבאה.</Text>
+        <Text style={s.hint}>מחושב במכשיר לפי מיקום השמש ב{JERUSALEM.name}.</Text>
       </View>
     </ScrollView>
   );
@@ -138,6 +146,7 @@ function makeStyles(t, fs) {
   return StyleSheet.create({
     headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
     title: { color: t.textPrimary, fontSize: 18 * fs, fontFamily: FONTS.bold },
+    titleRow: { flexDirection: I18nManager.isRTL ? "row" : "row-reverse", alignItems: "center", gap: 7 },
     close: { color: t.textMuted, fontSize: 18, fontFamily: FONTS.bold },
     card: { borderRadius: 28, padding: 18, alignItems: "center", marginBottom: 8, backgroundColor: t.surfaceAlt, borderWidth: 1, borderColor: t.hairline },
     todayLabel: { color: t.textMuted, fontSize: 13 * fs, fontFamily: FONTS.regular },
@@ -154,7 +163,6 @@ function makeStyles(t, fs) {
     zmanRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: t.hairline },
     zmanValue: { color: t.textMuted, fontSize: 14 * fs, fontFamily: FONTS.bold },
     zmanName: { color: t.textPrimary, fontSize: 14 * fs, fontFamily: FONTS.medium },
-    parashaName: { color: t.textPrimary, fontSize: 15 * fs, fontFamily: FONTS.bold, textAlign: "right" },
     hint: { color: t.textMuted, fontSize: 12 * fs, fontFamily: FONTS.regular, textAlign: "right", marginTop: 8 },
   });
 }

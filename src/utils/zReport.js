@@ -42,20 +42,20 @@ export function buildZReportText(sales, d = new Date(), sinceTs = 0, footer = ""
   const { revenue, txCount, units, top, dmgUnits } = aggregateDay(sales, d, sinceTs);
 
   const lines = [
-    `🧾 דוח Z — ${d.toLocaleDateString("he-IL")}`,
+    `דוח Z — ${d.toLocaleDateString("he-IL")}`,
     "━━━━━━━━━━━━━━",
-    `💰 פדיון היום: ${shekel(revenue)}`,
-    `🧺 עסקאות: ${txCount}`,
-    `📦 פריטים שנמכרו: ${units}`,
+    `פדיון היום: ${shekel(revenue)}`,
+    `עסקאות: ${txCount}`,
+    `פריטים שנמכרו: ${units}`,
   ];
   const topLines = top
     .slice(0, 5)
     .map((t) => `  • ${t.name} ×${t.qty} — ${shekel(t.total)}`)
     .join("\n");
   if (topLines) lines.push("", "מובילים:", topLines);
-  if (dmgUnits > 0) lines.push("", `⚠️ פחת/נזק: ${dmgUnits} יח׳`);
+  if (dmgUnits > 0) lines.push("", `פחת/נזק: ${dmgUnits} יח׳`);
   if (footer && footer.trim()) lines.push("", footer.trim());
-  lines.push("", "הופק מ-DreamManager 💼");
+  lines.push("", "הופק מ-DreamManager");
   return lines.join("\n");
 }
 

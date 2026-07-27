@@ -23,7 +23,7 @@ export default function ToolScreen({ route, navigation }) {
           onPress={() => navigation.openDrawer()}
           activeOpacity={0.7}
         >
-          <Text style={[styles.menuIcon, { color: theme.textPrimary }]}>☰</Text>
+ <Text style={[styles.menuIcon, { color: theme.textPrimary }]}></Text>
         </TouchableOpacity>
         <Text style={[styles.title, { color: theme.textPrimary }]} numberOfLines={1}>
           {tool ? `${tool.emoji}  ${tool.label}` : "כלי"}

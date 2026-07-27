@@ -78,11 +78,11 @@ export default function SalesEvent() {
     const lines = ev.cart.map((l) => `• ${l.name} × ${l.qty} = ${shekel(l.price * l.qty)}`);
     const variance = (Number(actual) || 0) - total;
     return (
-      `📊 סיכום אירוע — ${todayKey(new Date(ev.startedAt))}\n\n` +
+ `סיכום אירוע — ${todayKey(new Date(ev.startedAt))}\n\n`+
       `${lines.join("\n")}\n\n` +
       `סה״כ מכירות: ${shekel(total)}\n` +
       `קופה בפועל: ${shekel(Number(actual) || 0)}\n` +
-      `הפרש: ${shekel(variance)} ${variance === 0 ? "✓" : variance > 0 ? "(עודף)" : "(חוסר)"}`
+ `הפרש: ${shekel(variance)} ${variance === 0 ? "": variance > 0 ? "(עודף)": "(חוסר)"}`
     );
   };
 
@@ -154,12 +154,12 @@ export default function SalesEvent() {
               <Text style={styles.histDate}>{todayKey(new Date(rec.startedAt))}</Text>
               <Text style={styles.histTotal}>{shekel(rec.total)}</Text>
             </View>
-            {rec.best && <Text style={styles.bestBadge}>🏆 הנמכר ביותר: {rec.best.name}</Text>}
+            {rec.best && <Text style={styles.bestBadge}> הנמכר ביותר: {rec.best.name}</Text>}
             <Text style={[styles.histVar, rec.variance < 0 && { color: COLORS.danger }]}>
               הפרש קופה: {shekel(rec.variance)}
             </Text>
             <TouchableOpacity style={styles.waBtn} onPress={() => shareSummary(rec)} activeOpacity={0.85}>
-              <Text style={styles.waText}>💬 שתף סיכום</Text>
+ <Text style={styles.waText}> שתף סיכום</Text>
             </TouchableOpacity>
           </View>
         ))}
@@ -171,13 +171,13 @@ export default function SalesEvent() {
   return (
     <View>
       <View style={styles.liveBanner}>
-        <Text style={styles.liveText}>🟢 אירוע פעיל · {cartTotals.count} פריטים</Text>
+ <Text style={styles.liveText}> אירוע פעיל · {cartTotals.count} פריטים</Text>
         <Text style={styles.liveTotal}>{shekel(cartTotals.total)}</Text>
       </View>
 
       {cartTotals.best && (
         <View style={styles.bestCard}>
-          <Text style={styles.bestCardText}>🏆 הנמכר ביותר: {cartTotals.best.name} ({cartTotals.best.qty})</Text>
+ <Text style={styles.bestCardText}> הנמכר ביותר: {cartTotals.best.name} ({cartTotals.best.qty})</Text>
         </View>
       )}
 
@@ -215,7 +215,7 @@ export default function SalesEvent() {
           {current.cart.map((l) => (
             <View key={l.itemId} style={styles.cartRow}>
               <TouchableOpacity style={styles.del} onPress={() => removeLine(l.itemId)}>
-                <Text style={styles.delText}>✕</Text>
+ <Text style={styles.delText}></Text>
               </TouchableOpacity>
               <Text style={styles.cartLineTotal}>{shekel(l.price * l.qty)}</Text>
               <Text style={styles.cartName}>{l.name} × {l.qty}</Text>

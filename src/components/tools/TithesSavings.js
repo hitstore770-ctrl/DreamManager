@@ -77,7 +77,7 @@ export default function TithesSavings() {
           <Text style={styles.calcTitle}>מעשר (10%)</Text>
         </View>
         <TouchableOpacity style={[styles.lockBtn, styles.lockNavy]} onPress={() => lock("מעשר", maaser)} activeOpacity={0.85}>
-          <Text style={styles.lockBtnText}>🔒 נעל מעשר</Text>
+ <Text style={styles.lockBtnText}> נעל מעשר</Text>
         </TouchableOpacity>
       </View>
 
@@ -109,7 +109,7 @@ export default function TithesSavings() {
           onPress={() => lock(state.customName || "חיסכון", customAmount)}
           activeOpacity={0.85}
         >
-          <Text style={[styles.lockBtnText, { color: COLORS.textPrimary }]}>🔒 נעל חיסכון</Text>
+ <Text style={[styles.lockBtnText, { color: COLORS.textPrimary }]}> נעל חיסכון</Text>
         </TouchableOpacity>
       </View>
 
@@ -118,7 +118,7 @@ export default function TithesSavings() {
       {(state.locked || []).map((l) => (
         <View key={l.id} style={styles.lockedRow}>
           <TouchableOpacity style={styles.unlockBtn} onPress={() => unlock(l.id)} activeOpacity={0.85}>
-            <Text style={styles.unlockText}>🔓 שחרר</Text>
+ <Text style={styles.unlockText}> שחרר</Text>
           </TouchableOpacity>
           <Text style={styles.lockedAmount}>{shekel(l.amount)}</Text>
           <Text style={styles.lockedName}>{l.name}</Text>

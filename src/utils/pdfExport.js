@@ -18,7 +18,7 @@ function buildTaskListHtml(tasks, emptyText) {
   return `<ul class="task-list">${tasks
     .map(
       (task) =>
-        `<li>${task.isCompleted ? "☑" : "☐"} <span class="${
+ `<li>${task.isCompleted ? "": ""} <span class="${
           task.isCompleted ? "task-done" : ""
         }">${escapeHtml(task.text)}</span></li>`
     )

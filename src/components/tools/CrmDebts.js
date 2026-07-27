@@ -121,14 +121,14 @@ function DebtorRow({ debtor, onPay, onRemove }) {
     <View style={[styles.card, settled && styles.cardPaid]}>
       <View style={styles.cardHead}>
         <TouchableOpacity style={styles.del} onPress={onRemove}>
-          <Text style={styles.delText}>✕</Text>
+ <Text style={styles.delText}></Text>
         </TouchableOpacity>
         <View style={styles.nameWrap}>
           <Text style={[styles.debtorName, settled && styles.debtorNamePaid]}>{debtor.name}</Text>
           <Animated.View style={[styles.strike, { width: strikeW }]} pointerEvents="none" />
         </View>
         <Text style={[styles.remaining, settled && { color: COLORS.success }]}>
-          {settled ? "✓" : shekel(remaining)}
+          {settled ? "": shekel(remaining)}
         </Text>
       </View>
 

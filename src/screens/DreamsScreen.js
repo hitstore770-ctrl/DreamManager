@@ -49,10 +49,10 @@ import { usePersistentState } from "../utils/usePersistentState";
 // celebrated + archived on completion.
 
 const WHITE = "#FFFFFF";
-const BG = "#F9FAFC";
-const CARD = "#F9FAFC";
+const BG = "#F4F6F9";
+const CARD = "#F4F6F9";
 const INK = "#111827";
-const INK_SOFT = "#4B5563";
+const INK_SOFT = "#6B7280";
 const INK_MUTED = "#9CA3AF";
 const BLUE = "#7C3AED";
 const GOLD = "#06B6D4";
@@ -69,7 +69,17 @@ function countdownLabel(days) {
   if (days === 0) return "⏳ היום!";
   if (days > 0) return `⏳ עוד ${days} ${days === 1 ? "יום" : "ימים"}`;
   const late = Math.abs(days);
-  return `⚠️ באיחור ${late} ${late === 1 ? "יום" : "ימים"}`;
+  return `באיחור ${late} ${late === 1 ? "יום" : "ימים"}`;
+}
+
+// A sheet section heading: vector icon then label, RTL-correct.
+function SectionTitle({ icon, text }) {
+  return (
+    <View style={s.sectionTitleRow}>
+      <Icon name={icon} size={15} color={BLUE} />
+      <Text style={s.sectionTitle}>{text}</Text>
+    </View>
+  );
 }
 
 export default function DreamsScreen({ navigation }) {
@@ -197,14 +207,14 @@ export default function DreamsScreen({ navigation }) {
     hapticSuccess();
     fundFromBusiness(open.id, amt);
     setFundInput("");
-    flash(`הופקדו ${shekel(amt)} מהעסק לחלום 💰`);
+    flash(`הופקדו ${shekel(amt)} מהעסק לחלום`);
   };
 
   const saveWhy = () => {
     if (!open) return;
     hapticLight();
     updateDreamFields(open.id, { why: whyDraft });
-    flash("ה״למה״ נשמר ✓");
+    flash("ה״למה״ נשמר");
   };
 
   const setTargetDate = (days) => {
@@ -223,7 +233,7 @@ export default function DreamsScreen({ navigation }) {
     if (!open) return;
     hapticLight();
     updateDreamFields(open.id, { locked: !open.locked });
-    flash(open.locked ? "החלום נפתח 🔓" : "החלום ננעל בכספת 🔒");
+    flash(open.locked ? "החלום נפתח" : "החלום ננעל בכספת");
   };
 
   // Send the dream's open milestones to a new Pro note in the Notes tab.
@@ -232,14 +242,14 @@ export default function DreamsScreen({ navigation }) {
     hapticSuccess();
     const remaining = (open.milestones || []).filter((m) => !m.done);
     const lines = [
-      `✨ ${open.title}`,
+      `${open.title}`,
       "",
       open.why ? `הלמה שלי: ${open.why}` : null,
       open.target ? `יעד כספי: ${shekel(open.target)} · נחסך: ${shekel(open.saved || 0)}` : null,
       open.targetDate ? `תאריך יעד: ${new Date(open.targetDate).toLocaleDateString("he-IL")}` : null,
       "",
       "אבני דרך שנותרו:",
-      ...(remaining.length ? remaining.map((m) => `• ${m.title}`) : ["• הכול הושלם! 🎉"]),
+      ...(remaining.length ? remaining.map((m) => `• ${m.title}`) : ["• הכול הושלם!"]),
     ].filter((l) => l !== null);
 
     const note = makeNote({
@@ -249,14 +259,14 @@ export default function DreamsScreen({ navigation }) {
       proMode: true,
     });
     setNotes((prev) => [note, ...prev]);
-    flash("נוצר פתק חדש בטאב פתקים 📝");
+    flash("נוצר פתק חדש בטאב פתקים");
   };
 
   const togglePause = () => {
     if (!open) return;
     hapticLight();
     updateDreamFields(open.id, { paused: !open.paused });
-    flash(open.paused ? "החלום הופשר ▶️" : "החלום הוקפא ❄️");
+    flash(open.paused ? "החלום הופשר" : "החלום הוקפא");
   };
 
   const addObstacleRow = () => {
@@ -276,7 +286,7 @@ export default function DreamsScreen({ navigation }) {
     hapticLight();
     const next = (open.milestones || []).find((m) => !m.done);
     const message = `החלום שלי: ${open.title} | התקדמות: ${dreamProgress(open)}% | יעד הבא: ${
-      next ? next.title : "הושלם! 🎉"
+      next ? next.title : "הושלם!"
     }`;
     try {
       await Share.share({ message });
@@ -290,7 +300,7 @@ export default function DreamsScreen({ navigation }) {
     updateDreamFields(dream.id, { archived: true });
     setCelebrating(null);
     setOpenId(null);
-    flash("החלום עבר להיכל ההישגים 🗄️");
+    flash("החלום עבר להיכל ההישגים");
   };
 
   const restoreDream = (dream) => {
@@ -333,7 +343,7 @@ export default function DreamsScreen({ navigation }) {
         </View>
         {archived.length > 0 && (
           <TouchableOpacity style={s.archiveBtn} onPress={() => { hapticLight(); setArchiveOpen(true); }} activeOpacity={0.75}>
-            <Text style={s.archiveBtnText}>🏆 {archived.length}</Text>
+            <><Icon name="award" size={15} color="#0E7490" /><Text style={s.archiveBtnText}>{archived.length}</Text></>
           </TouchableOpacity>
         )}
       </View>
@@ -342,7 +352,7 @@ export default function DreamsScreen({ navigation }) {
       {totalRevenue > 0 && (
         <View style={s.wallet}>
           <Text style={s.walletValue}>{shekel(available)}</Text>
-          <Text style={s.walletLabel}>💼 זמין להפקדה מהעסק</Text>
+          <View style={s.iconLabel}><Icon name="briefcase" size={14} color={INK_SOFT} /><Text style={s.walletLabel}>זמין להפקדה מהעסק</Text></View>
         </View>
       )}
 
@@ -356,7 +366,7 @@ export default function DreamsScreen({ navigation }) {
         <Animated.View entering={FadeInUp.duration(400)} style={s.empty}>
           <Pulse style={s.emptyPulse}>
           <View style={s.emptyBadge}>
-            <Text style={{ fontSize: 46 }}>🌙</Text>
+            <Icon name="moon" size={44} color={BLUE} />
           </View>
           </Pulse>
           <Text style={s.emptyTitle}>מה החלום הבא שלך?</Text>
@@ -434,25 +444,25 @@ export default function DreamsScreen({ navigation }) {
                     {/* Quick actions */}
                     <View style={s.quickRow}>
                       <TouchableOpacity style={s.quickBtn} onPress={shareVision} activeOpacity={0.75}>
-                        <Text style={s.quickEmoji}>📤</Text>
+                        <Icon name="share-2" size={19} color={INK_SOFT} />
                         <Text style={s.quickText}>שתף</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={s.quickBtn} onPress={sendToNotes} activeOpacity={0.75}>
-                        <Text style={s.quickEmoji}>📝</Text>
+                        <Icon name="edit-3" size={19} color={INK_SOFT} />
                         <Text style={s.quickText}>לפתקים</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={[s.quickBtn, open.paused && s.quickBtnOn]} onPress={togglePause} activeOpacity={0.75}>
-                        <Text style={s.quickEmoji}>{open.paused ? "▶️" : "❄️"}</Text>
+                        <Icon name={open.paused ? "play" : "snow-outline"} size={19} color={open.paused ? GOLD : INK_SOFT} />
                         <Text style={[s.quickText, open.paused && { color: GOLD }]}>
                           {open.paused ? "הפשר" : "הקפא"}
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={[s.quickBtn, open.locked && s.quickBtnOn]} onPress={toggleVault} activeOpacity={0.75}>
-                        <Text style={s.quickEmoji}>{open.locked ? "🔒" : "🔓"}</Text>
+                        <Icon name={open.locked ? "lock" : "unlock"} size={19} color={open.locked ? GOLD : INK_SOFT} />
                         <Text style={[s.quickText, open.locked && { color: GOLD }]}>כספת</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={s.quickBtn} onPress={() => archiveDream(open)} activeOpacity={0.75}>
-                        <Text style={s.quickEmoji}>🗄️</Text>
+                        <Icon name="archive" size={19} color={INK_SOFT} />
                         <Text style={s.quickText}>ארכיון</Text>
                       </TouchableOpacity>
                     </View>
@@ -464,7 +474,7 @@ export default function DreamsScreen({ navigation }) {
                       contentContainerStyle={{ paddingBottom: 100 }}
                     >
                       {/* Habit chain */}
-                      <Text style={s.sectionTitle}>🔥 הרגל יומי</Text>
+                      <SectionTitle icon="zap" text="הרגל יומי" />
                       <HabitChain
                         habitDays={open.habitDays || {}}
                         onToggle={(dayKey) => {
@@ -479,17 +489,17 @@ export default function DreamsScreen({ navigation }) {
                       <View style={s.finCard}>
                         <View style={s.finRow}>
                           <Text style={s.finTarget}>{shekel(open.target || 0)}</Text>
-                          <Text style={s.finLabel}>🎯 יעד כספי</Text>
+                          <View style={s.iconLabel}><Icon name="target" size={14} color={INK_SOFT} /><Text style={s.finLabel}>יעד כספי</Text></View>
                         </View>
                         <View style={s.finRow}>
                           <Text style={s.finSaved}>{shekel(open.saved || 0)}</Text>
-                          <Text style={s.finLabel}>💰 נחסך עד כה</Text>
+                          <View style={s.iconLabel}><Icon name="cash-outline" size={14} color={INK_SOFT} /><Text style={s.finLabel}>נחסך עד כה</Text></View>
                         </View>
                         <ProgressBar pct={fundPct} height={8} track="#EEF1F6" style={{ marginTop: 10 }} />
 
                         {/* Fund from business */}
                         <View style={s.fundBox}>
-                          <Text style={s.fundTitle}>💼 הפקד מרווחי העסק</Text>
+                          <View style={s.iconLabel}><Icon name="briefcase" size={15} color={INK} /><Text style={s.fundTitle}>הפקד מרווחי העסק</Text></View>
                           <Text style={s.fundAvail}>
                             זמין: {shekel(available)}
                             {open.fundedFromBusiness > 0 ? ` · הופקד לחלום זה: ${shekel(open.fundedFromBusiness)}` : ""}
@@ -558,7 +568,7 @@ export default function DreamsScreen({ navigation }) {
                       </View>
 
                       {/* The Why */}
-                      <Text style={s.sectionTitle}>❤️ הלמה שלי</Text>
+                      <SectionTitle icon="heart" text="הלמה שלי" />
                       <TextInput
                         style={s.whyInput}
                         value={whyDraft}
@@ -574,7 +584,7 @@ export default function DreamsScreen({ navigation }) {
                       </TouchableOpacity>
 
                       {/* Target date */}
-                      <Text style={s.sectionTitle}>📅 תאריך יעד</Text>
+                      <SectionTitle icon="calendar" text="תאריך יעד" />
                       {open.targetDate && (
                         <Text style={s.dateCurrent}>
                           {new Date(open.targetDate).toLocaleDateString("he-IL")} · {countdownLabel(daysUntil(open.targetDate))}
@@ -599,14 +609,14 @@ export default function DreamsScreen({ navigation }) {
                       </View>
 
                       {/* Milestones */}
-                      <Text style={s.sectionTitle}>🪜 אבני דרך</Text>
+                      <SectionTitle icon="check-square" text="אבני דרך" />
                       {(open.milestones || []).length === 0 && (
                         <Text style={s.hint}>עוד אין אבני דרך — הוסף את הצעד הראשון למטה.</Text>
                       )}
                       {(open.milestones || []).map((m) => (
                         <TouchableOpacity key={m.id} style={s.msRow} onPress={() => tickMilestone(open.id, m.id, m.done)} activeOpacity={0.7}>
                           <View style={[s.msBox, m.done && { backgroundColor: GOLD, borderColor: GOLD }]}>
-                            {m.done && <Text style={s.msCheck}>✓</Text>}
+                            {m.done && <Icon name="check" size={14} color={WHITE} />}
                           </View>
                           <Text style={[s.msText, m.done && { color: INK_MUTED, textDecorationLine: "line-through" }]}>
                             {m.title}
@@ -639,7 +649,7 @@ export default function DreamsScreen({ navigation }) {
                       </View>
 
                       {/* Obstacle mapper — If/Then planning */}
-                      <Text style={s.sectionTitle}>🧗 מכשולים ופתרונות</Text>
+                      <SectionTitle icon="shield" text="מכשולים ופתרונות" />
                       {(open.obstacles || []).length === 0 && (
                         <Text style={s.hint}>מה עלול לעצור אותך? תכנן מראש את התגובה.</Text>
                       )}
@@ -650,7 +660,7 @@ export default function DreamsScreen({ navigation }) {
                             onPress={() => { hapticLight(); removeObstacle(open.id, o.id); }}
                             activeOpacity={0.7}
                           >
-                            <Text style={s.obsRemoveText}>✕</Text>
+                            <Icon name="x" size={13} color={INK_MUTED} />
                           </TouchableOpacity>
                           <View style={{ flex: 1 }}>
                             <Text style={s.obsIf}>
@@ -695,7 +705,7 @@ export default function DreamsScreen({ navigation }) {
                         onPress={() => { hapticLight(); removeDream(open.id); setOpenId(null); }}
                         activeOpacity={0.7}
                       >
-                        <Text style={s.deleteBtnText}>🗑️ הסר חלום מהלוח</Text>
+                        <View style={s.iconLabel}><Icon name="trash-2" size={15} color={RED} /><Text style={s.deleteBtnText}>הסר חלום מהלוח</Text></View>
                       </TouchableOpacity>
                     </ScrollView>
                   </>
@@ -713,7 +723,7 @@ export default function DreamsScreen({ navigation }) {
           <View style={s.centerBackdrop}>
             <TouchableWithoutFeedback onPress={() => {}}>
               <View style={s.createCard}>
-                <Text style={s.createTitle}>✨ חלום חדש</Text>
+                <View style={s.iconLabel}><Icon name="sparkles-outline" size={17} color={BLUE} /><Text style={s.createTitle}>חלום חדש</Text></View>
                 <TextInput
                   style={s.createInput}
                   value={form.title}
@@ -765,7 +775,7 @@ export default function DreamsScreen({ navigation }) {
             <TouchableWithoutFeedback onPress={() => {}}>
               <View style={[s.sheet, { paddingBottom: insets.bottom + 18 }]}>
                 <View style={s.grabber} />
-                <Text style={s.archiveTitle}>🏆 היכל ההישגים</Text>
+                <View style={s.iconLabel}><Icon name="award" size={17} color={GOLD} /><Text style={s.archiveTitle}>היכל ההישגים</Text></View>
                 <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
                   {archived.map((d) => (
                     <View key={d.id} style={s.archRow}>
@@ -775,10 +785,10 @@ export default function DreamsScreen({ navigation }) {
                       <View style={{ flex: 1, alignItems: "flex-end" }}>
                         <Text style={s.archName} numberOfLines={1}>{d.title}</Text>
                         <Text style={s.archMeta}>
-                          {(d.milestones || []).length ? `${(d.milestones || []).length} אבני דרך` : shekel(d.saved || 0)} · הושלם ✓
+                          {(d.milestones || []).length ? `${(d.milestones || []).length} אבני דרך` : shekel(d.saved || 0)} · הושלם
                         </Text>
                       </View>
-                      <Text style={{ fontSize: 22 }}>🏆</Text>
+                      <Icon name="award" size={21} color={GOLD} />
                     </View>
                   ))}
                 </ScrollView>
@@ -847,7 +857,7 @@ function DreamCard({ dream, height, index, onPress }) {
 
         {paused && !locked && (
           <View style={s.pausedBadge}>
-            <Text style={s.pausedBadgeText}>❄️ מוקפא</Text>
+            <><Icon name="snow-outline" size={11} color={INK_SOFT} /><Text style={s.pausedBadgeText}>מוקפא</Text></>
           </View>
         )}
 
@@ -859,7 +869,7 @@ function DreamCard({ dream, height, index, onPress }) {
 
         {locked ? (
           <View style={s.lockedBody}>
-            <Text style={{ fontSize: 30 }}>🔒</Text>
+            <Icon name="lock" size={29} color={INK_MUTED} />
             <Text style={s.lockedTitle}>***</Text>
             <Text style={s.lockedHint}>חלום נעול</Text>
           </View>
@@ -900,6 +910,8 @@ const s = StyleSheet.create({
   title: { fontFamily: FONTS.bold, fontSize: 22, color: INK, textAlign: "right" },
   headerSub: { fontFamily: FONTS.regular, fontSize: 12, color: INK_MUTED, textAlign: "right", marginTop: 2 },
   archiveBtn: {
+    flexDirection: "row",
+    gap: 6,
     minHeight: 44,
     paddingHorizontal: 14,
     borderRadius: 22,
@@ -919,7 +931,7 @@ const s = StyleSheet.create({
     marginHorizontal: 12,
     marginBottom: 10,
     backgroundColor: WHITE,
-    borderRadius: 28,
+    borderRadius: 24,
     paddingHorizontal: 16,
     minHeight: 52,
     ...SHADOW,
@@ -936,7 +948,7 @@ const s = StyleSheet.create({
   emptyTitle: { fontFamily: FONTS.bold, fontSize: 21, color: INK, marginBottom: 8, textAlign: "center" },
   emptyText: { fontFamily: FONTS.light, fontSize: 14, color: INK_SOFT, textAlign: "center", lineHeight: 22 },
 
-  card: { borderRadius: 28, overflow: "hidden", justifyContent: "flex-end", ...SHADOW },
+  card: { borderRadius: 24, overflow: "hidden", justifyContent: "flex-end", ...SHADOW },
   cardBody: { padding: 12 },
   cardTitle: { fontFamily: FONTS.bold, fontSize: 15, color: WHITE, textAlign: "right" },
   cardMetaRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6 },
@@ -946,6 +958,8 @@ const s = StyleSheet.create({
   cardPaused: { opacity: 0.72 },
   pausedVeil: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(122,130,140,0.5)" },
   pausedBadge: {
+    flexDirection: "row",
+    gap: 5,
     position: "absolute",
     top: 10,
     alignSelf: "center",
@@ -1007,7 +1021,7 @@ const s = StyleSheet.create({
     position: "absolute",
     alignSelf: "center",
     backgroundColor: INK,
-    borderRadius: 28,
+    borderRadius: 24,
     paddingHorizontal: 18,
     paddingVertical: 11,
     maxWidth: "88%",
@@ -1017,7 +1031,7 @@ const s = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(16,20,26,0.5)", justifyContent: "flex-end" },
   sheet: { backgroundColor: WHITE, borderTopLeftRadius: 34, borderTopRightRadius: 34, paddingHorizontal: 16, paddingTop: 8 },
   grabber: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: "#EEF1F6", marginBottom: 12 },
-  sheetHero: { height: 124, borderRadius: 28, overflow: "hidden", justifyContent: "flex-end", marginBottom: 10 },
+  sheetHero: { height: 124, borderRadius: 24, overflow: "hidden", justifyContent: "flex-end", marginBottom: 10 },
   sheetHeroText: { padding: 14 },
   sheetTitle: { fontFamily: FONTS.bold, fontSize: 20, color: WHITE, textAlign: "right" },
   sheetPct: { fontFamily: FONTS.bold, fontSize: 13, color: GOLD, textAlign: "right", marginTop: 3 },
@@ -1025,10 +1039,10 @@ const s = StyleSheet.create({
   quickRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
   quickBtn: { flex: 1, minHeight: 56, borderRadius: 14, backgroundColor: CARD, alignItems: "center", justifyContent: "center", gap: 2 },
   quickBtnOn: { backgroundColor: GOLD + "1E" },
-  quickEmoji: { fontSize: 19 },
+  iconLabel: { flexDirection: I18nManager.isRTL ? "row" : "row-reverse", alignItems: "center", gap: 7 },
   quickText: { fontFamily: FONTS.semibold, fontSize: 11, color: INK_SOFT },
 
-  finCard: { backgroundColor: CARD, borderRadius: 28, padding: 14, marginBottom: 14 },
+  finCard: { backgroundColor: CARD, borderRadius: 24, padding: 14, marginBottom: 14 },
   finRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 30 },
   finLabel: { fontFamily: FONTS.medium, fontSize: 13, color: INK_SOFT },
   finTarget: { fontFamily: FONTS.bold, fontSize: 17, color: INK },
@@ -1050,7 +1064,14 @@ const s = StyleSheet.create({
   finChip: { flex: 1, minHeight: 44, borderRadius: 12, backgroundColor: WHITE, alignItems: "center", justifyContent: "center" },
   finChipText: { fontFamily: FONTS.bold, fontSize: 13, color: BLUE },
 
-  sectionTitle: { fontFamily: FONTS.bold, fontSize: 15, color: INK, textAlign: "right", marginBottom: 8, marginTop: 4 },
+  sectionTitle: { fontFamily: FONTS.bold, fontSize: 15, color: INK, textAlign: "right" },
+  sectionTitleRow: {
+    flexDirection: I18nManager.isRTL ? "row" : "row-reverse",
+    alignItems: "center",
+    gap: 7,
+    marginBottom: 8,
+    marginTop: 4,
+  },
   hint: { fontFamily: FONTS.regular, fontSize: 11, color: INK_MUTED, textAlign: "right", marginBottom: 8 },
 
   whyInput: {
@@ -1111,7 +1132,7 @@ const s = StyleSheet.create({
   deleteBtnText: { fontFamily: FONTS.semibold, fontSize: 13, color: RED },
 
   archiveTitle: { fontFamily: FONTS.bold, fontSize: 19, color: INK, textAlign: "right", marginBottom: 12 },
-  archRow: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: CARD, borderRadius: 28, padding: 12, marginBottom: 8, minHeight: 64 },
+  archRow: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: CARD, borderRadius: 24, padding: 12, marginBottom: 8, minHeight: 64 },
   archName: { fontFamily: FONTS.semibold, fontSize: 15, color: INK },
   archMeta: { fontFamily: FONTS.regular, fontSize: 11, color: INK_MUTED, marginTop: 2 },
   archRestore: { minHeight: 40, paddingHorizontal: 12, borderRadius: 11, backgroundColor: WHITE, alignItems: "center", justifyContent: "center" },

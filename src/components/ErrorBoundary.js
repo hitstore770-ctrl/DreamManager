@@ -1,5 +1,6 @@
 import { Component } from "react";
 import { ScrollView, Text, View } from "react-native";
+import Icon from "./Icon";
 
 // Catches any render/runtime error in the tree and shows a readable message
 // instead of a blank white screen. Without this, a single thrown error unmounts
@@ -23,7 +24,9 @@ export default class ErrorBoundary extends Component {
     if (this.state.error) {
       return (
         <View style={{ flex: 1, backgroundColor: "#FFFFFF", padding: 24, justifyContent: "center" }}>
-          <Text style={{ fontSize: 40, textAlign: "center", marginBottom: 12 }}>⚠️</Text>
+          <View style={{ alignItems: "center", marginBottom: 12 }}>
+            <Icon name="alert-triangle" size={38} color="#EF4444" />
+          </View>
           <Text style={{ fontSize: 18, fontWeight: "700", textAlign: "center", color: "#111827", marginBottom: 8 }}>
             משהו השתבש
           </Text>

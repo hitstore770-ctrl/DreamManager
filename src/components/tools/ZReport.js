@@ -50,7 +50,7 @@ export default function ZReport() {
   }, [sales, today]);
 
   const reportText = () =>
-    `📋 דו״ח Z — ${today}\n\n` +
+ `דו״ח Z — ${today}\n\n`+
     `מכירות: ${report.txns}\n` +
     `יחידות שנמכרו: ${report.units}\n` +
     `הכנסות: ${shekel(report.revenue)}\n` +
@@ -99,7 +99,7 @@ export default function ZReport() {
 
       {locked && (
         <View style={styles.lockedBadge}>
-          <Text style={styles.lockedText}>🔒 היום נעול — הרשומות סופיות</Text>
+ <Text style={styles.lockedText}> היום נעול — הרשומות סופיות</Text>
         </View>
       )}
 
@@ -136,11 +136,11 @@ export default function ZReport() {
 
       {locked ? (
         <TouchableOpacity style={styles.shareBtn} onPress={shareReport} activeOpacity={0.85}>
-          <Text style={styles.shareText}>💬 שתף דו״ח שוב</Text>
+ <Text style={styles.shareText}> שתף דו״ח שוב</Text>
         </TouchableOpacity>
       ) : (
         <TouchableOpacity style={styles.closeBtn} onPress={closeDay} activeOpacity={0.9}>
-          <Text style={styles.closeText}>🔒 סגור יום והפק דו״ח Z</Text>
+ <Text style={styles.closeText}> סגור יום והפק דו״ח Z</Text>
         </TouchableOpacity>
       )}
     </View>

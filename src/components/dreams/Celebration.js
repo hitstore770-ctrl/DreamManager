@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeIn, FadeOut, ZoomIn } from "react-native-reanimated";
 
+import Icon from "../Icon";
 import { hapticSuccess } from "../../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
 
@@ -11,17 +12,18 @@ import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
 
 const GOLD = "#06B6D4";
 const INK = "#111827";
-const INK_SOFT = "#4B5563";
+const INK_SOFT = "#6B7280";
+const BLUE = "#7C3AED";
 const WHITE = "#FFFFFF";
 
-// Fixed ring of emoji around the trophy — cheap stand-in for confetti.
+// Fixed ring of icons around the trophy — cheap stand-in for confetti.
 const SPARKS = [
-  { emoji: "✨", top: "16%", left: "12%", size: 30 },
-  { emoji: "🎉", top: "22%", right: "10%", size: 34 },
-  { emoji: "⭐", top: "62%", left: "16%", size: 26 },
-  { emoji: "✨", top: "70%", right: "18%", size: 28 },
-  { emoji: "🌟", top: "40%", left: "6%", size: 22 },
-  { emoji: "🎊", top: "34%", right: "5%", size: 26 },
+  { icon: "sparkles-outline", top: "16%", left: "12%", size: 30, color: GOLD },
+  { icon: "star", top: "22%", right: "10%", size: 34, color: BLUE },
+  { icon: "award", top: "62%", left: "16%", size: 26, color: BLUE },
+  { icon: "sparkles-outline", top: "70%", right: "18%", size: 28, color: GOLD },
+  { icon: "star", top: "40%", left: "6%", size: 22, color: GOLD },
+  { icon: "diamond-outline", top: "34%", right: "5%", size: 26, color: BLUE },
 ];
 
 export default function Celebration({ visible, dream, onArchive, onClose }) {
@@ -37,23 +39,23 @@ export default function Celebration({ visible, dream, onArchive, onClose }) {
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut} style={s.flash}>
         {SPARKS.map((sp, i) => (
-          <Animated.Text
+          <Animated.View
             key={i}
             entering={ZoomIn.delay(120 + i * 90).duration(380)}
-            style={[s.spark, { fontSize: sp.size, top: sp.top, left: sp.left, right: sp.right }]}
+            style={[s.spark, { top: sp.top, left: sp.left, right: sp.right }]}
           >
-            {sp.emoji}
-          </Animated.Text>
+            <Icon name={sp.icon} size={sp.size} color={sp.color} />
+          </Animated.View>
         ))}
 
         <Animated.View entering={ZoomIn.duration(420)} style={s.card}>
-          <Text style={s.trophy}>🏆</Text>
+          <Icon name="award" size={54} color={GOLD} style={s.trophy} />
           <Text style={s.title}>הגשמת את החלום!</Text>
           <Text style={s.dreamTitle} numberOfLines={2}>{dream?.title}</Text>
-          <Text style={s.sub}>כל אבני הדרך הושלמו — מגיע לך 👏</Text>
+          <Text style={s.sub}>כל אבני הדרך הושלמו — מגיע לך</Text>
 
           <TouchableOpacity style={s.archiveBtn} onPress={onArchive} activeOpacity={0.85}>
-            <Text style={s.archiveBtnText}>🗄️ העבר להיכל ההישגים</Text>
+            <View style={s.btnFace}><Icon name="archive" size={15} color={WHITE} /><Text style={s.archiveBtnText}>העבר להיכל ההישגים</Text></View>
           </TouchableOpacity>
           <TouchableOpacity style={s.keepBtn} onPress={onClose} activeOpacity={0.7}>
             <Text style={s.keepBtnText}>השאר על הלוח</Text>
@@ -87,7 +89,8 @@ const s = StyleSheet.create({
     shadowRadius: 18,
     elevation: 8,
   },
-  trophy: { fontSize: 64, marginBottom: 8 },
+  trophy: { marginBottom: 8 },
+  btnFace: { flexDirection: "row", alignItems: "center", gap: 8 },
   title: { fontFamily: FONTS.bold, fontSize: 24, color: GOLD, textAlign: "center" },
   dreamTitle: { fontFamily: FONTS.bold, fontSize: 17, color: INK, textAlign: "center", marginTop: 8 },
   sub: { fontFamily: FONTS.regular, fontSize: 13, color: INK_SOFT, textAlign: "center", marginTop: 6, marginBottom: 20 },

@@ -9,9 +9,9 @@ const CLAW_MACHINE_COST = 50;
 
 function rollClawPrize() {
   const roll = Math.random() * 100;
-  if (roll < 70) return { emoji: "🥉", label: "תג ארד" };
-  if (roll < 90) return { emoji: "🥈", label: "תג כסף" };
-  return { emoji: "👑", label: "כתר זהב נדיר" };
+  if (roll < 70) return { emoji: "", label: "תג ארד"};
+  if (roll < 90) return { emoji: "", label: "תג כסף"};
+  return { emoji: "", label: "כתר זהב נדיר"};
 }
 
 export default function ArcadeScreen({ navigation }) {
@@ -45,11 +45,11 @@ export default function ArcadeScreen({ navigation }) {
 
       <View style={styles.balanceCard}>
         <Text style={styles.balanceLabel}>המטבעות שלך</Text>
-        <Text style={styles.balanceValue}>🪙 {user?.coins ?? 0}</Text>
+ <Text style={styles.balanceValue}> {user?.coins ?? 0}</Text>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.machineEmoji}>🧸</Text>
+ <Text style={styles.machineEmoji}></Text>
         <Text style={styles.machineTitle}>מכונת מנוף</Text>
         <Text style={styles.machineSubtitle}>
           70% תג ארד · 20% תג כסף · 10% כתר זהב נדיר

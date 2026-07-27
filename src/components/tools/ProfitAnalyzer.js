@@ -68,11 +68,11 @@ export default function ProfitAnalyzer() {
   // Recommendation banner
   let rec = null;
   if (dead.length > 0) {
-    rec = { tone: "warn", text: `💡 שקול הנחה/מבצע על: ${dead.slice(0, 3).join(", ")} — לא נמכרו כלל.` };
+    rec = { tone: "warn", text: `שקול הנחה/מבצע על: ${dead.slice(0, 3).join(", ")} — לא נמכרו כלל.`};
   } else if (bestVolume && bestMargin) {
-    rec = { tone: "good", text: `💡 "${bestVolume.name}" נמכר הכי הרבה — שקול להעלות מלאי ולשמור על המחיר.` };
+    rec = { tone: "good", text: `"${bestVolume.name}"נמכר הכי הרבה — שקול להעלות מלאי ולשמור על המחיר.`};
   } else {
-    rec = { tone: "info", text: "💡 עדיין אין מספיק נתונים — התחל למכור כדי לקבל המלצות." };
+    rec = { tone: "info", text: "עדיין אין מספיק נתונים — התחל למכור כדי לקבל המלצות."};
   }
 
   const hasData = inventory.length > 0 || sales.length > 0;
@@ -108,13 +108,13 @@ export default function ProfitAnalyzer() {
 
       {/* Top cards */}
       <View style={styles.statCard}>
-        <Text style={styles.statLabel}>📈 מרווח הכי גבוה</Text>
+ <Text style={styles.statLabel}> מרווח הכי גבוה</Text>
         <Text style={styles.statValue}>
           {bestMargin ? `${bestMargin.name} · ${bestMargin.margin.toFixed(0)}%` : "—"}
         </Text>
       </View>
       <View style={styles.statCard}>
-        <Text style={styles.statLabel}>🔥 הכי נמכר (יחידות)</Text>
+ <Text style={styles.statLabel}> הכי נמכר (יחידות)</Text>
         <Text style={styles.statValue}>
           {bestVolume ? `${bestVolume.name} · ${bestVolume.qty} יח׳` : "—"}
         </Text>
@@ -122,9 +122,9 @@ export default function ProfitAnalyzer() {
 
       {/* Dead stock */}
       <View style={[styles.statCard, dead.length > 0 && styles.deadCard]}>
-        <Text style={styles.statLabel}>💀 מלאי מת (לא נמכר)</Text>
+ <Text style={styles.statLabel}> מלאי מת (לא נמכר)</Text>
         {dead.length === 0 ? (
-          <Text style={styles.statValue}>אין — כל הפריטים נמכרו ✓</Text>
+ <Text style={styles.statValue}>אין — כל הפריטים נמכרו </Text>
         ) : (
           dead.map((n) => (
             <Text key={n} style={styles.deadItem}>• {n}</Text>

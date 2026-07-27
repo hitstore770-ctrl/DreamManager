@@ -80,7 +80,7 @@ export function ToolCopyButton({ text, label = "העתק", color = COLORS.accent
       onPress={copy}
       activeOpacity={0.85}
     >
-      <Text style={styles.buttonText}>{copied ? "הועתק! ✓" : `${label} 📋`}</Text>
+ <Text style={styles.buttonText}>{copied ? "הועתק! ": `${label} `}</Text>
     </TouchableOpacity>
   );
 }
@@ -104,7 +104,7 @@ export function ToolSheet({ visible, title, onClose, children }) {
               onPress={onClose}
               activeOpacity={0.8}
             >
-              <Text style={sheetStyles.closeText}>✕</Text>
+ <Text style={sheetStyles.closeText}></Text>
             </TouchableOpacity>
           </View>
           <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -128,7 +128,7 @@ export function ToolLoading({ label = "טוען..." }) {
 export function ToolError({ message, onRetry }) {
   return (
     <View style={styles.centerBox}>
-      <Text style={styles.errorEmoji}>⚠️</Text>
+ <Text style={styles.errorEmoji}></Text>
       <Text style={styles.errorText}>{message}</Text>
       {onRetry && (
         <TouchableOpacity style={styles.retryButton} onPress={onRetry} activeOpacity={0.85}>

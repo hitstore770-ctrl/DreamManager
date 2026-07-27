@@ -40,13 +40,13 @@ const TAB_LABEL = {
 // The active tab's icon sits in a tinted violet chip.
 const ACTIVE_CHIP = {
   minWidth: 46,
-  height: 30,
-  borderRadius: 15,
+  height: 28,
+  borderRadius: 14,
   alignItems: "center",
   justifyContent: "center",
   backgroundColor: UI.violet + "16",
 };
-const INACTIVE_CHIP = { minWidth: 46, height: 30, alignItems: "center", justifyContent: "center" };
+const INACTIVE_CHIP = { minWidth: 46, height: 28, alignItems: "center", justifyContent: "center" };
 
 function MainTabs() {
   return (
@@ -63,16 +63,17 @@ function MainTabs() {
           left: 14,
           right: 14,
           bottom: 14,
-          height: 72,
-          paddingTop: 10,
-          paddingBottom: 12,
+          // Tall enough that Hebrew descenders in the labels clear the edge.
+          height: 78,
+          paddingTop: 9,
+          paddingBottom: 9,
           borderRadius: UI.radius,
           backgroundColor: UI.glass,
           borderTopWidth: 0,
           ...glow(UI.violet, 0.18),
         },
         tabBarItemStyle: { borderRadius: UI.radiusSm },
-        tabBarLabelStyle: { fontFamily: FONTS.medium, fontSize: 10.5, marginTop: 3 },
+        tabBarLabelStyle: { fontFamily: FONTS.medium, fontSize: 10.5, lineHeight: 15, marginTop: 2 },
         tabBarIcon: ({ focused }) => (
           <View style={focused ? ACTIVE_CHIP : INACTIVE_CHIP}>
             <Icon name={TAB_ICON[route.name]} size={21} color={focused ? UI.violet : UI.inkMuted} />

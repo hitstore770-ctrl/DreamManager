@@ -42,9 +42,9 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 // group that renders above everything else.
 
 const WHITE = "#FFFFFF";
-const BG = "#F9FAFC";
+const BG = "#F4F6F9";
 const INK = "#111827";
-const INK_SOFT = "#4B5563";
+const INK_SOFT = "#6B7280";
 const INK_MUTED = "#9CA3AF";
 const BLUE = "#7C3AED";
 const GOLD = "#06B6D4";
@@ -203,13 +203,13 @@ export default function SettingsScreen() {
       // Alert is a no-op on react-native-web, so the toast carries the same
       // message on every platform.
       Alert.alert("Developer Mode Unlocked!", "אפשרויות המפתח נוספו לראש מסך ההגדרות.");
-      flash("🛠️ Developer Mode Unlocked!");
+      flash("Developer Mode Unlocked!");
       measureStorage();
       scrollRef.current?.scrollTo({ y: 0, animated: true });
     } else {
       hapticWarning();
       Alert.alert("Developer Mode Locked", "אפשרויות המפתח הוסתרו.");
-      flash("🔒 מצב מפתח ננעל");
+      flash("מצב מפתח ננעל");
     }
   };
 
@@ -488,7 +488,7 @@ export default function SettingsScreen() {
   const shareApp = async () => {
     hapticLight();
     const message = [
-      "DreamManager — מערכת ניהול לעסק קטן 💼",
+      "DreamManager — מערכת ניהול לעסק קטן",
       "קופה, מלאי, הקפות, דוחות, פתקים, חלומות ו-121 כלים — הכול במקום אחד.",
       "",
       APP_VERSION,
@@ -564,7 +564,7 @@ export default function SettingsScreen() {
 
   // Developer "force crash": thrown after every hook has run, so the only
   // thing that unwinds is the render — exactly what ErrorBoundary catches.
-  if (crash) throw new Error("Forced crash from Developer Options 🛠️");
+  if (crash) throw new Error("Forced crash from Developer Options");
 
   return (
     <Animated.View entering={SCREEN_IN} style={{ flex: 1, backgroundColor: BG }}>
@@ -580,7 +580,7 @@ export default function SettingsScreen() {
         </View>
         {settings.devMode && (
           <Animated.View entering={FadeInDown.duration(220)} style={s.devPill}>
-            <Text style={s.devPillText}>🛠️ DEV</Text>
+            <><Icon name="tool" size={11} color="#7A5B00" /><Text style={s.devPillText}>DEV</Text></>
           </Animated.View>
         )}
       </View>
@@ -594,25 +594,25 @@ export default function SettingsScreen() {
         {/* ---------- Developer Options (hidden until unlocked) ---------- */}
         {settings.devMode && (
           <Section index={0}>
-            <Group title="Developer Options 🛠️" accent={GOLD}>
-              <InfoRow label="פלטפורמה" value={diagnostics.platform} icon="📱" bounds={bounds} compact={compact} />
-              <InfoRow label="כיוון פריסה" value={diagnostics.rtl} icon="↔️" bounds={bounds} compact={compact} />
-              <InfoRow label="קטלוג כלים" value={diagnostics.tools} icon="🧰" bounds={bounds} compact={compact} />
-              <InfoRow label="אחסון מקומי" value={diagnostics.keys} icon="💽" bounds={bounds} compact={compact} />
-              <InfoRow label="מזהה משתמש" value={diagnostics.user} icon="🆔" bounds={bounds} compact={compact} />
-              <ActionRow label="העתק דוח אבחון" hint="כל הנתונים שלמעלה כטקסט" icon="📋" bounds={bounds} compact={compact} onPress={copyDiagnostics} />
-              <ActionRow label="רענן מדידת אחסון" icon="🔄" bounds={bounds} compact={compact} onPress={() => { hapticLight(); measureStorage(); flash("נמדד מחדש"); }} />
+            <Group title="Developer Options" icon="tool" accent={GOLD}>
+              <InfoRow label="פלטפורמה" value={diagnostics.platform} icon="smartphone" bounds={bounds} compact={compact} />
+              <InfoRow label="כיוון פריסה" value={diagnostics.rtl} icon="git-compare" bounds={bounds} compact={compact} />
+              <InfoRow label="קטלוג כלים" value={diagnostics.tools} icon="grid" bounds={bounds} compact={compact} />
+              <InfoRow label="אחסון מקומי" value={diagnostics.keys} icon="hard-drive" bounds={bounds} compact={compact} />
+              <InfoRow label="מזהה משתמש" value={diagnostics.user} icon="hash" bounds={bounds} compact={compact} />
+              <ActionRow label="העתק דוח אבחון" hint="כל הנתונים שלמעלה כטקסט" icon="copy" bounds={bounds} compact={compact} onPress={copyDiagnostics} />
+              <ActionRow label="רענן מדידת אחסון" icon="refresh-cw" bounds={bounds} compact={compact} onPress={() => { hapticLight(); measureStorage(); flash("נמדד מחדש"); }} />
               <ActionRow
                 label="הזרקת נתוני מכירות לבדיקה"
                 hint="מוסיף שבוע של מכירות דמה ל-posSales"
-                icon="💉"
+                icon="database"
                 bounds={bounds}
                 onPress={injectDummySales}
               />
               <SwitchRow
                 label="הצגת גבולות עיצוב"
                 hint="מסמן כל שורה ופקד במסך ההגדרות"
-                icon="📐"
+                icon="layout"
                 compact={compact}
                 value={!!settings.layoutBounds}
                 bounds={bounds}
@@ -621,7 +621,7 @@ export default function SettingsScreen() {
               <ActionRow
                 label="בדיקת קריסה"
                 hint="זורק שגיאה כדי לבדוק את ה-Error Boundary"
-                icon="💥"
+                icon="zap"
                 danger
                 bounds={bounds}
                 onPress={() => { hapticWarning(); setCrash(true); }}
@@ -629,20 +629,20 @@ export default function SettingsScreen() {
               <ActionRow
                 label="מחיקת AsyncStorage עמוקה"
                 hint="פעולה בלתי הפיכה"
-                icon="🧨"
+                icon="trash-2"
                 danger
                 bounds={bounds}
                 onPress={requestDeepWipe}
               />
               <ActionRow
                 label="נעל מצב מפתח"
-                icon="🔒"
+                icon="lock"
                 last
                 bounds={bounds}
                 onPress={() => {
                   hapticWarning();
                   update({ devMode: false });
-                  flash("🔒 מצב מפתח ננעל");
+                  flash("מצב מפתח ננעל");
                 }}
               />
             </Group>
@@ -651,7 +651,7 @@ export default function SettingsScreen() {
 
         {/* ---------- Profile ---------- */}
         <Section index={1}>
-        <Group title="פרופיל אישי" icon="👤">
+        <Group title="פרופיל אישי" icon="user">
           <View style={s.fieldRow}>
             <Text style={s.rowLabel}>שם משתמש</Text>
             <TextInput
@@ -664,16 +664,16 @@ export default function SettingsScreen() {
               maxLength={24}
             />
           </View>
-          <InfoRow label="חשבון" value={user?.email || "—"} icon="✉️" bounds={bounds} compact={compact} />
-          <ActionRow label="התנתקות" icon="🚪" danger last compact={compact} bounds={bounds}  onPress={() => { hapticWarning(); logout(); }} />
+          <InfoRow label="חשבון" value={user?.email || "—"} icon="mail" bounds={bounds} compact={compact} />
+          <ActionRow label="התנתקות" icon="log-out" danger last compact={compact} bounds={bounds}  onPress={() => { hapticWarning(); logout(); }} />
         </Group>
         </Section>
 
         {/* ---------- Business ---------- */}
         <Section index={2}>
-        <Group title="הגדרות עסק וקופה" icon="🏪">
+        <Group title="הגדרות עסק וקופה" icon="shopping-bag">
           <View style={s.stackRow}>
-            <Text style={s.rowLabel}>🗂️  סביבת עבודה</Text>
+            <StackLabel icon="folder" text="סביבת עבודה" />
             <Text style={s.rowHint}>{WORKSPACES.find((w) => w.key === settings.workspace)?.hint}</Text>
             <Segment
               options={WORKSPACES.map((w) => ({ key: w.key, label: w.label }))}
@@ -684,7 +684,7 @@ export default function SettingsScreen() {
           <SwitchRow
             label="צלילי קופה"
             hint="קליק מכני בכל פעולה בקופה"
-            icon="🔊"
+            icon="volume-2"
             compact={compact}
             bounds={bounds}
             value={settings.sounds}
@@ -693,14 +693,14 @@ export default function SettingsScreen() {
           <SwitchRow
             label="מצב חשאי"
             hint="הסתרת כל הסכומים הכספיים (•••••)"
-            icon="🕶️"
+            icon="eye-off"
             compact={compact}
             value={settings.stealth}
             bounds={bounds}
             onValueChange={(v) => { hapticLight(); update({ stealth: v }); }}
           />
           <View style={[s.row, compact && s.rowCompact, bounds]}>
-            <Text style={s.rowIcon}>🧾</Text>
+            <Icon name="file-text" size={18} color={INK_SOFT} style={s.rowIcon} />
             <View style={{ flex: 1 }}>
               <Text style={s.rowLabel}>מע״מ ברירת מחדל</Text>
               <Text style={s.rowHint}>משמש את מחשבוני התמחור והייבוא (%)</Text>
@@ -721,7 +721,7 @@ export default function SettingsScreen() {
           <SwitchRow
             label="ניקוי עגלה אוטומטי בסיום חיוב"
             hint="כבוי — הסל נשאר על המסך אחרי חיוב"
-            icon="🧹"
+            icon="trash"
             compact={compact}
             bounds={bounds}
             value={settings.autoClearCart}
@@ -729,7 +729,7 @@ export default function SettingsScreen() {
             onValueChange={(v) => { hapticLight(); update({ autoClearCart: v }); }}
           />
           <View style={[s.stackRow, bounds]}>
-            <Text style={s.rowLabel}>🧾  הודעת תחתית קבלה</Text>
+            <StackLabel icon="file-text" text="הודעת תחתית קבלה" />
             <TextInput
               testID="footer-input"
               style={[s.nameInput, bounds]}
@@ -743,7 +743,7 @@ export default function SettingsScreen() {
           </View>
           <Divider />
           <View style={[s.stackRow, bounds]}>
-            <Text style={s.rowLabel}>💱  סמל מטבע</Text>
+            <StackLabel icon="dollar-sign" text="סמל מטבע" />
             <Text style={s.rowHint}>מוחל על כל הסכומים באפליקציה</Text>
             <Segment
               options={CURRENCIES}
@@ -754,7 +754,7 @@ export default function SettingsScreen() {
           </View>
           <Divider />
           <View style={[s.stackRow, bounds, !hapticsOn && { opacity: 0.45 }]}>
-            <Text style={s.rowLabel}>📳  עוצמת רטט</Text>
+            <StackLabel icon="radio" text="עוצמת רטט" />
             <Text style={s.rowHint}>
               {hapticsOn ? "חוזק המשוב בכל לחיצה באפליקציה" : "מושבת — הפעל ״משוב הפטי״ בקבוצת מערכת"}
             </Text>
@@ -775,11 +775,11 @@ export default function SettingsScreen() {
 
         {/* ---------- Notifications ---------- */}
         <Section index={3}>
-        <Group title="התראות" icon="🔔">
+        <Group title="התראות" icon="bell">
           <SwitchRow
             label="התראות מלאי נמוך"
             hint="התרעה כשפריט במחסן יורד מתחת ל-5 יחידות"
-            icon="📉"
+            icon="trending-down"
             value={settings.lowStockAlerts}
             compact={compact}
             bounds={bounds}
@@ -788,7 +788,7 @@ export default function SettingsScreen() {
           <SwitchRow
             label="תזכורת דוח Z יומי"
             hint="תזכורת בסוף היום לסגור את המשמרת"
-            icon="🧾"
+            icon="file-text"
             value={settings.dailyZReminder}
             last
             compact={compact}
@@ -800,9 +800,9 @@ export default function SettingsScreen() {
 
         {/* ---------- Appearance ---------- */}
         <Section index={4}>
-        <Group title="תצוגה" icon="🎨">
+        <Group title="תצוגה" icon="droplet">
           <View style={[s.stackRow, bounds]}>
-            <Text style={s.rowLabel}>🌙  ערכת נושא</Text>
+            <StackLabel icon="moon" text="ערכת נושא" />
             <Text style={s.rowHint}>
               {settings.themeMode === "light"
                 ? "בהיר — 770JLM Light"
@@ -819,7 +819,7 @@ export default function SettingsScreen() {
           <SwitchRow
             label="תצוגה צפופה"
             hint="פחות ריווח ברשימות — יותר תוכן על מסך צר"
-            icon="📏"
+            icon="minimize-2"
             value={compact}
             last
             compact={compact}
@@ -831,11 +831,11 @@ export default function SettingsScreen() {
 
         {/* ---------- Data & backup ---------- */}
         <Section index={5}>
-        <Group title="גיבוי, נתונים ופרטיות" icon="💾">
+        <Group title="גיבוי, נתונים ופרטיות" icon="save">
           <View style={s.stackRow}>
             <View style={s.storageHead}>
               <Text style={s.storageTotal}>{fmtBytes(storage.total)}</Text>
-              <Text style={s.rowLabel}>💽  נפח בשימוש</Text>
+              <StackLabel icon="hard-drive" text="נפח בשימוש" />
             </View>
             {storage.rows.slice(0, 4).map((r) => {
               const pct = storage.total ? Math.round((r.bytes / storage.total) * 100) : 0;
@@ -853,33 +853,33 @@ export default function SettingsScreen() {
             })}
             {storage.rows.length === 0 && <Text style={s.rowHint}>אין עדיין נתונים מקומיים.</Text>}
           </View>
-          <ActionRow label="ייצוא גיבוי" hint="שיתוף כל הנתונים כקובץ JSON" icon="📤" bounds={bounds} compact={compact} onPress={exportBackup} />
-          <ActionRow label="העתק גיבוי ללוח" icon="📋" bounds={bounds} compact={compact} onPress={copyBackup} />
+          <ActionRow label="ייצוא גיבוי" hint="שיתוף כל הנתונים כקובץ JSON" icon="share-2" bounds={bounds} compact={compact} onPress={exportBackup} />
+          <ActionRow label="העתק גיבוי ללוח" icon="copy" bounds={bounds} compact={compact} onPress={copyBackup} />
           <ActionRow
             label="ייצוא דוחות Z"
             hint="כל שורות המכירה כקובץ CSV"
-            icon="📊"
+            icon="bar-chart-2"
             bounds={bounds}
             onPress={exportZReports}
           />
           <SwitchRow
             label="סנכרון נתונים לענן"
-            icon="☁️"
+            icon="cloud"
             compact={compact}
             hint={syncState ? syncState.text : "שולח עותק של הנתונים ל-Firestore"}
             value={settings.cloudBackup}
             bounds={bounds}
             onValueChange={toggleCloudBackup}
           />
-          <ActionRow label="ניקוי מטמון תמונות" hint="טוען מחדש את כריכות החלומות" icon="🖼️" bounds={bounds} compact={compact} onPress={clearImageCache} />
-          <ActionRow label="ארכוב דוחות מעל 90 יום" hint="מנקה מכירות ישנות" icon="🗄️" last bounds={bounds} compact={compact} onPress={archiveOldReports} />
+          <ActionRow label="ניקוי מטמון תמונות" hint="טוען מחדש את כריכות החלומות" icon="image" bounds={bounds} compact={compact} onPress={clearImageCache} />
+          <ActionRow label="ארכוב דוחות מעל 90 יום" hint="מנקה מכירות ישנות" icon="archive" last bounds={bounds} compact={compact} onPress={archiveOldReports} />
         </Group>
 
         </Section>
 
         {/* ---------- Danger zone ---------- */}
         <Section index={6}>
-        <Group title="אזור סכנה" icon="⚠️" accent={RED}>
+        <Group title="אזור סכנה" icon="alert-triangle" accent={RED}>
           <View style={s.dangerWrap}>
             <Text style={s.dangerText}>
               מחיקה מוחלטת של כל המכירות, המלאי, ההקפות, הפתקים, החלומות וההעדפות מהמכשיר, וחזרה
@@ -894,21 +894,21 @@ export default function SettingsScreen() {
 
         {/* ---------- System ---------- */}
         <Section index={7}>
-        <Group title="מערכת" icon="🔧">
+        <Group title="מערכת" icon="tool">
           <SwitchRow
             label="משוב הפטי"
             hint="רטט בלחיצות ובפעולות בכל האפליקציה"
-            icon="📳"
+            icon="radio"
             compact={compact}
             value={hapticsOn}
             bounds={bounds}
             onValueChange={toggleHaptics}
           />
-          <InfoRow label="עוצמת רטט" value={HAPTIC_LEVELS.find((l) => l.key === settings.haptics)?.label || "כבוי"} icon="📶" bounds={bounds} compact={compact} />
+          <InfoRow label="עוצמת רטט" value={HAPTIC_LEVELS.find((l) => l.key === settings.haptics)?.label || "כבוי"} icon="activity" bounds={bounds} compact={compact} />
           <ActionRow
             label="נעילת קוד"
             hint={settings.pin ? "פעיל — נדרש קוד בכל פתיחה" : "כבוי"}
-            icon={settings.pin ? "🔐" : "🔓"}
+            icon={settings.pin ? "lock" : "unlock"}
             actionLabel={settings.pin ? "הסר" : "הגדר"}
             onPress={() => {
               hapticLight();
@@ -920,24 +920,24 @@ export default function SettingsScreen() {
               }
             }}
           />
-          <InfoRow label="שפה וכיוון" value={`עברית · ${diagnostics.rtl}`} icon="🌐" last bounds={bounds} compact={compact} />
+          <InfoRow label="שפה וכיוון" value={`עברית · ${diagnostics.rtl}`} icon="globe" last bounds={bounds} compact={compact} />
         </Group>
         </Section>
 
         {/* ---------- About & support ---------- */}
         <Section index={8}>
-        <Group title="אודות ותמיכה" icon="💬">
+        <Group title="אודות ותמיכה" icon="message-circle">
           <ActionRow
             label="צור קשר בוואטסאפ"
             hint="נפתח עם הודעה מוכנה"
-            icon="💬"
+            icon="message-circle"
             compact={compact}
             bounds={bounds}
             onPress={contactSupport}
           />
-          <ActionRow label="שתף מערכת" hint="הזמנה קצרה לשליחה" icon="📤" compact={compact} bounds={bounds}  onPress={shareApp} />
-          <ActionRow label="תנאי שימוש" icon="📜" compact={compact} bounds={bounds}  onPress={() => comingSoon("תנאי שימוש")} />
-          <ActionRow label="מדיניות פרטיות" icon="🔏" last compact={compact} bounds={bounds}  onPress={() => comingSoon("מדיניות פרטיות")} />
+          <ActionRow label="שתף מערכת" hint="הזמנה קצרה לשליחה" icon="share-2" compact={compact} bounds={bounds}  onPress={shareApp} />
+          <ActionRow label="תנאי שימוש" icon="file" compact={compact} bounds={bounds}  onPress={() => comingSoon("תנאי שימוש")} />
+          <ActionRow label="מדיניות פרטיות" icon="shield" last compact={compact} bounds={bounds}  onPress={() => comingSoon("מדיניות פרטיות")} />
         </Group>
         </Section>
 
@@ -977,7 +977,7 @@ export default function SettingsScreen() {
         <View style={s.backdrop}>
           <View style={s.dialog}>
             <Text style={s.dialogTitle}>
-              {confirmMode === "factory" ? "⚠️ איפוס אפליקציה מוחלט" : "🧨 מחיקת AsyncStorage עמוקה"}
+              {confirmMode === "factory" ? "איפוס אפליקציה מוחלט" : "מחיקת AsyncStorage עמוקה"}
             </Text>
             <Text style={s.dialogBody}>
               {confirmMode === "factory"
@@ -1022,11 +1022,21 @@ function Section({ index = 0, children }) {
 function Group({ title, icon, accent, children, bounds }) {
   return (
     <View style={[s.group, bounds]}>
-      <Text style={[s.groupTitle, accent && { color: accent }]}>
-        {icon ? `${icon}  ` : ""}
-        {title}
-      </Text>
+      <View style={s.groupHead}>
+        {!!icon && <Icon name={icon} size={14} color={accent || INK_MUTED} />}
+        <Text style={[s.groupTitle, accent && { color: accent }]}>{title}</Text>
+      </View>
       <View style={[s.groupCard, accent && { borderWidth: 1, borderColor: accent + "55" }]}>{children}</View>
+    </View>
+  );
+}
+
+// A stacked row's heading: icon then label, RTL-correct.
+function StackLabel({ icon, text }) {
+  return (
+    <View style={s.stackLabelRow}>
+      <Icon name={icon} size={16} color={INK_SOFT} />
+      <Text style={s.rowLabel}>{text}</Text>
     </View>
   );
 }
@@ -1040,7 +1050,7 @@ function InfoRow({ label, value, icon, last, bounds, compact }) {
   return (
     <>
       <View style={[s.row, compact && s.rowCompact, bounds]}>
-        <Text style={s.rowIcon}>{icon || "•"}</Text>
+        <Icon name={icon || "circle"} size={18} color={INK_SOFT} style={s.rowIcon} />
         <Text style={s.rowLabel}>{label}</Text>
         <Text style={s.rowValue} numberOfLines={1}>{value}</Text>
       </View>
@@ -1053,7 +1063,7 @@ function SwitchRow({ label, hint, icon, value, onValueChange, disabled, last, bo
   return (
     <>
       <View style={[s.row, compact && s.rowCompact, bounds, disabled && { opacity: 0.45 }]}>
-        <Text style={s.rowIcon}>{icon || "•"}</Text>
+        <Icon name={icon || "circle"} size={18} color={INK_SOFT} style={s.rowIcon} />
         <View style={{ flex: 1 }}>
           <Text style={s.rowLabel}>{label}</Text>
           {!!hint && <Text style={s.rowHint}>{hint}</Text>}
@@ -1079,7 +1089,7 @@ function ActionRow({ label, hint, icon, onPress, danger, actionLabel, last, boun
   return (
     <>
       <Bounce style={[s.row, compact && s.rowCompact, bounds]} onPress={onPress} scaleTo={0.97}>
-        <Text style={s.rowIcon}>{icon || "•"}</Text>
+        <Icon name={icon || "circle"} size={18} color={danger ? RED : INK_SOFT} style={s.rowIcon} />
         <View style={{ flex: 1 }}>
           <Text style={[s.rowLabel, danger && { color: RED }]}>{label}</Text>
           {!!hint && <Text style={s.rowHint}>{hint}</Text>}
@@ -1140,6 +1150,8 @@ const s = StyleSheet.create({
   title: { fontFamily: FONTS.bold, fontSize: 22, color: INK, textAlign: "right" },
   subtitle: { fontFamily: FONTS.regular, fontSize: 12, color: INK_MUTED, textAlign: "right", marginTop: 2 },
   devPill: {
+    flexDirection: "row",
+    gap: 5,
     minHeight: 38,
     paddingHorizontal: 12,
     borderRadius: 19,
@@ -1149,9 +1161,10 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  devPillText: { fontFamily: FONTS.bold, fontSize: 12, color: "#0E7490" },
+  devPillText: { fontFamily: FONTS.bold, fontSize: 12, color: "#7A5B00" },
 
   group: { marginBottom: 18 },
+  groupHead: { flexDirection: I18nManager.isRTL ? "row" : "row-reverse", alignItems: "center", gap: 7, marginBottom: 8, marginEnd: 4 },
   groupTitle: {
     fontFamily: FONTS.bold,
     fontSize: 13,
@@ -1160,7 +1173,7 @@ const s = StyleSheet.create({
     marginBottom: 8,
     marginHorizontal: 6,
   },
-  groupCard: { backgroundColor: WHITE, borderRadius: 28, overflow: "hidden", ...SHADOW },
+  groupCard: { backgroundColor: WHITE, borderRadius: 24, overflow: "hidden", ...SHADOW },
   divider: { height: 1, backgroundColor: HAIRLINE, marginStart: 16 },
 
   // I18nManager.isRTL is false on web, so a plain "row" would mirror the whole
@@ -1178,7 +1191,8 @@ const s = StyleSheet.create({
   rowLabel: { fontFamily: FONTS.semibold, fontSize: 14.5, color: INK, textAlign: "right" },
   rowHint: { fontFamily: FONTS.regular, fontSize: 11.5, color: INK_MUTED, textAlign: "right", marginTop: 3, lineHeight: 17 },
   rowValue: { fontFamily: FONTS.medium, fontSize: 13, color: INK_MUTED, maxWidth: "55%" },
-  rowIcon: { fontSize: 18 },
+  rowIcon: { width: 20, textAlign: "center" },
+  stackLabelRow: { flexDirection: I18nManager.isRTL ? "row" : "row-reverse", alignItems: "center", gap: 8 },
   chevron: { fontFamily: FONTS.bold, fontSize: 20, color: "#D6DBE5", width: 12, textAlign: "center" },
 
   fieldRow: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14, gap: 8 },
@@ -1265,7 +1279,7 @@ const s = StyleSheet.create({
     position: "absolute",
     alignSelf: "center",
     backgroundColor: INK,
-    borderRadius: 28,
+    borderRadius: 24,
     paddingHorizontal: 18,
     paddingVertical: 11,
     maxWidth: "88%",
@@ -1273,7 +1287,7 @@ const s = StyleSheet.create({
   toastText: { fontFamily: FONTS.semibold, fontSize: 13, color: WHITE, textAlign: "center" },
 
   backdrop: { flex: 1, backgroundColor: "rgba(16,20,26,0.5)", alignItems: "center", justifyContent: "center", padding: 24 },
-  dialog: { width: "100%", backgroundColor: WHITE, borderRadius: 28, padding: 20, gap: 10 },
+  dialog: { width: "100%", backgroundColor: WHITE, borderRadius: 24, padding: 20, gap: 10 },
   dialogTitle: { fontFamily: FONTS.bold, fontSize: 17, color: INK, textAlign: "right" },
   dialogBody: { fontFamily: FONTS.regular, fontSize: 13, color: INK_SOFT, textAlign: "right", lineHeight: 20, marginBottom: 6 },
   dialogBtn: { minHeight: 50, borderRadius: 14, alignItems: "center", justifyContent: "center" },

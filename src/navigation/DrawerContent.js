@@ -52,13 +52,13 @@ export default function DrawerContent(props) {
           <Text style={styles.brandTitle}>DreamManager</Text>
           <Text style={styles.brandUser}>שלום, {user?.displayName ?? "אלוף"}</Text>
           <View style={styles.coinPill}>
-            <Text style={styles.coinText}>🪙 {censor(user?.coins ?? 0)} מטבעות</Text>
+ <Text style={styles.coinText}> {censor(user?.coins ?? 0)} מטבעות</Text>
           </View>
         </View>
 
         <View style={styles.body}>
-          <Item name="Dashboard" emoji="🏠" label="לוח בקרה" active={activeRoute === "Dashboard"} />
-          <Item name="Notes" emoji="📝" label="פנקס חכם" active={activeRoute === "Notes"} />
+ <Item name="Dashboard"emoji=""label="לוח בקרה"active={activeRoute === "Dashboard"} />
+ <Item name="Notes"emoji=""label="פנקס חכם"active={activeRoute === "Notes"} />
 
           {orderedCategories(workspace).map((catKey) => {
             const cat = catInfo(catKey);
@@ -85,8 +85,8 @@ export default function DrawerContent(props) {
 
       {/* Pinned footer */}
       <View style={[styles.footer, { borderTopColor: theme.hairline }]}>
-        <Item name="Arcade" emoji="🎯" label="ארקייד" active={activeRoute === "Arcade"} />
-        <Item name="Settings" emoji="⚙️" label="הגדרות" active={activeRoute === "Settings"} />
+ <Item name="Arcade"emoji=""label="ארקייד"active={activeRoute === "Arcade"} />
+ <Item name="Settings"emoji=""label="הגדרות"active={activeRoute === "Settings"} />
       </View>
     </View>
   );

@@ -84,14 +84,14 @@ export default function DashboardScreen({ navigation }) {
   const alerts = useMemo(() => {
     const out = [];
     (inventory || []).forEach((i) => {
-      if (i.qty > 0 && i.qty <= LOW_STOCK) out.push({ icon: "📦", text: `מלאי נמוך: ${i.name} (${i.qty})`, to: "inventory" });
-      if (i.qty === 0) out.push({ icon: "⛔", text: `אזל מהמלאי: ${i.name}`, to: "inventory" });
+      if (i.qty > 0 && i.qty <= LOW_STOCK) out.push({ icon: "", text: `מלאי נמוך: ${i.name} (${i.qty})`, to: "inventory"});
+      if (i.qty === 0) out.push({ icon: "", text: `אזל מהמלאי: ${i.name}`, to: "inventory"});
     });
     (suppliers || []).forEach((sup) => {
       (sup.orders || []).forEach((o) => {
         if (o.arrived) return;
         const days = Math.floor((Date.now() - (o.placedAt || Date.now())) / 86400000);
-        if (days > 30) out.push({ icon: "🚚", text: `הזמנה מ${sup.name} מתעכבת (${days} ימים)`, to: "suppliers" });
+        if (days > 30) out.push({ icon: "", text: `הזמנה מ${sup.name} מתעכבת (${days} ימים)`, to: "suppliers"});
       });
     });
     return out.slice(0, 4);
@@ -118,11 +118,11 @@ export default function DashboardScreen({ navigation }) {
   };
 
   const quickActions = [
-    { icon: "🛒", label: "מכירה מהירה", to: "pos" },
-    { icon: "📕", label: "הקפה חדשה", to: "debts" },
-    { icon: "📦", label: "פריט חדש", to: "inventory" },
-    { icon: "🔦", label: "סריקת ברקוד", to: "barcode" },
-    { icon: "📋", label: "דו״ח Z", to: "zreport" },
+    { icon: "", label: "מכירה מהירה", to: "pos"},
+    { icon: "", label: "הקפה חדשה", to: "debts"},
+    { icon: "", label: "פריט חדש", to: "inventory"},
+    { icon: "", label: "סריקת ברקוד", to: "barcode"},
+    { icon: "", label: "דו״ח Z", to: "zreport"},
   ];
 
   const s = makeStyles(theme, fontScale);
@@ -140,11 +140,11 @@ export default function DashboardScreen({ navigation }) {
             onPress={() => navigation.openDrawer()}
             activeOpacity={0.7}
           >
-            <Text style={s.menuIcon}>☰</Text>
+ <Text style={s.menuIcon}></Text>
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={s.hello}>
-              {isMorning ? "בוקר טוב" : hour < 18 ? "צהריים טובים" : "ערב טוב"}, {user?.displayName ?? "אלוף"} 👋
+              {isMorning ? "בוקר טוב": hour < 18 ? "צהריים טובים": "ערב טוב"}, {user?.displayName ?? "אלוף"}
             </Text>
             <Text style={s.subHello}>{isMorning ? "יאללה, קדימה ליעדים של היום" : "בוא נראה איך העסק זז היום"}</Text>
           </View>
@@ -178,7 +178,7 @@ export default function DashboardScreen({ navigation }) {
         {/* Smart alerts (only if actionable) */}
         {alerts.length > 0 && (
           <View style={s.alertCard}>
-            <Text style={s.alertTitle}>⚡ דורש טיפול</Text>
+ <Text style={s.alertTitle}> דורש טיפול</Text>
             {alerts.map((al, i) => (
               <TouchableOpacity
                 key={i}
@@ -198,7 +198,7 @@ export default function DashboardScreen({ navigation }) {
         {isMorning ? (
           <View style={[s.card, s.contextCard]}>
             <Text style={s.cardKicker}>המיקוד של הבוקר</Text>
-            <Text style={s.cardTitle}>🎯 היעדים שלך</Text>
+ <Text style={s.cardTitle}> היעדים שלך</Text>
             {dreams.slice(0, 2).map((d) => {
               const pct = d.target ? Math.min(100, Math.round((d.current / d.target) * 100)) : 0;
               return (
@@ -224,9 +224,9 @@ export default function DashboardScreen({ navigation }) {
         {/* Business pulse — 7-day revenue */}
         <View style={s.card}>
           <View style={s.pulseHead}>
-            <Text style={s.cardTitle}>📈 דופק העסק</Text>
+ <Text style={s.cardTitle}> דופק העסק</Text>
             <View style={s.streakPill}>
-              <Text style={s.streakText}>🔥 {stats.streak} ימים</Text>
+ <Text style={s.streakText}> {stats.streak} ימים</Text>
             </View>
           </View>
           <Text style={s.cardKicker}>מגמת הכנסות — 7 ימים אחרונים</Text>
@@ -238,7 +238,7 @@ export default function DashboardScreen({ navigation }) {
 
         {/* Gamified goals */}
         <View style={s.sectionHead}>
-          <Text style={s.sectionTitle}>🏆 היעדים שלי</Text>
+ <Text style={s.sectionTitle}> היעדים שלי</Text>
           <TouchableOpacity onPress={() => navigation.navigate("AddDream")} activeOpacity={0.7}>
             <Text style={s.sectionAction}>+ חדש</Text>
           </TouchableOpacity>
@@ -262,8 +262,8 @@ export default function DashboardScreen({ navigation }) {
                 <Text style={s.goalMetaText}>
                   {d.type === "money" ? censor(`${shekel(d.current)} / ${shekel(d.target)}`) : `${d.current}/${d.target}`}
                 </Text>
-                {doneTasks > 0 && <Text style={s.goalMetaText}>✓ {doneTasks} משימות</Text>}
-                {pct >= 100 && <Text style={[s.goalMetaText, { color: theme.success }]}>🔥 הושלם!</Text>}
+                {doneTasks > 0 && <Text style={s.goalMetaText}> {doneTasks} משימות</Text>}
+                {pct >= 100 && <Text style={[s.goalMetaText, { color: theme.success }]}> הושלם!</Text>}
               </View>
             </TouchableOpacity>
           );
@@ -271,7 +271,7 @@ export default function DashboardScreen({ navigation }) {
 
         {/* Sticky notes grid */}
         <View style={s.sectionHead}>
-          <Text style={s.sectionTitle}>🗒️ פתקים מהירים</Text>
+ <Text style={s.sectionTitle}> פתקים מהירים</Text>
           <TouchableOpacity onPress={() => setEditing({ text: "" })} activeOpacity={0.7}>
             <Text style={s.sectionAction}>+ פתק</Text>
           </TouchableOpacity>

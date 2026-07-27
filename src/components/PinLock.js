@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import Icon from "./Icon";
 import { useSettings } from "../context/SettingsContext";
 import { FONTS, RADIUS, SHADOW_SM } from "../utils/theme";
 
@@ -75,7 +76,7 @@ export default function PinLock({ mode = "unlock", expected, onSuccess, onSet, o
   return (
     <View style={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top + 40, paddingBottom: insets.bottom + 24 }]}>
       <View style={styles.top}>
-        <Text style={styles.lockIcon}>🔒</Text>
+        <Icon name="lock" size={32} color={theme.accent} style={styles.lockIcon} />
         <Text style={[styles.title, { color: theme.textPrimary, fontSize: 20 * fontScale }]}>{title}</Text>
 
         <View style={styles.dots}>
@@ -136,7 +137,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
   },
   top: { alignItems: "center", marginTop: 20 },
-  lockIcon: { fontSize: 40, marginBottom: 16 },
+  lockIcon: { marginBottom: 16 },
   title: { fontFamily: FONTS.bold, marginBottom: 26, textAlign: "center" },
   dots: { flexDirection: "row", gap: 18 },
   dot: {

@@ -70,7 +70,7 @@ export default function BarcodeCart() {
     if (item) {
       Vibration.vibrate(60); // haptic feedback on successful scan
       addToCart(item);
-      setFlash(`✓ ${item.name}`);
+      setFlash(`${item.name}`);
       setTimeout(() => setFlash(""), 1200);
     } else {
       Vibration.vibrate([0, 40, 40, 40]);
@@ -175,7 +175,7 @@ export default function BarcodeCart() {
     <View>
       {locked && (
         <View style={styles.lockBanner}>
-          <Text style={styles.lockText}>🔒 היום נעול (דו״ח Z הופק)</Text>
+ <Text style={styles.lockText}> היום נעול (דו״ח Z הופק)</Text>
         </View>
       )}
 
@@ -198,7 +198,7 @@ export default function BarcodeCart() {
         </View>
       ) : (
         <TouchableOpacity style={styles.startBtn} onPress={startScan} activeOpacity={0.9}>
-          <Text style={styles.startText}>📷 התחל סריקה לעגלה</Text>
+ <Text style={styles.startText}> התחל סריקה לעגלה</Text>
         </TouchableOpacity>
       )}
 
@@ -208,7 +208,7 @@ export default function BarcodeCart() {
           {cart.map((l) => (
             <View key={l.id} style={styles.cartRow}>
               <TouchableOpacity style={styles.del} onPress={() => removeLine(l.id)}>
-                <Text style={styles.delText}>✕</Text>
+ <Text style={styles.delText}></Text>
               </TouchableOpacity>
               <Text style={styles.cartTotal}>{shekel(l.price * l.qty)}</Text>
               <Text style={styles.cartName}>{l.name} × {l.qty}</Text>

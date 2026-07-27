@@ -129,7 +129,7 @@ export default function SmartInventory() {
     <View>
       {locked && (
         <View style={styles.lockBanner}>
-          <Text style={styles.lockText}>🔒 היום נעול (דו״ח Z הופק) — מכירות חסומות</Text>
+ <Text style={styles.lockText}> היום נעול (דו״ח Z הופק) — מכירות חסומות</Text>
         </View>
       )}
 
@@ -165,7 +165,7 @@ export default function SmartInventory() {
           }}
           activeOpacity={0.85}
         >
-          <Text style={styles.topBtnText}>{showForm ? "✕ סגור" : "＋ פריט חדש"}</Text>
+ <Text style={styles.topBtnText}>{showForm ? "סגור": "＋ פריט חדש"}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.topBtn, batch ? styles.topBatchOn : styles.topBatch]}
@@ -176,7 +176,7 @@ export default function SmartInventory() {
           activeOpacity={0.85}
         >
           <Text style={[styles.topBtnText, !batch && { color: COLORS.textPrimary }]}>
-            {batch ? "✓ סיום" : "☑ עדכון מרובה"}
+            {batch ? "סיום": "עדכון מרובה"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -219,7 +219,7 @@ export default function SmartInventory() {
             textAlign="right"
           />
           <TouchableOpacity style={styles.saveBtn} onPress={addItem} activeOpacity={0.85}>
-            <Text style={styles.saveBtnText}>💾 שמור פריט</Text>
+ <Text style={styles.saveBtnText}> שמור פריט</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -238,11 +238,11 @@ export default function SmartInventory() {
                     style={[styles.selBox, selected[item.id] && styles.selBoxOn]}
                     onPress={() => toggleSelect(item.id)}
                   >
-                    <Text style={styles.selMark}>{selected[item.id] ? "✓" : ""}</Text>
+ <Text style={styles.selMark}>{selected[item.id] ? "": ""}</Text>
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity style={styles.del} onPress={() => removeItem(item.id)}>
-                  <Text style={styles.delText}>✕</Text>
+ <Text style={styles.delText}></Text>
                 </TouchableOpacity>
                 <Text style={[styles.name, low && { color: COLORS.danger }]} numberOfLines={1}>
                   {item.name}
@@ -271,10 +271,10 @@ export default function SmartInventory() {
 
               <View style={styles.actRow}>
                 <TouchableOpacity style={[styles.actBtn, styles.sell]} onPress={() => openSell(item)} activeOpacity={0.85}>
-                  <Text style={styles.actText}>💵 מכירה במחיר מיוחד</Text>
+ <Text style={styles.actText}> מכירה במחיר מיוחד</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.actBtn, styles.damage]} onPress={() => markDamaged(item)} activeOpacity={0.85}>
-                  <Text style={styles.actText}>⚠️ נזק/אובדן</Text>
+ <Text style={styles.actText}> נזק/אובדן</Text>
                 </TouchableOpacity>
               </View>
             </View>
