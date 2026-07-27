@@ -650,3 +650,106 @@ const m = StyleSheet.create({
   verdictValue: { fontFamily: FONTS.bold, fontSize: 34 },
   verdictLabel: { fontFamily: FONTS.medium, fontSize: 12.5, color: INK_SOFT },
 });
+
+// ---------------------------------------------------------------------------
+// F. מחשבון הלוואות ומימון
+// ---------------------------------------------------------------------------
+export function LoanCalc() {
+  const [amount, setAmount] = useState("");
+  const [annualRate, setAnnualRate] = useState("6");
+  const [months, setMonths] = useState("36");
+
+  const r = useMemo(() => {
+    const principal = parseFloat(amount);
+    const apr = parseFloat(annualRate);
+    const n = parseInt(months, 10);
+    if (!Number.isFinite(principal) || !Number.isFinite(apr) || !Number.isFinite(n)) {
+      return { ready: false };
+    }
+    if (principal <= 0 || n <= 0) return { ready: false };
+
+    const i = apr / 100 / 12;
+    // At zero interest the amortisation formula divides by zero; the payment
+    // is simply the principal split evenly.
+    const payment = i === 0 ? principal / n : (principal * i) / (1 - (1 + i) ** -n);
+    const totalPaid = payment * n;
+    const round0 = (x) => Math.round(x);
+
+    // First-year schedule, so the interest-heavy start is visible rather than
+    // hidden behind a single average.
+    const schedule = [];
+    let balance = principal;
+    for (let m = 1; m <= Math.min(n, 12); m += 1) {
+      const interest = balance * i;
+      const principalPart = payment - interest;
+      balance -= principalPart;
+      schedule.push({
+        m,
+        interest: round0(interest),
+        principal: round0(principalPart),
+        balance: round0(Math.max(0, balance)),
+      });
+    }
+
+    return {
+      ready: true,
+      payment: Math.round(payment * 100) / 100,
+      totalPaid: round0(totalPaid),
+      totalInterest: round0(totalPaid - principal),
+      interestPct: Math.round(((totalPaid - principal) / principal) * 100),
+      schedule,
+      zeroRate: i === 0,
+    };
+  }, [amount, annualRate, months]);
+
+  useCalcHaptic(r.payment);
+
+  return (
+    <View style={{ gap: 12 }}>
+      <View style={s.row}>
+        <Field testID="loan-amount" label="סכום ההלוואה" value={amount} onChange={setAmount} placeholder="45000" suffix="₪" />
+        <Field testID="loan-rate" label="ריבית שנתית" value={annualRate} onChange={setAnnualRate} placeholder="6" suffix="%" />
+        <Field testID="loan-months" label="מספר חודשים" value={months} onChange={setMonths} placeholder="36" suffix="חוד׳" />
+      </View>
+      <Chips options={[12, 24, 36, 48, 60]} onPick={(val) => setMonths(String(val))} active={months} />
+
+      {!r.ready ? (
+        <Text style={s.hint}>הזן סכום, ריבית שנתית ומספר חודשים.</Text>
+      ) : (
+        <>
+          <View style={[m.verdict, { backgroundColor: BLUE + "12" }]}>
+            <Text testID="loan-payment" style={[m.verdictValue, { color: BLUE }]}>{shekel(r.payment)}</Text>
+            <Text style={m.verdictLabel}>תשלום חודשי</Text>
+          </View>
+
+          <View style={s.statRow}>
+            <Stat label="סה״כ להחזר" value={shekel(r.totalPaid)} />
+            <Stat label="סה״כ ריבית" value={shekel(r.totalInterest)} color={GOLD} />
+            <Stat label="תוספת לקרן" value={`${r.interestPct}%`} color={r.interestPct > 20 ? RED : INK_SOFT} />
+          </View>
+
+          {r.zeroRate && (
+            <View style={[s.banner, { backgroundColor: GREEN + "14" }]}>
+              <Text style={[s.bannerText, { color: GREEN }]}>ללא ריבית — חלוקה שווה</Text>
+            </View>
+          )}
+
+          <Text style={s.sectionLabel}>לוח סילוקין — שנה ראשונה</Text>
+          {r.schedule.map((row) => (
+            <View key={row.m} style={s.routineRow}>
+              <Text style={s.routineTime}>{shekel(row.balance)}</Text>
+              <Text style={[s.routineLabel, { flex: 1 }]}>
+                חודש {row.m} · קרן {shekel(row.principal)} · ריבית {shekel(row.interest)}
+              </Text>
+            </View>
+          ))}
+
+          <Text style={s.hint}>
+            החישוב הוא שפיצר — תשלום חודשי קבוע שבתחילתו רובו ריבית. הריבית כאן נומינלית וקבועה;
+            הלוואה צמודת מדד או בריבית משתנה תעלה יותר, ועמלות פתיחה אינן כלולות.
+          </Text>
+        </>
+      )}
+    </View>
+  );
+}

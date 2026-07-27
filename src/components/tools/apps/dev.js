@@ -17,7 +17,6 @@ import {
   INK_SOFT,
   NO_OUTLINE,
   RED,
-  Field,
   Segment,
   Stat,
   WHITE,
@@ -428,391 +427,360 @@ const d = StyleSheet.create({
 });
 
 // ---------------------------------------------------------------------------
-// E. מחולל מעברי צבע
+// G. בודק Regex
 // ---------------------------------------------------------------------------
 
-const GRADIENT_PRESETS = [
-  { label: "וויולט", from: "#7C3AED", to: "#06B6D4" },
-  { label: "שקיעה", from: "#FF4E50", to: "#F9D423" },
-  { label: "ים", from: "#0EA5E9", to: "#10B981" },
-  { label: "לילה", from: "#111827", to: "#4B5563" },
-  { label: "ורוד", from: "#EC4899", to: "#8B5CF6" },
-  { label: "זהב", from: "#F59E0B", to: "#EF4444" },
+const REGEX_FLAGS = [
+  { key: "g", label: "g" },
+  { key: "i", label: "i" },
+  { key: "m", label: "m" },
 ];
 
-const HEX_RE = /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
-
-// "#abc" and "abc" both mean #aabbcc; anything else is not a colour.
-function normalizeHex(raw) {
-  const m = HEX_RE.exec((raw || "").trim());
-  if (!m) return null;
-  const body = m[1];
-  const full = body.length === 3 ? body.split("").map((c) => c + c).join("") : body;
-  return `#${full.toUpperCase()}`;
-}
-
-function hexToRgb(hex) {
-  const n = parseInt(hex.slice(1), 16);
-  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
-}
-
-// Interpolate in plain sRGB. Perceptual spaces would be smoother, but this is
-// what LinearGradient itself does, so the preview matches the exported code.
-function mixHex(from, to, t) {
-  const a = hexToRgb(from);
-  const b = hexToRgb(to);
-  const ch = (x, y) => Math.round(x + (y - x) * t);
-  return `rgb(${ch(a.r, b.r)}, ${ch(a.g, b.g)}, ${ch(a.b, b.b)})`;
-}
-
-const BANDS = 24;
-const DIRECTIONS = [
-  { key: "vertical", label: "אנכי" },
-  { key: "horizontal", label: "אופקי" },
+const REGEX_SAMPLES = [
+  { label: "אימייל", pattern: "[\\w.+-]+@[\\w-]+\\.[\\w.]+" },
+  { label: "טלפון", pattern: "0\\d{1,2}-?\\d{7}" },
+  { label: "מספר", pattern: "\\d+(\\.\\d+)?" },
+  { label: "ת.ז.", pattern: "\\d{9}" },
 ];
 
-export function GradientGenerator() {
-  const [fromRaw, setFromRaw] = useState("#7C3AED");
-  const [toRaw, setToRaw] = useState("#06B6D4");
-  const [direction, setDirection] = useState("vertical");
-  const [copied, setCopied] = useState(false);
+export function RegexTester() {
+  const [pattern, setPattern] = useState("");
+  const [flags, setFlags] = useState({ g: true, i: false, m: false });
+  const [subject, setSubject] = useState("");
 
-  const from = normalizeHex(fromRaw);
-  const to = normalizeHex(toRaw);
-  const valid = !!from && !!to;
+  const flagString = Object.keys(flags).filter((f) => flags[f]).join("");
 
-  const snippet = useMemo(() => {
-    if (!valid) return "";
-    const coords =
-      direction === "horizontal"
-        ? "      start={{ x: 0, y: 0.5 }}\n      end={{ x: 1, y: 0.5 }}\n"
-        : "      start={{ x: 0.5, y: 0 }}\n      end={{ x: 0.5, y: 1 }}\n";
-    return (
-      `import { LinearGradient } from "expo-linear-gradient";\n\n` +
-      `<LinearGradient\n` +
-      `      colors={["${from}", "${to}"]}\n` +
-      coords +
-      `      style={{ flex: 1, borderRadius: 24 }}\n` +
-      `/>`
-    );
-  }, [from, to, direction, valid]);
-
-  const copy = async () => {
-    if (!valid) {
-      hapticWarning();
-      return;
+  const r = useMemo(() => {
+    if (!pattern) return { state: "empty" };
+    let re;
+    try {
+      re = new RegExp(pattern, flagString);
+    } catch (e) {
+      // An incomplete pattern is the normal state while typing, so this is a
+      // message, not an error condition.
+      return { state: "invalid", error: e.message };
     }
-    await Clipboard.setStringAsync(snippet);
-    hapticSuccess();
-    setCopied(true);
-  };
+    if (!subject) return { state: "ready", re };
 
-  const pickPreset = (p) => {
-    hapticLight();
-    setFromRaw(p.from);
-    setToRaw(p.to);
-    setCopied(false);
-  };
-
-  return (
-    <View style={{ gap: 12 }}>
-      {/* Preview. expo-linear-gradient is not installed — adding a native
-          module for a preview is not worth the build risk — so the gradient is
-          drawn as a stack of interpolated bands. At 24 steps the banding is
-          invisible at this size, and the exported snippet is the real thing. */}
-      <View style={[g.preview, direction === "horizontal" && { flexDirection: "row" }]}>
-        {valid
-          ? Array.from({ length: BANDS }, (_, i) => (
-              <View
-                key={i}
-                style={{ flex: 1, backgroundColor: mixHex(from, to, i / (BANDS - 1)) }}
-              />
-            ))
-          : <View style={g.previewEmpty}><Icon name="droplet" size={26} color={INK_MUTED} /></View>}
-      </View>
-
-      <View style={s.row}>
-        <View style={{ flex: 1 }}>
-          <Text style={s.fieldLabel}>צבע התחלה</Text>
-          <View style={[s.fieldRow, !from && fromRaw ? { borderWidth: 1, borderColor: RED } : null]}>
-            <View style={[g.swatch, { backgroundColor: from || "transparent" }]} />
-            <TextInput
-              testID="grad-from"
-              style={[s.fieldInput, { fontSize: 15 }]}
-              value={fromRaw}
-              onChangeText={(v) => { setFromRaw(v); setCopied(false); }}
-              placeholder="#7C3AED"
-              placeholderTextColor={INK_MUTED}
-              autoCapitalize="characters"
-              autoCorrect={false}
-              textAlign="left"
-            />
-          </View>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={s.fieldLabel}>צבע סיום</Text>
-          <View style={[s.fieldRow, !to && toRaw ? { borderWidth: 1, borderColor: RED } : null]}>
-            <View style={[g.swatch, { backgroundColor: to || "transparent" }]} />
-            <TextInput
-              testID="grad-to"
-              style={[s.fieldInput, { fontSize: 15 }]}
-              value={toRaw}
-              onChangeText={(v) => { setToRaw(v); setCopied(false); }}
-              placeholder="#06B6D4"
-              placeholderTextColor={INK_MUTED}
-              autoCapitalize="characters"
-              autoCorrect={false}
-              textAlign="left"
-            />
-          </View>
-        </View>
-      </View>
-
-      {!valid && <Text style={[s.hint, { color: RED }]}>קוד צבע לא תקין — נדרש HEX בן 3 או 6 תווים.</Text>}
-
-      <Segment options={DIRECTIONS} value={direction} onChange={(v) => { hapticLight(); setDirection(v); setCopied(false); }} />
-
-      <Text style={s.sectionLabel}>פריסטים</Text>
-      <View style={s.chipRow}>
-        {GRADIENT_PRESETS.map((p) => (
-          <TouchableOpacity key={p.label} style={g.presetChip} onPress={() => pickPreset(p)} activeOpacity={0.8}>
-            <View style={[g.presetDot, { backgroundColor: p.from }]} />
-            <View style={[g.presetDot, { backgroundColor: p.to, marginStart: -7 }]} />
-            <Text style={s.chipText}>{p.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {valid && (
-        <View style={s.snippetBox}>
-          <Text testID="grad-snippet" style={s.snippetText}>{snippet}</Text>
-        </View>
-      )}
-
-      <TouchableOpacity
-        style={[s.bigBtn, copied && { backgroundColor: GREEN }]}
-        onPress={copy}
-        activeOpacity={0.85}
-      >
-        <BtnLabel
-          icon={copied ? "check" : "copy"}
-          text={copied ? "הקוד הועתק" : "העתק קוד LinearGradient"}
-          style={s.bigBtnText}
-        />
-      </TouchableOpacity>
-
-      <Text style={s.hint}>
-        הקוד משתמש ב-expo-linear-gradient, שאינו מותקן בפרויקט הזה. להרצה בקוד שלך: npx expo install
-        expo-linear-gradient.
-      </Text>
-    </View>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// F. מחולל תבנית קומפוננטה
-// ---------------------------------------------------------------------------
-
-// Anything the user types becomes a legal component name: strip separators,
-// upper-case each word, and guarantee a leading letter — a component whose
-// name starts with a digit is a syntax error, and one starting lower-case is
-// treated by JSX as an HTML tag.
-function toPascalCase(raw) {
-  const words = (raw || "")
-    .replace(/[^a-zA-Z0-9]+/g, " ")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-  if (!words.length) return "";
-  const joined = words.map((w) => w[0].toUpperCase() + w.slice(1)).join("");
-  return /^[0-9]/.test(joined) ? `Component${joined}` : joined;
-}
-
-const BOILERPLATE_KINDS = [
-  { key: "basic", label: "בסיסי" },
-  { key: "state", label: "עם state" },
-  { key: "list", label: "רשימה" },
-];
-
-export function RnBoilerplate() {
-  const [raw, setRaw] = useState("");
-  const [kind, setKind] = useState("basic");
-  const [copied, setCopied] = useState(false);
-
-  const name = toPascalCase(raw) || "MyComponent";
-
-  const code = useMemo(() => {
-    const lower = name[0].toLowerCase() + name.slice(1);
-    if (kind === "state") {
-      return `import { useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-
-export default function ${name}({ title = "${name}" }) {
-  const [count, setCount] = useState(0);
-
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{title}</Text>
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => setCount((c) => c + 1)}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.buttonText}>{count}</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    padding: 20,
-    gap: 12,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#111827",
-    textAlign: "right",
-  },
-  button: {
-    minHeight: 52,
-    borderRadius: 16,
-    backgroundColor: "#7C3AED",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  buttonText: { color: "#FFFFFF", fontSize: 16, fontWeight: "700" },
-});
-`;
+    const matches = [];
+    if (flags.g) {
+      let guard = 0;
+      let m;
+      // A zero-length match never advances lastIndex on its own; without this
+      // nudge the loop spins forever on a pattern like "a*".
+      while ((m = re.exec(subject)) !== null && guard < 500) {
+        matches.push({ text: m[0], index: m.index, groups: m.slice(1) });
+        if (m[0] === "") re.lastIndex += 1;
+        guard += 1;
+      }
+    } else {
+      const m = re.exec(subject);
+      if (m) matches.push({ text: m[0], index: m.index, groups: m.slice(1) });
     }
-    if (kind === "list") {
-      return `import { FlatList, StyleSheet, Text, View } from "react-native";
 
-export default function ${name}({ data = [] }) {
-  return (
-    <FlatList
-      data={data}
-      keyExtractor={(item) => String(item.id)}
-      contentContainerStyle={styles.list}
-      ListEmptyComponent={<Text style={styles.empty}>אין פריטים</Text>}
-      renderItem={({ item }) => (
-        <View style={styles.row}>
-          <Text style={styles.rowText}>{item.title}</Text>
-        </View>
-      )}
-    />
-  );
-}
+    // Split the subject into plain and matched runs for highlighting.
+    const segments = [];
+    let cursor = 0;
+    matches.forEach((m) => {
+      if (m.index > cursor) segments.push({ text: subject.slice(cursor, m.index), hit: false });
+      if (m.text) segments.push({ text: m.text, hit: true });
+      cursor = m.index + m.text.length;
+    });
+    if (cursor < subject.length) segments.push({ text: subject.slice(cursor), hit: false });
 
-const styles = StyleSheet.create({
-  list: { padding: 16, gap: 12 },
-  row: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    padding: 20,
-  },
-  rowText: { fontSize: 15, color: "#111827", textAlign: "right" },
-  empty: { fontSize: 14, color: "#6B7280", textAlign: "center", paddingVertical: 24 },
-});
-`;
-    }
-    return `import { StyleSheet, Text, View } from "react-native";
-
-export default function ${name}({ title = "${name}" }) {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{title}</Text>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    padding: 20,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#111827",
-    textAlign: "right",
-  },
-});
-`;
-  }, [name, kind]);
-
-  const copy = async () => {
-    await Clipboard.setStringAsync(code);
-    hapticSuccess();
-    setCopied(true);
-  };
+    return { state: "done", matches, segments };
+  }, [pattern, flagString, subject, flags.g]);
 
   return (
     <View style={{ gap: 12 }}>
       <View>
-        <Text style={s.fieldLabel}>שם הקומפוננטה</Text>
+        <Text style={s.fieldLabel}>תבנית</Text>
         <View style={s.fieldRow}>
+          <Text style={rx.slash}>/{flagString}</Text>
           <TextInput
-            testID="boilerplate-name"
-            style={[s.fieldInput, { fontSize: 16 }]}
-            value={raw}
-            onChangeText={(v) => { setRaw(v); setCopied(false); }}
-            placeholder="my product card"
+            testID="regex-pattern"
+            style={[s.fieldInput, { fontFamily: "monospace", fontSize: 14 }]}
+            value={pattern}
+            onChangeText={setPattern}
+            placeholder="\d+"
             placeholderTextColor={INK_MUTED}
             autoCapitalize="none"
             autoCorrect={false}
             textAlign="left"
           />
+          <Text style={rx.slash}>/</Text>
         </View>
       </View>
 
-      <View style={d.nameRow}>
-        <Text testID="boilerplate-resolved" style={d.nameOut}>{name}.js</Text>
-        <Text style={s.fieldLabel}>ייווצר כ-</Text>
+      <View style={s.chipRow}>
+        {REGEX_FLAGS.map((f) => (
+          <TouchableOpacity
+            key={f.key}
+            style={[s.chip, flags[f.key] && { backgroundColor: BLUE, borderColor: BLUE }]}
+            onPress={() => { hapticLight(); setFlags((prev) => ({ ...prev, [f.key]: !prev[f.key] })); }}
+            activeOpacity={0.8}
+          >
+            <Text style={[s.chipText, flags[f.key] && { color: WHITE }]}>{f.label}</Text>
+          </TouchableOpacity>
+        ))}
+        {REGEX_SAMPLES.map((sample) => (
+          <TouchableOpacity
+            key={sample.label}
+            style={s.chip}
+            onPress={() => { hapticLight(); setPattern(sample.pattern); }}
+            activeOpacity={0.8}
+          >
+            <Text style={s.chipText}>{sample.label}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
-      <Segment options={BOILERPLATE_KINDS} value={kind} onChange={(v) => { hapticLight(); setKind(v); setCopied(false); }} />
-
-      <View style={s.snippetBox}>
-        <Text style={s.snippetText}>{code}</Text>
-      </View>
-
-      <TouchableOpacity
-        style={[s.bigBtn, copied && { backgroundColor: GREEN }]}
-        onPress={copy}
-        activeOpacity={0.85}
-      >
-        <BtnLabel
-          icon={copied ? "check" : "copy"}
-          text={copied ? "הקוד הועתק" : "העתק את הקומפוננטה"}
-          style={s.bigBtnText}
+      <View>
+        <Text style={s.fieldLabel}>טקסט לבדיקה</Text>
+        <TextInput
+          testID="regex-subject"
+          style={rx.area}
+          value={subject}
+          onChangeText={setSubject}
+          placeholder="הדבק כאן את הטקסט שרוצים לבדוק"
+          placeholderTextColor={INK_MUTED}
+          multiline
+          autoCapitalize="none"
+          autoCorrect={false}
+          textAlign="left"
+          textAlignVertical="top"
         />
-      </TouchableOpacity>
+      </View>
+
+      {r.state === "invalid" && (
+        <View style={[s.banner, { backgroundColor: RED + "14" }]}>
+          <Text style={[s.bannerText, { color: RED }]}>התבנית לא תקינה</Text>
+          <Text style={[s.bannerSub, { color: RED }]}>{r.error}</Text>
+        </View>
+      )}
+
+      {r.state === "done" && (
+        <>
+          <View
+            style={[
+              s.banner,
+              { backgroundColor: (r.matches.length ? GREEN : GOLD) + "16" },
+            ]}
+          >
+            <Text
+              testID="regex-verdict"
+              style={[s.bannerText, { color: r.matches.length ? GREEN : "#8A6D00" }]}
+            >
+              {r.matches.length ? `${r.matches.length} התאמות` : "אין התאמה"}
+            </Text>
+          </View>
+
+          <View style={rx.highlight}>
+            <Text style={rx.highlightText}>
+              {r.segments.map((seg, i) => (
+                <Text key={i} style={seg.hit ? rx.hit : undefined}>{seg.text}</Text>
+              ))}
+            </Text>
+          </View>
+
+          {r.matches.slice(0, 8).map((m, i) => (
+            <View key={i} style={s.routineRow}>
+              <Text style={s.routineTime}>{m.index}</Text>
+              <Text style={[s.routineLabel, { flex: 1, fontFamily: "monospace", textAlign: "left" }]}>
+                {m.text || "(ריק)"}
+                {m.groups.length ? `   groups: ${m.groups.map((x) => (x === undefined ? "—" : x)).join(", ")}` : ""}
+              </Text>
+            </View>
+          ))}
+        </>
+      )}
 
       <Text style={s.hint}>
-        השם מומר אוטומטית ל-PascalCase. שם שמתחיל בספרה מקבל קידומת, כי JSX מתייחס לתג באות קטנה
-        כאלמנט HTML ולא כקומפוננטה.
+        התבנית נבנית מחדש בכל הקלדה, ותבנית לא גמורה פשוט מדווחת כלא תקינה במקום להפיל את הכלי.
+        התאמות באורך אפס מקודמות ידנית, אחרת לולאת החיפוש הייתה נתקעת.
       </Text>
     </View>
   );
 }
 
-const g = StyleSheet.create({
-  preview: { height: 150, borderRadius: 24, overflow: "hidden" },
-  previewEmpty: { flex: 1, backgroundColor: CARD, alignItems: "center", justifyContent: "center" },
-  swatch: { width: 24, height: 24, borderRadius: 8, borderWidth: 1, borderColor: "#DDE2EC" },
-  presetChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    minHeight: 40,
-    paddingHorizontal: 12,
-    borderRadius: 20,
+// ---------------------------------------------------------------------------
+// H. ממיר Base64
+// ---------------------------------------------------------------------------
+
+const B64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+// Hand-rolled rather than btoa/atob: those are not guaranteed on Hermes, and
+// they are byte-oriented anyway — passing them Hebrew throws. Encoding the
+// UTF-8 bytes is what makes עברית survive a round trip.
+function utf8Bytes(str) {
+  const out = [];
+  for (let i = 0; i < str.length; i += 1) {
+    let code = str.codePointAt(i);
+    if (code > 0xffff) i += 1;
+    if (code < 0x80) out.push(code);
+    else if (code < 0x800) out.push(0xc0 | (code >> 6), 0x80 | (code & 63));
+    else if (code < 0x10000) out.push(0xe0 | (code >> 12), 0x80 | ((code >> 6) & 63), 0x80 | (code & 63));
+    else out.push(0xf0 | (code >> 18), 0x80 | ((code >> 12) & 63), 0x80 | ((code >> 6) & 63), 0x80 | (code & 63));
+  }
+  return out;
+}
+
+function bytesToUtf8(bytes) {
+  let out = "";
+  for (let i = 0; i < bytes.length; ) {
+    const b = bytes[i];
+    let code;
+    let size;
+    if (b < 0x80) { code = b; size = 1; }
+    else if (b >= 0xf0) { code = b & 7; size = 4; }
+    else if (b >= 0xe0) { code = b & 15; size = 3; }
+    else { code = b & 31; size = 2; }
+    for (let k = 1; k < size; k += 1) code = (code << 6) | (bytes[i + k] & 63);
+    out += String.fromCodePoint(code);
+    i += size;
+  }
+  return out;
+}
+
+function b64Encode(text) {
+  const bytes = utf8Bytes(text);
+  let out = "";
+  for (let i = 0; i < bytes.length; i += 3) {
+    const a = bytes[i];
+    const b = bytes[i + 1];
+    const c = bytes[i + 2];
+    out += B64_CHARS[a >> 2];
+    out += B64_CHARS[((a & 3) << 4) | ((b || 0) >> 4)];
+    out += b === undefined ? "=" : B64_CHARS[((b & 15) << 2) | ((c || 0) >> 6)];
+    out += c === undefined ? "=" : B64_CHARS[c & 63];
+  }
+  return out;
+}
+
+function b64Decode(text) {
+  const clean = text.replace(/[\s]/g, "").replace(/=+$/, "");
+  if (/[^A-Za-z0-9+/]/.test(clean)) throw new Error("תווים שאינם Base64");
+  const bytes = [];
+  for (let i = 0; i < clean.length; i += 4) {
+    const chunk = [0, 1, 2, 3].map((k) => B64_CHARS.indexOf(clean[i + k]));
+    bytes.push((chunk[0] << 2) | (chunk[1] >> 4));
+    if (chunk[2] >= 0) bytes.push(((chunk[1] & 15) << 4) | (chunk[2] >> 2));
+    if (chunk[3] >= 0) bytes.push(((chunk[2] & 3) << 6) | chunk[3]);
+  }
+  return bytesToUtf8(bytes);
+}
+
+export function Base64Tool() {
+  const [mode, setMode] = useState("encode");
+  const [input, setInput] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const r = useMemo(() => {
+    if (!input) return { ok: true, out: "" };
+    try {
+      return { ok: true, out: mode === "encode" ? b64Encode(input) : b64Decode(input) };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  }, [input, mode]);
+
+  const copy = async () => {
+    if (!r.ok || !r.out) return;
+    await Clipboard.setStringAsync(r.out);
+    hapticSuccess();
+    setCopied(true);
+  };
+
+  const swap = () => {
+    hapticLight();
+    if (r.ok && r.out) setInput(r.out);
+    setMode((m) => (m === "encode" ? "decode" : "encode"));
+    setCopied(false);
+  };
+
+  return (
+    <View style={{ gap: 12 }}>
+      <Segment
+        options={[
+          { key: "encode", label: "קידוד" },
+          { key: "decode", label: "פענוח" },
+        ]}
+        value={mode}
+        onChange={(v) => { hapticLight(); setMode(v); setCopied(false); }}
+      />
+
+      <View>
+        <Text style={s.fieldLabel}>{mode === "encode" ? "טקסט" : "Base64"}</Text>
+        <TextInput
+          testID="b64-input"
+          style={rx.area}
+          value={input}
+          onChangeText={(v) => { setInput(v); setCopied(false); }}
+          placeholder={mode === "encode" ? "שלום עולם" : "16nXnNeV150g16LXldec150="}
+          placeholderTextColor={INK_MUTED}
+          multiline
+          autoCapitalize="none"
+          autoCorrect={false}
+          textAlign={mode === "encode" ? "right" : "left"}
+          textAlignVertical="top"
+        />
+      </View>
+
+      {!r.ok ? (
+        <View style={[s.banner, { backgroundColor: RED + "14" }]}>
+          <Text style={[s.bannerText, { color: RED }]}>אי אפשר לפענח</Text>
+          <Text style={[s.bannerSub, { color: RED }]}>{r.error}</Text>
+        </View>
+      ) : (
+        !!r.out && (
+          <View style={s.snippetBox}>
+            <Text testID="b64-output" style={[s.snippetText, { textAlign: mode === "encode" ? "left" : "right" }]}>
+              {r.out}
+            </Text>
+          </View>
+        )
+      )}
+
+      <View style={s.row}>
+        <TouchableOpacity
+          style={[s.actionBtn, copied && { backgroundColor: GREEN }]}
+          onPress={copy}
+          activeOpacity={0.85}
+        >
+          <BtnLabel icon={copied ? "check" : "copy"} text={copied ? "הועתק" : "העתק"} style={s.actionText} />
+        </TouchableOpacity>
+        <TouchableOpacity style={[s.actionBtn, { backgroundColor: CARD }]} onPress={swap} activeOpacity={0.85}>
+          <BtnLabel icon="repeat" text="הפוך כיוון" color={INK_SOFT} style={[s.actionText, { color: INK_SOFT }]} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={s.statRow}>
+        <Stat label="תווי קלט" value={input.length} />
+        <Stat label="תווי פלט" value={r.ok ? r.out.length : 0} color={BLUE} />
+      </View>
+
+      <Text style={s.hint}>
+        הקידוד עובר דרך בייטים של UTF-8, ולכן עברית וניקוד שורדים הלוך ושוב. פונקציות btoa ו-atob של
+        הדפדפן היו נכשלות כאן — הן יודעות לטפל רק בבייטים בטווח Latin-1.
+      </Text>
+    </View>
+  );
+}
+
+const rx = StyleSheet.create({
+  slash: { fontFamily: FONTS.bold, fontSize: 15, color: INK_MUTED },
+  area: {
     backgroundColor: CARD,
+    borderRadius: 14,
+    padding: 14,
+    minHeight: 110,
+    fontFamily: "monospace",
+    fontSize: 13,
+    color: INK,
+    lineHeight: 20,
+    ...NO_OUTLINE,
   },
-  presetDot: { width: 15, height: 15, borderRadius: 8 },
+  highlight: { backgroundColor: CARD, borderRadius: 14, padding: 14 },
+  highlightText: { fontFamily: "monospace", fontSize: 13, color: INK, lineHeight: 21, textAlign: "left" },
+  hit: { backgroundColor: GOLD + "44", color: "#0E7490", fontFamily: FONTS.bold },
 });

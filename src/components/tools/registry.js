@@ -1,13 +1,15 @@
 import { AliImportCalc } from "./apps/importing";
-import { DormSplitter, LicenseTracker, ProfitMargin, TillCounter, VatDiscount } from "./apps/finance";
 import {
-  GradientGenerator,
-  JsonValidator,
-  QrGenerator,
-  RnBoilerplate,
-  RnUiGenerator,
-  UuidGenerator,
-} from "./apps/dev";
+  DormSplitter,
+  LicenseTracker,
+  LoanCalc,
+  ProfitMargin,
+  TillCounter,
+  VatDiscount,
+} from "./apps/finance";
+import { Base64Tool, JsonValidator, QrGenerator, RegexTester, RnUiGenerator, UuidGenerator } from "./apps/dev";
+import { ContrastChecker, GradientGenerator, RnBoilerplate } from "./apps/design";
+import { CarDepreciation, DeliveryRoute, FuelTripCost } from "./apps/cars";
 import {
   DecisionPicker,
   PercentDiff,
@@ -17,7 +19,14 @@ import {
 } from "./apps/utils";
 import { PromptBuilder } from "./apps/prompts";
 import { DroneFlightTime, SlowMoFps, TimelapseCalc, VideoSizeEstimator } from "./apps/video";
-import { OhmsLaw, TransitLoadCalc, VendingRoi } from "./apps/vending";
+import {
+  ChangeBreakdown,
+  InventoryForecast,
+  OhmsLaw,
+  PowerLoad,
+  TransitLoadCalc,
+  VendingRoi,
+} from "./apps/vending";
 import { CalorieDensity, StudyPace, ZmanimRoutine } from "./apps/school";
 
 // The single map from a catalogue tool id to the component that implements it.
@@ -33,6 +42,14 @@ export const TOOL_APPS = {
   "vending-roi": VendingRoi,
   "transit-load": TransitLoadCalc,
   "ohms-law": OhmsLaw,
+  "restock-planner": InventoryForecast,
+  "coin-float": ChangeBreakdown,
+  "power-load": PowerLoad,
+
+  // cars — רכב ומסלולים
+  "fuel-cost": FuelTripCost,
+  "car-depreciation": CarDepreciation,
+  "route-planner": DeliveryRoute,
 
   // video — וידאו ועריכה
   "video-size": VideoSizeEstimator,
@@ -44,8 +61,13 @@ export const TOOL_APPS = {
   "rn-ui-gen": RnUiGenerator,
   "json-validator": JsonValidator,
   "uuid-gen": UuidGenerator,
+  "regex-tester": RegexTester,
+  "base64": Base64Tool,
+
+  // design — צבע ותבניות
   "gradient-gen": GradientGenerator,
   "rn-boilerplate": RnBoilerplate,
+  "contrast-check": ContrastChecker,
 
   // import — ייבוא וסחר
   "ali-import": AliImportCalc,
@@ -61,6 +83,7 @@ export const TOOL_APPS = {
   "till-count": TillCounter,
   "license-tracker": LicenseTracker,
   "margin-calc": ProfitMargin,
+  "loan-calc": LoanCalc,
 
   // prompts — פרומפטים
   "prompt-builder": PromptBuilder,

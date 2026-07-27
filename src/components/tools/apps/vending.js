@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
+import Icon from "../../Icon";
+import { NOTES_FONTS as FONTS } from "../../../utils/notesTheme";
 import { shekel } from "../../../utils/posStore";
 import {
   BLUE,
@@ -10,6 +12,7 @@ import {
   GOLD,
   GREEN,
   INK,
+  INK_MUTED,
   INK_SOFT,
   RED,
   Segment,
@@ -301,3 +304,298 @@ export function OhmsLaw() {
     </View>
   );
 }
+
+// ---------------------------------------------------------------------------
+// D. חיזוי מלאי למכונה
+// ---------------------------------------------------------------------------
+export function InventoryForecast() {
+  const [stock, setStock] = useState("");
+  const [perDay, setPerDay] = useState("");
+  const [leadDays, setLeadDays] = useState("2");
+
+  const r = useMemo(() => {
+    const units = parseFloat(stock);
+    const rate = parseFloat(perDay);
+    const lead = parseFloat(leadDays) || 0;
+    if (!Number.isFinite(units) || !Number.isFinite(rate)) return { ready: false };
+    // Zero sales means the machine never empties — "never" is the honest
+    // answer, not a division by zero.
+    if (rate <= 0) return { ready: true, idle: true };
+
+    const days = units / rate;
+    const restockIn = days - lead;
+    const when = new Date(Date.now() + days * 86400000);
+    return {
+      ready: true,
+      idle: false,
+      days: Math.round(days * 10) / 10,
+      wholeDays: Math.floor(days),
+      emptyOn: when.toLocaleDateString("he-IL", { weekday: "short", day: "numeric", month: "numeric" }),
+      restockIn: Math.round(restockIn * 10) / 10,
+      urgent: restockIn <= 0,
+      soon: restockIn > 0 && restockIn <= 2,
+      weekNeed: Math.ceil(rate * 7),
+    };
+  }, [stock, perDay, leadDays]);
+
+  useCalcHaptic(r.days);
+
+  const tone = !r.ready || r.idle ? INK_SOFT : r.urgent ? RED : r.soon ? GOLD : GREEN;
+
+  return (
+    <View style={{ gap: 12 }}>
+      <View style={s.row}>
+        <Field testID="fc-stock" label="מלאי נוכחי" value={stock} onChange={setStock} placeholder="120" suffix="יח׳" />
+        <Field testID="fc-rate" label="מכירות ליום" value={perDay} onChange={setPerDay} placeholder="18" suffix="יח׳" />
+        <Field testID="fc-lead" label="ימים עד מילוי" value={leadDays} onChange={setLeadDays} placeholder="2" suffix="ימים" />
+      </View>
+
+      {!r.ready ? (
+        <Text style={s.hint}>הזן מלאי נוכחי וקצב מכירות יומי ממוצע.</Text>
+      ) : r.idle ? (
+        <View style={[s.banner, { backgroundColor: CARD }]}>
+          <Text style={[s.bannerText, { color: INK }]}>אין מכירות — המלאי לא יתרוקן</Text>
+          <Text style={[s.bannerSub, { color: INK_SOFT }]}>
+            בקצב אפס אין תאריך התרוקנות. אם המכונה באמת לא מוכרת, הבעיה היא במיקום או במחיר ולא במלאי.
+          </Text>
+        </View>
+      ) : (
+        <>
+          <View style={[iv.verdict, { backgroundColor: tone + "12" }]}>
+            <Text testID="fc-days" style={[iv.verdictValue, { color: tone }]}>{r.days}</Text>
+            <Text style={iv.verdictUnit}>ימים עד שהמכונה מתרוקנת</Text>
+            <Text style={iv.verdictSub}>צפי התרוקנות: {r.emptyOn}</Text>
+          </View>
+
+          <View style={s.statRow}>
+            <Stat
+              label="לצאת למילוי בעוד"
+              value={r.urgent ? "עכשיו" : `${r.restockIn} ימים`}
+              color={tone}
+            />
+            <Stat label="צריכה שבועית" value={`${r.weekNeed} יח׳`} />
+          </View>
+
+          {r.urgent && (
+            <View style={[s.banner, { backgroundColor: RED + "14" }]}>
+              <Text style={[s.bannerText, { color: RED }]}>צריך לצאת למילוי עכשיו</Text>
+              <Text style={[s.bannerSub, { color: RED }]}>
+                המלאי מספיק ל-{r.days} ימים ולוקח {leadDays} ימים להגיע. כל דחייה מכאן היא ימים שבהם
+                המכונה עומדת ריקה.
+              </Text>
+            </View>
+          )}
+
+          <Text style={s.hint}>
+            החיזוי מניח קצב מכירה קבוע. סופי שבוע, חופשות ומזג אוויר חם משנים אותו — שווה לעדכן את
+            הקצב אחרי כל סבב.
+          </Text>
+        </>
+      )}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// E. מחשבון עודף מדויק
+// ---------------------------------------------------------------------------
+
+// Coins a drinks machine's hopper actually returns, largest first. Everything
+// is in agorot so the greedy loop never meets a floating-point remainder.
+const COINS = [
+  { agorot: 1000, label: "10 ₪" },
+  { agorot: 500, label: "5 ₪" },
+  { agorot: 200, label: "2 ₪" },
+  { agorot: 100, label: "1 ₪" },
+  { agorot: 50, label: "½ ₪" },
+  { agorot: 10, label: "10 אג׳" },
+];
+
+export function ChangeBreakdown() {
+  const [priceIls, setPriceIls] = useState("");
+  const [paidIls, setPaidIls] = useState("");
+
+  const r = useMemo(() => {
+    const price = parseFloat(priceIls);
+    const paid = parseFloat(paidIls);
+    if (!Number.isFinite(price) || !Number.isFinite(paid)) return { ready: false };
+
+    const priceAg = Math.round(price * 100);
+    const paidAg = Math.round(paid * 100);
+    const dueAg = paidAg - priceAg;
+    if (dueAg < 0) return { ready: true, short: Math.abs(dueAg) / 100 };
+
+    // The smallest coin in circulation is 10 agorot, so anything finer cannot
+    // be returned and is reported rather than silently dropped.
+    const payable = Math.floor(dueAg / 10) * 10;
+    const unpayable = dueAg - payable;
+
+    let left = payable;
+    const coins = COINS.map((c) => {
+      const count = Math.floor(left / c.agorot);
+      left -= count * c.agorot;
+      return { ...c, count };
+    });
+
+    return {
+      ready: true,
+      short: null,
+      due: dueAg / 100,
+      payable: payable / 100,
+      unpayable: unpayable / 100,
+      coins,
+      pieces: coins.reduce((n, c) => n + c.count, 0),
+      exact: dueAg === 0,
+    };
+  }, [priceIls, paidIls]);
+
+  useCalcHaptic(r.due);
+
+  return (
+    <View style={{ gap: 12 }}>
+      <View style={s.row}>
+        <Field testID="chg-price" label="מחיר הפריט" value={priceIls} onChange={setPriceIls} placeholder="6" suffix="₪" />
+        <Field testID="chg-paid" label="הוכנס למכונה" value={paidIls} onChange={setPaidIls} placeholder="20" suffix="₪" />
+      </View>
+      <Chips options={[5, 10, 20, 50, 100]} onPick={(v) => setPaidIls(String(v))} active={paidIls} />
+
+      {!r.ready ? (
+        <Text style={s.hint}>הזן את מחיר הפריט ואת הסכום שהוכנס.</Text>
+      ) : r.short !== null ? (
+        <View style={[s.banner, { backgroundColor: RED + "14" }]}>
+          <Text style={[s.bannerText, { color: RED }]}>הסכום שהוכנס נמוך מהמחיר</Text>
+          <Text style={[s.bannerSub, { color: RED }]}>חסרים {shekel(r.short)} להשלמת הקנייה.</Text>
+        </View>
+      ) : r.exact ? (
+        <View style={[s.banner, { backgroundColor: GREEN + "16" }]}>
+          <Text style={[s.bannerText, { color: GREEN }]}>סכום מדויק — אין עודף</Text>
+        </View>
+      ) : (
+        <>
+          <View style={[iv.verdict, { backgroundColor: BLUE + "12" }]}>
+            <Text testID="chg-total" style={[iv.verdictValue, { color: BLUE }]}>{shekel(r.due)}</Text>
+            <Text style={iv.verdictUnit}>עודף להחזרה · {r.pieces} מטבעות</Text>
+          </View>
+
+          {r.coins.map((c) => (
+            <View
+              key={c.agorot}
+              style={[s.routineRow, !c.count && { opacity: 0.35 }]}
+            >
+              <Text testID={`chg-coin-${c.agorot}`} style={[s.routineTime, c.count > 0 && { color: BLUE }]}>
+                {c.count}
+              </Text>
+              <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
+                <Text style={s.routineLabel}>{c.label}</Text>
+                <Icon name="circle" size={14} color={c.count > 0 ? BLUE : INK_MUTED} />
+              </View>
+            </View>
+          ))}
+
+          {r.unpayable > 0 && (
+            <View style={[s.banner, { backgroundColor: GOLD + "16" }]}>
+              <Text style={[s.bannerText, { color: "#8A6D00" }]}>
+                {shekel(r.unpayable)} לא ניתנים להחזרה
+              </Text>
+              <Text style={[s.bannerSub, { color: "#8A6D00" }]}>
+                המטבע הקטן ביותר במחזור הוא 10 אגורות. שווה לתמחר בכפולות של 10 אגורות כדי שלא ייווצר
+                שארית כזו.
+              </Text>
+            </View>
+          )}
+        </>
+      )}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// F. עומס חשמל רכיבים
+// ---------------------------------------------------------------------------
+
+const COMPONENTS = [
+  { key: "coin", label: "מקבל מטבעות", def: "300" },
+  { key: "bill", label: "קורא שטרות", def: "700" },
+  { key: "board", label: "לוח בקרה ראשי", def: "450" },
+  { key: "display", label: "תצוגה ותאורה", def: "600" },
+  { key: "motors", label: "מנועי הגשה", def: "1200" },
+];
+
+export function PowerLoad() {
+  const [draw, setDraw] = useState(() =>
+    COMPONENTS.reduce((acc, c) => ({ ...acc, [c.key]: c.def }), {})
+  );
+  const [volts, setVolts] = useState("12");
+
+  const r = useMemo(() => {
+    const totalMa = COMPONENTS.reduce((sum, c) => sum + (parseFloat(draw[c.key]) || 0), 0);
+    const v = parseFloat(volts) || 0;
+    const amps = totalMa / 1000;
+    // A supply run at its rated maximum runs hot and dies early; 30% headroom
+    // is the usual design margin, and motors add an inrush spike on top.
+    const recommendedA = Math.ceil(amps * 1.3 * 2) / 2;
+    return {
+      totalMa,
+      amps: Math.round(amps * 100) / 100,
+      watts: Math.round(amps * v * 10) / 10,
+      recommendedA,
+      recommendedW: Math.round(recommendedA * v),
+      heaviest: COMPONENTS.reduce(
+        (max, c) => ((parseFloat(draw[c.key]) || 0) > max.value ? { label: c.label, value: parseFloat(draw[c.key]) || 0 } : max),
+        { label: "—", value: 0 }
+      ),
+    };
+  }, [draw, volts]);
+
+  useCalcHaptic(r.amps);
+
+  return (
+    <View style={{ gap: 12 }}>
+      <View style={[iv.verdict, { backgroundColor: BLUE + "12" }]}>
+        <Text testID="power-amps" style={[iv.verdictValue, { color: BLUE }]}>{r.amps}A</Text>
+        <Text style={iv.verdictUnit}>{r.totalMa} mA · {r.watts}W ב-{volts}V</Text>
+      </View>
+
+      {COMPONENTS.map((c) => (
+        <Field
+          key={c.key}
+          testID={`power-${c.key}`}
+          label={c.label}
+          value={draw[c.key]}
+          onChange={(val) => setDraw((prev) => ({ ...prev, [c.key]: val }))}
+          placeholder={c.def}
+          suffix="mA"
+        />
+      ))}
+
+      <Field testID="power-volts" label="מתח הספק" value={volts} onChange={setVolts} placeholder="12" suffix="V" />
+      <Chips options={[5, 12, 24]} onPick={(val) => setVolts(String(val))} active={volts} />
+
+      <View style={[s.banner, { backgroundColor: GREEN + "14" }]}>
+        <Text testID="power-recommend" style={[s.bannerText, { color: GREEN }]}>
+          ספק מומלץ: {volts}V {r.recommendedA}A ({r.recommendedW}W)
+        </Text>
+        <Text style={[s.bannerSub, { color: GREEN }]}>
+          30% מרווח מעל הצריכה המחושבת. ספק שעובד על המקסימום שלו מתחמם ונשרף מוקדם.
+        </Text>
+      </View>
+
+      <View style={s.statRow}>
+        <Stat label="הצרכן הגדול" value={r.heaviest.label} />
+        <Stat label="הצריכה שלו" value={`${r.heaviest.value} mA`} color={GOLD} />
+      </View>
+
+      <Text style={s.hint}>
+        המנועים מושכים זרם התנעה גבוה בהרבה מהרצף — אם המכונה מפילה את הספק ברגע ההגשה, זו הסיבה
+        הראשונה לבדוק, גם אם החישוב כאן נראה תקין.
+      </Text>
+    </View>
+  );
+}
+
+const iv = StyleSheet.create({
+  verdict: { borderRadius: 24, paddingVertical: 20, alignItems: "center", gap: 3 },
+  verdictValue: { fontFamily: FONTS.bold, fontSize: 36 },
+  verdictUnit: { fontFamily: FONTS.medium, fontSize: 12.5, color: INK_SOFT },
+  verdictSub: { fontFamily: FONTS.regular, fontSize: 11.5, color: INK_MUTED, marginTop: 2 },
+});
