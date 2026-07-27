@@ -28,7 +28,7 @@ import Animated, {
 import Bounce from "../components/Bounce";
 import Icon from "../components/Icon";
 import { FLUID, SCREEN_IN, listEntry } from "../utils/motion";
-import { MINI_APPS } from "../components/tools/MiniApps";
+import ToolRenderer from "../components/tools/ToolRenderer";
 import { useSettings } from "../context/SettingsContext";
 import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
 import { ALL_TOOLS, IMPLEMENTED, TOOL_CATEGORIES, TOOL_COUNT, toolById } from "../utils/toolsCatalog";
@@ -146,8 +146,6 @@ export default function ToolsScreen() {
       flash(`${tool.name} נוסף למועדפים`);
     }
   };
-
-  const ActiveMini = activeTool ? MINI_APPS[activeTool.id] : null;
 
   return (
     <Animated.View entering={SCREEN_IN} style={{ flex: 1, backgroundColor: BG }}>
@@ -309,14 +307,7 @@ export default function ToolsScreen() {
                       {activeTool?.name}
                     </Text>
                   </View>
-                  <ScrollView
-                    style={{ maxHeight: 480 }}
-                    showsVerticalScrollIndicator={false}
-                    keyboardShouldPersistTaps="handled"
-                    contentContainerStyle={{ paddingBottom: 100 }}
-                  >
-                    {ActiveMini && <ActiveMini />}
-                  </ScrollView>
+                  <ToolRenderer toolId={activeTool?.id} tool={activeTool} />
                 </Animated.View>
               </TouchableWithoutFeedback>
             </View>

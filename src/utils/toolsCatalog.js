@@ -1,6 +1,9 @@
-// The Tools super-hub catalog: 8 categories, 121 utilities.
-// `id` values in IMPLEMENTED below open a real mini-app; everything else is
-// catalogued UI that reports "coming soon" instead of crashing.
+import { BUILT_TOOL_IDS } from "../components/tools/registry";
+
+// The Tools super-hub catalog: 8 categories of utilities.
+// A tool opens a real mini-app when its id is wired in the tool registry;
+// everything else is catalogued UI that reports "coming soon" instead of
+// crashing.
 //
 // Scope note: electric-scooter, drone and A5-sticker/printer tooling was
 // removed in the hub refactor — this business no longer covers them. Vending
@@ -144,6 +147,7 @@ export const TOOL_CATEGORIES = [
       { id: "expense-split", name: "מפצל הוצאות חדר", icon: "users" },
       { id: "price-history", name: "היסטוריית מחירים", icon: "trending-down" },
       { id: "hourly-rate", name: "חישוב תעריף שעתי", icon: "clock" },
+      { id: "till-count", name: "ספירת קופה", icon: "cash-outline" },
     ],
   },
   {
@@ -177,8 +181,8 @@ export const TOOL_CATEGORIES = [
     tools: [
       { id: "qr-gen", name: "מחולל ברקודים/QR", icon: "grid" },
       { id: "unit-conv", name: "המרת יחידות", icon: "maximize-2" },
-      { id: "percent-calc", name: "מחשבון אחוזים", icon: "percent" },
-      { id: "random-picker", name: "בוחר אקראי", icon: "shuffle" },
+      { id: "percent-calc", name: "פערי אחוזים", icon: "percent" },
+      { id: "random-picker", name: "גלגל החלטות", icon: "shuffle" },
       { id: "password-gen", name: "מחולל סיסמאות", icon: "key" },
       { id: "text-counter", name: "ספירת מילים ותווים", icon: "type" },
       { id: "case-convert", name: "המרת Case", icon: "bold" },
@@ -190,26 +194,16 @@ export const TOOL_CATEGORIES = [
       { id: "noise-meter", name: "מד רעש", icon: "volume-2" },
       { id: "emoji-picker", name: "בורר אימוג׳י", icon: "smile" },
       { id: "notes-quick", name: "פתק מהיר", icon: "edit-3" },
+      { id: "pomodoro", name: "טיימר פומודורו", icon: "clock" },
     ],
   },
 ];
 
 // Tool ids that open a real mini-app.
-export const IMPLEMENTED = new Set([
-  "vending-roi",
-  "video-size",
-  "rn-ui-gen",
-  "ali-import",
-  "zmanim-routine",
-  "json-validator",
-  "qr-gen",
-  // Phase 2 batch
-  "transit-load",
-  "prompt-builder",
-  "fps-slowmo",
-  "expense-split",
-  "vat-calc",
-]);
+// Derived from the app registry rather than hand-maintained: a tool is
+// "implemented" precisely when a component is wired to its id, so this set can
+// never claim a tool the sheet cannot actually open.
+export const IMPLEMENTED = new Set(BUILT_TOOL_IDS);
 
 // Flat list for search + counting.
 export const ALL_TOOLS = TOOL_CATEGORIES.flatMap((cat) =>
