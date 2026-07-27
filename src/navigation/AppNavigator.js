@@ -24,7 +24,7 @@ import SettingsScreen from "../screens/SettingsScreen";
 import ToolsWorkshopScreen from "../screens/ToolsWorkshopScreen";
 import TransitAssistantScreen from "../screens/TransitAssistantScreen";
 import { FONTS } from "../utils/theme";
-import { BEVEL, UI, glow, tint } from "../utils/ui";
+import { BEVEL, CARD_SHADOW, UI, tint } from "../utils/ui";
 
 const RootStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -58,18 +58,19 @@ const ORDERED_ZONES = I18nManager.isRTL ? ZONES : [...ZONES].reverse();
 const ICONS = Object.fromEntries(ZONES.map((z) => [z.name, z.icon]));
 const LABELS = Object.fromEntries(ZONES.map((z) => [z.name, z.label]));
 
-// The bar is a real piece of frosted glass rather than a translucent colour:
-// blur behind it, a gradient sheen over it, and a top-light bevel. With five
-// items it also has to stay narrow, so the active state is a tinted pill
-// instead of anything that adds height.
+// The bar is a slip of frosted white paper: light blur so whatever scrolls
+// under it stays faintly visible, and a near-opaque white wash on top so the
+// labels never have to fight the content. With five items it also has to stay
+// narrow, so the active state is a tinted pill rather than anything that adds
+// height.
 function TabBackground() {
   return (
     <View style={StyleSheet.absoluteFill}>
-      <BlurView intensity={34} tint="dark" style={StyleSheet.absoluteFill} />
+      <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
       <LinearGradient
-        colors={["rgba(255,255,255,0.10)", "rgba(255,255,255,0.02)"]}
+        colors={["rgba(255,255,255,0.94)", "rgba(255,255,255,0.86)"]}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
     </View>
@@ -82,14 +83,13 @@ const ACTIVE_CHIP = {
   borderRadius: 15,
   alignItems: "center",
   justifyContent: "center",
-  backgroundColor: tint(UI.violet, 0.28),
-  ...BEVEL,
+  backgroundColor: tint(UI.violet, 0.12),
 };
 const INACTIVE_CHIP = { minWidth: 44, height: 30, alignItems: "center", justifyContent: "center" };
 
 const screenOptions = ({ route }) => ({
   headerShown: false,
-  tabBarActiveTintColor: UI.violetLo,
+  tabBarActiveTintColor: UI.violet,
   tabBarInactiveTintColor: UI.inkMuted,
   tabBarBackground: TabBackground,
   tabBarStyle: {
@@ -100,18 +100,18 @@ const screenOptions = ({ route }) => ({
     height: 78,
     paddingTop: 9,
     paddingBottom: 9,
-    borderRadius: UI.radius,
+    borderRadius: UI.radiusLg,
     backgroundColor: UI.glass,
     borderTopWidth: 0,
     overflow: "hidden",
     ...BEVEL,
-    ...glow("#000000", 0.5),
+    ...CARD_SHADOW,
   },
   tabBarItemStyle: { borderRadius: UI.radiusSm },
   tabBarLabelStyle: { fontFamily: FONTS.medium, fontSize: 10, lineHeight: 15, marginTop: 2 },
   tabBarIcon: ({ focused }) => (
     <View style={focused ? ACTIVE_CHIP : INACTIVE_CHIP}>
-      <Icon name={ICONS[route.name]} size={20} color={focused ? UI.violetLo : UI.inkMuted} />
+      <Icon name={ICONS[route.name]} size={20} color={focused ? UI.violet : UI.inkMuted} />
     </View>
   ),
   tabBarLabel: LABELS[route.name],
@@ -135,7 +135,7 @@ export default function AppNavigator() {
   if (authLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: UI.bg, alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator color={UI.violetLo} />
+        <ActivityIndicator color={UI.violet} />
       </View>
     );
   }

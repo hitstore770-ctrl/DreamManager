@@ -4,7 +4,7 @@ import Animated, { FadeIn, FadeInDown, LinearTransition } from "react-native-rea
 
 import Bounce from "../../components/Bounce";
 import Icon from "../../components/Icon";
-import { GradCard } from "../../components/Glass";
+import { GradCard } from "../../components/Paper";
 import { useMoney } from "../../context/MoneyContext";
 import { hapticLight, hapticSuccess, hapticWarning } from "../../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";

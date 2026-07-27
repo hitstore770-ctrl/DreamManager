@@ -6,12 +6,12 @@ import Banknote from "../components/money/Banknote";
 import Bounce from "../components/Bounce";
 import Coin from "../components/money/Coin";
 import Icon from "../components/Icon";
-import { Canvas, Glass, GradCard } from "../components/Glass";
+import { Canvas, Card, GradCard } from "../components/Paper";
 import { useMoney } from "../context/MoneyContext";
 import { hapticLight } from "../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import { shekel } from "../utils/posStore";
-import { BEVEL, GRAD, TYPE, UI, glow, tint } from "../utils/ui";
+import { BEVEL, GRAD, TYPE, UI, tint } from "../utils/ui";
 
 // הכסף שלי — the rightmost zone. Two doors: counting the till, and the savings
 // area. Everything money-shaped in the app is reachable from here.
@@ -42,7 +42,7 @@ export default function MyMoneyHubScreen({ navigation }) {
             <Text style={s.subtitle}>הכול במקום אחד</Text>
           </View>
           <View style={s.headerBadge}>
-            <Icon name="trending-up" size={20} color={UI.violetLo} />
+            <Icon name="trending-up" size={20} color={UI.violet} />
           </View>
         </View>
 
@@ -97,10 +97,10 @@ export default function MyMoneyHubScreen({ navigation }) {
           {SHORTCUTS.map((sc, i) => (
             <Animated.View key={sc.key} entering={FadeInDown.delay(220 + i * 50).springify().damping(14)}>
               <Bounce testID={`shortcut-${sc.key}`} scaleTo={0.96} onPress={() => go(sc.key)}>
-                <Glass style={s.shortcut} radius={UI.radiusSm}>
+                <Card style={s.shortcut} radius={UI.radiusSm}>
                   <View style={s.shortcutInner}>
                     <View style={s.shortcutBadge}>
-                      <Icon name={sc.icon} size={19} color={UI.violetLo} />
+                      <Icon name={sc.icon} size={19} color={UI.violet} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={s.shortcutLabel}>{sc.label}</Text>
@@ -108,7 +108,7 @@ export default function MyMoneyHubScreen({ navigation }) {
                     </View>
                     <Icon name={I18nManager.isRTL ? "chevron-left" : "chevron-right"} size={17} color={UI.inkMuted} />
                   </View>
-                </Glass>
+                </Card>
               </Bounce>
             </Animated.View>
           ))}
@@ -211,7 +211,7 @@ const s = StyleSheet.create({
     marginBottom: 10,
   },
   shortcuts: { paddingHorizontal: UI.cardMarginH, gap: 10 },
-  shortcut: { ...glow("#000000", 0.35) },
+  shortcut: {},
   shortcutInner: { flexDirection: ROW, alignItems: "center", gap: 12, padding: 14 },
   shortcutBadge: {
     width: 42,

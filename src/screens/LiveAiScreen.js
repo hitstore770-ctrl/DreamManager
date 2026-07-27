@@ -18,11 +18,11 @@ import Icon from "../components/Icon";
 import { callGemini, isGeminiConfigured } from "../config/geminiConfig";
 import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
-import { Canvas } from "../components/Glass";
-import { CARD_SHADOW, TYPE, UI } from "../utils/ui";
+import { Canvas } from "../components/Paper";
+import { BEVEL, CARD_SHADOW, TYPE, UI } from "../utils/ui";
 
-// Zone 1 — the live assistant. Glass surfaces, quick actions above the input,
-// and a GPS fix taken quietly in the background.
+// Zone 1 — the live assistant. Every bubble is a small sheet of paper, quick
+// actions above the input, and a GPS fix taken quietly in the background.
 //
 // "Silently" means without a modal or a spinner in the way, not without asking:
 // the OS permission prompt is not ours to skip, and a location grabbed with no
@@ -166,7 +166,7 @@ export default function LiveAiScreen() {
 
   return (
     <Canvas testID="ai-screen" style={{ paddingTop: insets.top + 10 }}>
-      {/* Glass header */}
+      {/* Header */}
       <View style={s.header}>
         <View style={{ flex: 1 }}>
           <Text style={s.title}>עוזר חכם</Text>
@@ -319,7 +319,7 @@ const s = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: UI.glass,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.14)",
+    borderColor: UI.hairline,
     alignItems: "center",
     justifyContent: "center",
     ...CARD_SHADOW,
@@ -330,12 +330,14 @@ const s = StyleSheet.create({
   row: { flexDirection: "row" },
   rowMine: { justifyContent: "flex-end" },
   rowTheirs: { justifyContent: "flex-start" },
-  bubble: { maxWidth: "88%", borderRadius: 22, paddingHorizontal: 16, paddingVertical: 12 },
-  userBubble: { backgroundColor: UI.violet, borderBottomRightRadius: 8 },
+  bubble: { maxWidth: "88%", borderRadius: UI.radius, paddingHorizontal: 16, paddingVertical: 12 },
+  userBubble: { backgroundColor: UI.violet, borderBottomRightRadius: 8, ...CARD_SHADOW },
+  // The assistant's replies are white pages; the user's are violet cards. The
+  // squared-off corner on each is what keeps two stacked bubbles from reading
+  // as one long sheet.
   modelBubble: {
-    backgroundColor: UI.glass,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.14)",
+    backgroundColor: UI.surface,
+    ...BEVEL,
     borderBottomLeftRadius: 8,
     ...CARD_SHADOW,
   },
@@ -359,10 +361,9 @@ const s = StyleSheet.create({
   emptyGlass: {
     width: 76,
     height: 76,
-    borderRadius: 28,
-    backgroundColor: UI.glass,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.14)",
+    borderRadius: UI.radiusLg,
+    backgroundColor: UI.surface,
+    ...BEVEL,
     alignItems: "center",
     justifyContent: "center",
     ...CARD_SHADOW,
@@ -389,9 +390,8 @@ const s = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: 14,
     borderRadius: 22,
-    backgroundColor: UI.glass,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.14)",
+    backgroundColor: UI.surface,
+    ...BEVEL,
     ...CARD_SHADOW,
   },
   quickText: { fontFamily: FONTS.semibold, fontSize: 13, color: UI.ink },
@@ -402,19 +402,21 @@ const s = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 14,
     paddingTop: 10,
-    backgroundColor: UI.glass,
-    borderTopLeftRadius: UI.radius,
-    borderTopRightRadius: UI.radius,
+    backgroundColor: UI.surface,
+    borderTopLeftRadius: UI.radiusLg,
+    borderTopRightRadius: UI.radiusLg,
     borderTopWidth: 1,
-    borderColor: "rgba(255,255,255,0.14)",
+    borderColor: UI.hairline,
     ...CARD_SHADOW,
   },
   input: {
     flex: 1,
     minHeight: 48,
     maxHeight: 130,
-    backgroundColor: UI.surface,
+    backgroundColor: UI.surfaceAlt,
     borderRadius: 22,
+    borderWidth: 1,
+    borderColor: UI.hairline,
     paddingHorizontal: 16,
     paddingVertical: 13,
     fontFamily: FONTS.regular,

@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Bounce from "../../components/Bounce";
 import Icon from "../../components/Icon";
-import { Canvas } from "../../components/Glass";
+import { Canvas } from "../../components/Paper";
 import { useMoney } from "../../context/MoneyContext";
 import { hapticLight } from "../../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";

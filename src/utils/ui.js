@@ -1,45 +1,43 @@
-// "Obsidian & Neon" — the single design system every screen must use.
+// "Paper & Pastel" — the single design system every screen must use.
 //
-// Deep slate surfaces stacked in four steps, lit from above by a hairline of
-// white and from below by a coloured halo. Nothing is flat: every raised
-// surface carries a bevel (a 1px top-light border) so it reads as a physical
-// slab rather than a coloured rectangle.
+// A soft grey desk with white and pastel cards lifted just off it. Depth comes
+// from one gentle shadow and a hairline edge, never from heavy borders or hard
+// drop shadows: a sticky note sits a millimetre above the desk, not a
+// centimetre. Type is near-black on paper, so contrast is never in question.
 //
 // These are *semantic* tokens — `ink` means "the colour titles are", not "dark
 // grey". That is what lets the whole app change temperature by editing this
 // file instead of forty screens.
 
 export const UI = {
-  // Surfaces, darkest to lightest. A card on the canvas is `surface`; a well
-  // or input inside that card drops back to `surfaceAlt`; anything that has to
-  // pop off the card (chips, pressed states) rises to `surfaceHi`.
-  bgDeep: "#080D1A", // gradient floor, behind everything
-  bg: "#0F172A", // every main screen wrapper
-  surface: "#1A2337", // cards
-  surfaceAlt: "#131C2E", // wells and inputs sitting on a card
-  surfaceHi: "#26314A", // raised chips, pressed states
-  hairline: "rgba(255,255,255,0.07)",
-  glass: "rgba(17,24,41,0.78)", // floating nav — sits over blur
+  // Surfaces. The desk, the paper on it, and the wells pressed into that paper.
+  bgDeep: "#E9EBEF", // under-page, edges of the desk
+  bg: "#F3F4F6", // every main screen wrapper
+  surface: "#FFFFFF", // cards — crisp white paper
+  surfaceAlt: "#F8FAFC", // wells and inputs sitting on a card
+  surfaceHi: "#EEF1F6", // pressed states, chips
+  hairline: "#E7EAF0",
+  glass: "rgba(255,255,255,0.86)", // floating nav — sits over blur
 
   // Ink
-  ink: "#F1F5F9", // titles
-  inkSoft: "#94A3B8", // subtitles and body
-  inkMuted: "#64748B", // captions
+  ink: "#111827", // titles
+  inkSoft: "#4B5563", // subtitles and body
+  inkMuted: "#9CA3AF", // captions
 
   // Vibrant accents
   violet: "#7C3AED", // primary
-  violetLo: "#A78BFA", // primary, on dark where #7C3AED is too heavy
-  cyan: "#06B6D4", // progress / active
-  coral: "#FF4E50", // floating actions
-  green: "#10B981",
-  amber: "#F59E0B",
-  red: "#EF4444",
-  gold: "#E7C46B", // metallic accents, deposits at target
+  violetLo: "#6D28D9", // primary text on paper, where #7C3AED is too light
+  cyan: "#0891B2", // progress / active
+  coral: "#F43F5E", // floating actions
+  green: "#059669",
+  amber: "#D97706",
+  red: "#DC2626",
+  gold: "#B45309", // metallic accents, deposits at target
 
-  // Rhythm
-  radius: 24,
-  radiusSm: 16,
-  radiusLg: 32,
+  // Rhythm — structured but friendly.
+  radius: 16,
+  radiusSm: 12,
+  radiusLg: 24,
   cardPadding: 20,
   cardMarginH: 16,
   cardMarginB: 16,
@@ -47,68 +45,92 @@ export const UI = {
   rowMinHeight: 60,
 };
 
-// Gradient ramps. Two stops each, top-left to bottom-right unless a component
-// says otherwise. Kept here so a violet button and a violet card are lit the
-// same way.
-export const GRAD = {
-  canvas: ["#0F172A", "#080D1A"],
-  surface: ["#1F2A41", "#151E31"],
-  violet: ["#8B5CF6", "#6D28D9"],
-  cyan: ["#22D3EE", "#0891B2"],
-  coral: ["#FF7A5C", "#E11D48"],
-  green: ["#34D399", "#059669"],
-  gold: ["#F4D68A", "#B98F3E"],
-  ink: ["#1E293B", "#0B1220"],
-  glass: ["rgba(255,255,255,0.10)", "rgba(255,255,255,0.02)"],
+// Sticky-note stocks. Deliberately desaturated: a full-strength highlighter
+// yellow behind #111827 text is exhausting to read at body size, and six of
+// them on one board is a toy. `edge` is a slightly deeper shade of the same
+// hue, used for the hairline so a pastel note never needs a grey border.
+export const PASTEL = {
+  white: { bg: "#FFFFFF", edge: "#E7EAF0", ink: "#111827" },
+  butter: { bg: "#FEF6DA", edge: "#F3E3AE", ink: "#6B4E00" },
+  mint: { bg: "#DCFCE7", edge: "#B3EFC9", ink: "#065F46" },
+  sky: { bg: "#DBEAFE", edge: "#B4D4FB", ink: "#1E40AF" },
+  blush: { bg: "#FCE7F3", edge: "#F7C9E3", ink: "#9D174D" },
+  lilac: { bg: "#EDE9FE", edge: "#D6CDFA", ink: "#5B21B6" },
+  peach: { bg: "#FFEDD5", edge: "#FBD5A8", ink: "#9A3412" },
 };
 
-// The one card shadow. On a dark canvas a tinted shadow disappears, so depth
-// comes from a deep black pool plus the bevel below.
+export const PASTEL_KEYS = Object.keys(PASTEL).filter((k) => k !== "white");
+
+// Deterministic note colour from any string, so a given dream or tag keeps its
+// stock across launches. Random-per-render would reshuffle the whole board on
+// every keystroke.
+export function pastelFor(seed, keys = PASTEL_KEYS) {
+  const s = String(seed || "");
+  let h = 0;
+  for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return PASTEL[keys[h % keys.length]];
+}
+
+// Gradient ramps, for the few surfaces that are still coloured objects rather
+// than paper — the money hero, the primary buttons, the note stocks.
+export const GRAD = {
+  canvas: ["#F8FAFC", "#EFF1F5"],
+  surface: ["#FFFFFF", "#FBFCFE"],
+  violet: ["#8B5CF6", "#6D28D9"],
+  cyan: ["#22D3EE", "#0891B2"],
+  coral: ["#FB7185", "#E11D48"],
+  green: ["#34D399", "#059669"],
+  gold: ["#FCD34D", "#D97706"],
+  ink: ["#374151", "#111827"],
+  glass: ["rgba(255,255,255,0.92)", "rgba(255,255,255,0.72)"],
+};
+
+// The one card shadow, exactly as specified: soft, low, close. A card lifted
+// this little reads as paper; lifted more, it reads as a floating panel.
 export const CARD_SHADOW = {
-  shadowColor: "#000000",
-  shadowOffset: { width: 0, height: 14 },
-  shadowOpacity: 0.45,
-  shadowRadius: 26,
-  elevation: 10,
+  shadowColor: "#0F172A",
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.08,
+  shadowRadius: 8,
+  elevation: 3,
 };
 
 export const SOFT_SHADOW = CARD_SHADOW;
 export const SOFT_SHADOW_LG = {
-  shadowColor: "#000000",
-  shadowOffset: { width: 0, height: 22 },
-  shadowOpacity: 0.55,
-  shadowRadius: 38,
-  elevation: 16,
+  shadowColor: "#0F172A",
+  shadowOffset: { width: 0, height: 10 },
+  shadowOpacity: 0.12,
+  shadowRadius: 20,
+  elevation: 7,
 };
 
-// A hairline of light along the top edge. Physical objects are lit from above,
-// and this single border is what separates a "premium slab" from a "coloured
-// div" more than any amount of shadow does.
+// A hairline edge. On paper the job is the opposite of on a dark canvas: a
+// white card on a near-white desk needs a *darker* edge to be separable, not a
+// lighter one.
 export const BEVEL = {
   borderWidth: 1,
-  borderColor: "rgba(255,255,255,0.08)",
+  borderColor: "#E7EAF0",
 };
 
 export const BEVEL_STRONG = {
   borderWidth: 1,
-  borderColor: "rgba(255,255,255,0.16)",
+  borderColor: "#D8DDE7",
 };
 
-// Coloured halo for an active/primary element — the shadow picks up the
-// element's own colour, so a violet button sits in a violet glow.
-export function glow(color, strength = 0.35) {
+// Coloured halo for an active/primary element. Softer than on dark, because a
+// strong coloured glow on a light desk reads as a printing error.
+export function glow(color, strength = 0.22) {
   return {
     shadowColor: color,
-    shadowOffset: { width: 0, height: 10 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: strength,
-    shadowRadius: 22,
-    elevation: 10,
+    shadowRadius: 14,
+    elevation: 6,
   };
 }
 
-// Translucent wash of a colour, for tinted chips and badges. On a dark canvas
-// a flat `color + "14"` reads as mud, so this mixes toward light instead.
-export function tint(color, alpha = 0.16) {
+// Translucent wash of a colour, for tinted chips and badges.
+export function tint(color, alpha = 0.12) {
   return hexToRgba(color, alpha);
 }
 

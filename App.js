@@ -3,7 +3,7 @@ import "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, I18nManager, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { DarkTheme, NavigationContainer } from "@react-navigation/native";
+import { DefaultTheme, NavigationContainer } from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useFonts } from "expo-font";
 // Per-weight entry points, not the package barrel: the barrel registers all
@@ -29,14 +29,14 @@ import { UI } from "./src/utils/ui";
 // scenes). Theming the container is the one place that fixes all three
 // navigators at once.
 const NAV_THEME = {
-  ...DarkTheme,
+  ...DefaultTheme,
   colors: {
-    ...DarkTheme.colors,
+    ...DefaultTheme.colors,
     background: UI.bg,
     card: UI.surface,
     text: UI.ink,
-    border: "rgba(255,255,255,0.08)",
-    primary: UI.violetLo,
+    border: UI.hairline,
+    primary: UI.violet,
   },
 };
 
@@ -68,7 +68,7 @@ function Shell() {
       {pinRequired && (
         <PinLock mode="unlock" expected={pin} onSuccess={() => setUnlocked(true)} />
       )}
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
     </View>
   );
 }
@@ -88,8 +88,8 @@ export default function App() {
   // rather than hanging forever on a blank screen.
   if (!fontsLoaded && !fontError) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#0F172A", alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator color="#A78BFA" />
+      <View style={{ flex: 1, backgroundColor: "#F3F4F6", alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator color="#7C3AED" />
       </View>
     );
   }

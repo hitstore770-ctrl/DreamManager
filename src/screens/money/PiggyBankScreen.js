@@ -19,7 +19,7 @@ import Animated, {
 import Bounce from "../../components/Bounce";
 import Coin from "../../components/money/Coin";
 import Icon from "../../components/Icon";
-import { GradCard } from "../../components/Glass";
+import { GradCard } from "../../components/Paper";
 import { useMoney } from "../../context/MoneyContext";
 import { hapticLight, hapticSuccess, hapticWarning } from "../../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
@@ -152,9 +152,9 @@ export default function PiggyBankScreen() {
         />
 
         <View testID="piggy-jar" style={s.jar}>
-          <BlurView intensity={18} tint="dark" style={StyleSheet.absoluteFill} />
+          <BlurView intensity={18} tint="light" style={StyleSheet.absoluteFill} />
           <LinearGradient
-            colors={["rgba(255,255,255,0.14)", "rgba(255,255,255,0.03)"]}
+            colors={["rgba(255,255,255,0.85)", "rgba(226,232,240,0.55)"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
@@ -184,7 +184,7 @@ export default function PiggyBankScreen() {
           <View style={s.streakA} pointerEvents="none" />
           <View style={s.streakB} pointerEvents="none" />
           <LinearGradient
-            colors={["rgba(255,255,255,0.22)", "rgba(255,255,255,0)", "rgba(0,0,0,0.28)"]}
+            colors={["rgba(255,255,255,0.55)", "rgba(255,255,255,0)", "rgba(15,23,42,0.14)"]}
             locations={[0, 0.4, 1]}
             style={StyleSheet.absoluteFill}
             pointerEvents="none"
@@ -192,8 +192,10 @@ export default function PiggyBankScreen() {
           <View style={s.jarRim} pointerEvents="none" />
 
           <View style={s.readout} pointerEvents="none">
-            <Text testID="piggy-balance" style={s.balance}>{shekel(piggy)}</Text>
-            <Text style={s.balanceLabel}>בקופה</Text>
+            <View style={s.readoutChip}>
+              <Text testID="piggy-balance" style={s.balance}>{shekel(piggy)}</Text>
+              <Text style={s.balanceLabel}>בקופה</Text>
+            </View>
           </View>
         </View>
       </View>
@@ -253,7 +255,7 @@ const s = StyleSheet.create({
     height: 90,
     borderRadius: 120,
     backgroundColor: UI.violet,
-    opacity: 0.18,
+    opacity: 0.1,
   },
 
   lid: {
@@ -279,14 +281,14 @@ const s = StyleSheet.create({
     height: JAR_H,
     borderRadius: 38,
     overflow: "hidden",
-    backgroundColor: "rgba(148,163,184,0.06)",
+    backgroundColor: "rgba(255,255,255,0.5)",
     ...CARD_SHADOW,
   },
   jarRim: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: 38,
     borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.28)",
+    borderColor: "#CBD5E1",
   },
   // Two streaks at different widths: one sharp, one soft. A single streak
   // reads as a stripe; two at different intensities read as a curved surface.
@@ -297,7 +299,7 @@ const s = StyleSheet.create({
     width: 12,
     bottom: 26,
     borderRadius: 8,
-    backgroundColor: "rgba(255,255,255,0.20)",
+    backgroundColor: "rgba(255,255,255,0.55)",
   },
   streakB: {
     position: "absolute",
@@ -306,7 +308,7 @@ const s = StyleSheet.create({
     width: 5,
     bottom: 40,
     borderRadius: 4,
-    backgroundColor: "rgba(255,255,255,0.10)",
+    backgroundColor: "rgba(255,255,255,0.35)",
   },
 
   fill: { position: "absolute", left: 0, right: 0, bottom: 0, overflow: "hidden" },
@@ -323,15 +325,17 @@ const s = StyleSheet.create({
   falling: { position: "absolute", top: 0, zIndex: 4 },
 
   readout: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
-  balance: {
-    fontFamily: FONTS.bold,
-    fontSize: 34,
-    color: "#FFFFFF",
-    textShadowColor: "rgba(0,0,0,0.45)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
+  readoutChip: {
+    backgroundColor: "rgba(255,255,255,0.94)",
+    borderRadius: UI.radius,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    alignItems: "center",
+    ...BEVEL,
+    ...CARD_SHADOW,
   },
-  balanceLabel: { fontFamily: FONTS.medium, fontSize: 12.5, color: "rgba(255,255,255,0.75)", marginTop: 2 },
+  balance: { fontFamily: FONTS.bold, fontSize: 30, color: UI.ink },
+  balanceLabel: { fontFamily: FONTS.medium, fontSize: 12, color: UI.inkMuted, marginTop: 1 },
 
   flash: {
     alignSelf: "center",

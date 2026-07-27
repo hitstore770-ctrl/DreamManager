@@ -15,7 +15,7 @@ import Svg, { Circle, Defs, G, Line, LinearGradient as SvgGrad, RadialGradient, 
 
 import Bounce from "../components/Bounce";
 import Icon from "../components/Icon";
-import { Canvas, GradCard, Glass } from "../components/Glass";
+import { Canvas, GradCard, Card } from "../components/Paper";
 import { useDreams } from "../context/DreamContext";
 import { useMoney } from "../context/MoneyContext";
 import { useNotes } from "../context/NotesContext";
@@ -73,7 +73,7 @@ function Reactor({ progress = 0 }) {
         y1={c + Math.sin(a) * rOuter}
         x2={c + Math.cos(a) * (rOuter - (long ? 10 : 5))}
         y2={c + Math.sin(a) * (rOuter - (long ? 10 : 5))}
-        stroke={long ? UI.violetLo : UI.inkMuted}
+        stroke={long ? UI.violet : "#CBD5E1"}
         strokeWidth={long ? 1.6 : 1}
         opacity={long ? 0.85 : 0.4}
       />
@@ -89,8 +89,8 @@ function Reactor({ progress = 0 }) {
         <Svg width={RING} height={RING}>
           <Defs>
             <RadialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
-              <Stop offset="0" stopColor="#A78BFA" stopOpacity="0.85" />
-              <Stop offset="0.45" stopColor={UI.violet} stopOpacity="0.35" />
+              <Stop offset="0" stopColor="#A78BFA" stopOpacity="0.22" />
+              <Stop offset="0.45" stopColor={UI.violet} stopOpacity="0.10" />
               <Stop offset="1" stopColor={UI.violet} stopOpacity="0" />
             </RadialGradient>
           </Defs>
@@ -112,7 +112,7 @@ function Reactor({ progress = 0 }) {
               <Stop offset="1" stopColor="#8B5CF6" />
             </SvgGrad>
           </Defs>
-          <Circle cx={c} cy={c} r={rMid} stroke="rgba(255,255,255,0.10)" strokeWidth={1.4} fill="none" />
+          <Circle cx={c} cy={c} r={rMid} stroke="rgba(17,24,39,0.10)" strokeWidth={1.4} fill="none" />
           <Circle
             cx={c}
             cy={c}
@@ -140,12 +140,12 @@ function Reactor({ progress = 0 }) {
       {/* Static progress ring — the one thing that must NOT rotate, because it
           encodes a value. */}
       <Svg width={RING} height={RING} style={StyleSheet.absoluteFill}>
-        <Circle cx={c} cy={c} r={rMid - 14} stroke="rgba(255,255,255,0.07)" strokeWidth={7} fill="none" />
+        <Circle cx={c} cy={c} r={rMid - 14} stroke="#E7EAF0" strokeWidth={7} fill="none" />
         <Circle
           cx={c}
           cy={c}
           r={rMid - 14}
-          stroke={UI.violetLo}
+          stroke={UI.violet}
           strokeWidth={7}
           strokeLinecap="round"
           fill="none"
@@ -217,12 +217,12 @@ export default function MainDashboardScreen({ navigation }) {
             <Text style={s.eyebrow}>מרכז הבקרה</Text>
             <Text style={s.title}>The Core</Text>
           </View>
-          <Glass style={s.statusChip} radius={14}>
+          <Card style={s.statusChip} radius={14}>
             <View style={s.statusInner}>
               <View style={s.statusDot} />
               <Text style={s.statusText}>ONLINE</Text>
             </View>
-          </Glass>
+          </Card>
         </Animated.View>
 
         <Animated.View entering={FadeIn.delay(120).duration(500)} style={s.reactorStage}>
@@ -230,14 +230,14 @@ export default function MainDashboardScreen({ navigation }) {
         </Animated.View>
 
         <View style={s.vitals}>
-          <Vital icon="trending-up" label="סה״כ ברשותי" value={shekel(netWorth)} tone={UI.violetLo} delay={140} />
+          <Vital icon="trending-up" label="סה״כ ברשותי" value={shekel(netWorth)} tone={UI.violet} delay={140} />
           <Vital icon="star" label="חלומות פעילים" value={String((dreams || []).length)} tone={UI.cyan} delay={200} />
           <Vital icon="edit-3" label="פתקים" value={String((notes || []).length)} tone={UI.green} delay={260} />
           <Vital icon="grid" label="כלים זמינים" value={String(TOOL_COUNT)} tone={UI.amber} delay={320} />
         </View>
 
         <Animated.View entering={FadeInDown.delay(380).springify().damping(14)}>
-          <Glass style={s.bay} radius={UI.radius}>
+          <Card style={s.bay} radius={UI.radius}>
             <View style={s.bayInner}>
               <Text style={s.bayTitle}>מודולים</Text>
               <Text style={s.bayHint}>הליבה עדיין נבנית. אלה השערים שכבר פעילים.</Text>
@@ -264,7 +264,7 @@ export default function MainDashboardScreen({ navigation }) {
                 ))}
               </View>
             </View>
-          </Glass>
+          </Card>
         </Animated.View>
 
         <Text style={s.footnote}>
@@ -299,8 +299,8 @@ const s = StyleSheet.create({
   reactorCore: { alignItems: "center", gap: 1 },
   coreTitle: { fontFamily: FONTS.bold, fontSize: 13, color: UI.ink, letterSpacing: 4 },
   coreSub: { fontFamily: FONTS.regular, fontSize: 11, color: UI.inkMuted, letterSpacing: 1 },
-  coreDivider: { width: 44, height: 1, backgroundColor: "rgba(255,255,255,0.14)", marginVertical: 8 },
-  corePct: { fontFamily: FONTS.bold, fontSize: 30, color: "#FFFFFF" },
+  coreDivider: { width: 44, height: 1, backgroundColor: UI.hairline, marginVertical: 8 },
+  corePct: { fontFamily: FONTS.bold, fontSize: 30, color: UI.ink },
   coreHint: { fontFamily: FONTS.regular, fontSize: 10.5, color: UI.inkMuted },
 
   vitals: {

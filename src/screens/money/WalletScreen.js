@@ -6,7 +6,7 @@ import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import Banknote from "../../components/money/Banknote";
 import Bounce from "../../components/Bounce";
 import Icon from "../../components/Icon";
-import { GradCard } from "../../components/Glass";
+import { GradCard } from "../../components/Paper";
 import { useMoney } from "../../context/MoneyContext";
 import { hapticLight, hapticSuccess, hapticWarning } from "../../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
@@ -245,8 +245,8 @@ const s = StyleSheet.create({
   cardDots: { fontFamily: FONTS.medium, fontSize: 11.5, color: "rgba(255,255,255,0.6)", letterSpacing: 1.5 },
 
   dots: { flexDirection: "row", justifyContent: "center", gap: 6, marginTop: 14 },
-  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.18)" },
-  dotOn: { backgroundColor: UI.violetLo, width: 20 },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#D6DBE5" },
+  dotOn: { backgroundColor: UI.violet, width: 20 },
 
   flash: {
     alignSelf: "center",

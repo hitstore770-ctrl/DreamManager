@@ -17,14 +17,14 @@ import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 
 import Bounce from "../components/Bounce";
 import Icon from "../components/Icon";
-import { Canvas, Glass, GradCard } from "../components/Glass";
+import { Canvas, Card, GradCard } from "../components/Paper";
 import ToolRenderer from "../components/tools/ToolRenderer";
 import { hapticLight, hapticSuccess } from "../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import { STORAGE_KEYS } from "../utils/storageKeys";
 import { ALL_TOOLS } from "../utils/toolsCatalog";
 import { usePersistentState } from "../utils/usePersistentState";
-import { BEVEL, GRAD, TYPE, UI, glow, tint } from "../utils/ui";
+import { BEVEL, GRAD, SOFT_SHADOW_LG, TYPE, UI, glow, tint } from "../utils/ui";
 
 // בית המלאכה — the tools tab, organised as workbenches rather than as a
 // flat directory.
@@ -153,7 +153,7 @@ export default function ToolsWorkshopScreen() {
           </View>
         </View>
 
-        <Glass style={s.search} radius={UI.radiusSm}>
+        <Card style={s.search} radius={UI.radiusSm}>
           <View style={s.searchInner}>
             <Icon name="search" size={17} color={UI.inkMuted} />
             <TextInput
@@ -171,7 +171,7 @@ export default function ToolsWorkshopScreen() {
               </Bounce>
             )}
           </View>
-        </Glass>
+        </Card>
       </View>
 
       <ScrollView
@@ -417,7 +417,7 @@ const s = StyleSheet.create({
   empty: { alignItems: "center", gap: 10, paddingVertical: 60 },
   emptyText: { fontFamily: FONTS.medium, fontSize: 14, color: UI.inkMuted },
 
-  backdrop: { flex: 1, backgroundColor: "rgba(2,6,18,0.72)", justifyContent: "flex-end" },
+  backdrop: { flex: 1, backgroundColor: "rgba(15,23,42,0.38)", justifyContent: "flex-end" },
   sheet: {
     backgroundColor: UI.bg,
     borderTopLeftRadius: UI.radiusLg,
@@ -426,15 +426,15 @@ const s = StyleSheet.create({
     paddingTop: 8,
     maxHeight: "88%",
     borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.12)",
-    ...glow("#000000", 0.6),
+    borderTopColor: UI.hairline,
+    ...SOFT_SHADOW_LG,
   },
   grabber: {
     alignSelf: "center",
     width: 44,
     height: 5,
     borderRadius: 3,
-    backgroundColor: "rgba(255,255,255,0.18)",
+    backgroundColor: "#D6DBE5",
     marginBottom: 10,
   },
   sheetHead: { flexDirection: ROW, alignItems: "center", gap: 10, marginBottom: 14 },

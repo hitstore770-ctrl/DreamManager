@@ -3,7 +3,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Bounce from "./Bounce";
 import Icon from "./Icon";
-import { Glass } from "./Glass";
+import { Card } from "./Paper";
 import { hapticLight } from "../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import { UI, glow } from "../utils/ui";
@@ -30,12 +30,12 @@ export function BackFab({ navigation, label = "חזרה" }) {
           navigation?.goBack();
         }}
       >
-        <Glass style={st.glow} radius={22}>
+        <Card style={st.glow} radius={22}>
           <View style={st.inner}>
             <Icon name={I18nManager.isRTL ? "arrow-right" : "arrow-left"} size={17} color={UI.ink} />
             <Text style={st.label}>{label}</Text>
           </View>
-        </Glass>
+        </Card>
       </Bounce>
     </View>
   );

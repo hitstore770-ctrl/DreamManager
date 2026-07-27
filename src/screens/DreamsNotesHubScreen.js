@@ -6,25 +6,31 @@ import Animated, { FadeIn, FadeInDown, LinearTransition } from "react-native-rea
 
 import Bounce from "../components/Bounce";
 import Icon from "../components/Icon";
-import { Canvas, Glass, GradCard } from "../components/Glass";
+import { Canvas, Card, FoldedCorner, Note } from "../components/Paper";
 import { DREAM_COVERS, daysUntil, useDreams } from "../context/DreamContext";
 import { useNotes } from "../context/NotesContext";
 import { hapticLight } from "../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import { checklistToText, makeNote } from "../utils/notesStore";
 import { shekel } from "../utils/posStore";
-import { BEVEL, GRAD, TYPE, UI, glow, tint } from "../utils/ui";
+import { BEVEL, CARD_SHADOW, GRAD, PASTEL, TYPE, UI, glow, pastelFor, tint } from "../utils/ui";
 
-// חלומות ופתקים — one hub, two masonry boards.
+// חלומות ופתקים — one hub, two pinboards.
 //
-// Both boards are true masonry (two independent columns filled by running
-// height) rather than a grid of equal rows, because both hold cards of
-// genuinely different heights: a dream with a photo and four milestones is
-// not the same object as one with a title. A fixed grid would pad every short
-// card to the tallest in its row and leave the board full of holes.
+// Both are true masonry (two independent columns filled by running height)
+// rather than a grid of equal rows, because both hold cards of genuinely
+// different heights: a dream with a photo and four milestones is not the same
+// object as one with a title. A fixed grid would pad every short card to the
+// tallest in its row and leave the board full of holes.
+//
+// The board is a bright desk rather than a cork texture. A photographic cork
+// background is the obvious reading of "corkboard", but it fights everything
+// the rest of this brief asks for — it is dark, busy, and it drags the
+// contrast of every pastel note sitting on it. The paper does the work
+// instead: real stocks, a slight tilt, a folded corner and a close shadow.
 
 const COVER = Object.fromEntries(DREAM_COVERS.map((c) => [c.key, c.colors]));
-const TAG_TONES = [UI.violetLo, UI.cyan, UI.green, UI.amber, UI.coral];
+const TAG_TONES = [UI.violet, UI.cyan, UI.green, UI.amber, UI.coral];
 
 function tagTone(tag) {
   let h = 0;
@@ -76,77 +82,78 @@ function DreamCard({ dream, index, onOpen, onAsk }) {
     <Animated.View
       entering={FadeInDown.delay(Math.min(index * 70, 340)).springify().damping(14)}
       layout={LinearTransition.springify().damping(15)}
-      style={s.cardShadow}
     >
-      <Bounce testID={`dream-${dream.id}`} scaleTo={0.96} onPress={() => onOpen(dream)} style={s.cardClip}>
-        {/* Cover: photo if there is one, painted gradient if not. */}
-        <View style={s.cover}>
-          {dream.imageUri ? (
-            <Image source={{ uri: dream.imageUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-          ) : (
-            <LinearGradient
-              colors={colors}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
-          )}
-          {/* Scrim so the title stays legible over any photo. */}
-          <LinearGradient
-            colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.72)"]}
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none"
-          />
-          {done && (
-            <View style={s.doneBadge}>
-              <Icon name="check" size={12} color="#FFFFFF" />
-            </View>
-          )}
-          <Text style={s.coverTitle} numberOfLines={2}>{dream.title || "חלום"}</Text>
-        </View>
-
-        <View style={s.cardBody}>
-          <View style={s.trackRow}>
-            <Text style={[s.pct, done && { color: UI.green }]}>{pct}%</Text>
-            <View style={s.track}>
-              <View
-                testID={`dream-bar-${dream.id}`}
-                style={[s.fill, { width: `${pct}%`, backgroundColor: done ? UI.green : UI.violetLo }]}
+      <Bounce testID={`dream-${dream.id}`} scaleTo={0.96} onPress={() => onOpen(dream)}>
+        <Card style={s.dreamCard} radius={UI.radius}>
+          {/* The photo, or the painted cover, sits inside the card like a
+              print taped to the top of a page. */}
+          <View style={s.cover}>
+            {dream.imageUri ? (
+              <Image source={{ uri: dream.imageUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+            ) : (
+              <LinearGradient
+                colors={colors}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
               />
+            )}
+            <LinearGradient
+              colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.62)"]}
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
+            />
+            {done && (
+              <View style={s.doneBadge}>
+                <Icon name="check" size={12} color="#FFFFFF" />
+              </View>
+            )}
+            <Text style={s.coverTitle} numberOfLines={2}>{dream.title || "חלום"}</Text>
+          </View>
+
+          <View style={s.cardBody}>
+            <View style={s.trackRow}>
+              <Text style={[s.pct, done && { color: UI.green }]}>{pct}%</Text>
+              <View style={s.track}>
+                <View
+                  testID={`dream-bar-${dream.id}`}
+                  style={[s.fill, { width: `${pct}%`, backgroundColor: done ? UI.green : UI.violet }]}
+                />
+              </View>
             </View>
+
+            <Text style={s.money}>
+              {shekel(saved)} <Text style={s.moneyOf}>מתוך {shekel(target)}</Text>
+            </Text>
+
+            <View style={s.metaRow}>
+              {milestones.length > 0 && (
+                <View style={s.metaChip}>
+                  <Icon name="check-circle" size={11} color={UI.inkMuted} />
+                  <Text style={s.metaText}>{doneCount}/{milestones.length}</Text>
+                </View>
+              )}
+              {left !== null && (
+                <View style={s.metaChip}>
+                  <Icon name="clock" size={11} color={left < 0 ? UI.coral : UI.inkMuted} />
+                  <Text style={[s.metaText, left < 0 && { color: UI.coral }]}>
+                    {left < 0 ? `באיחור ${-left}י׳` : `${left} ימים`}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            <Bounce
+              testID={`dream-ai-${dream.id}`}
+              style={s.aiBtn}
+              scaleTo={0.94}
+              onPress={() => onAsk(dream)}
+            >
+              <Icon name="message-circle" size={13} color={UI.violet} />
+              <Text style={s.aiText}>קו-פיילוט</Text>
+            </Bounce>
           </View>
-
-          <Text style={s.money}>
-            {shekel(saved)} <Text style={s.moneyOf}>מתוך {shekel(target)}</Text>
-          </Text>
-
-          <View style={s.metaRow}>
-            {milestones.length > 0 && (
-              <View style={s.metaChip}>
-                <Icon name="check-circle" size={11} color={UI.inkMuted} />
-                <Text style={s.metaText}>{doneCount}/{milestones.length}</Text>
-              </View>
-            )}
-            {left !== null && (
-              <View style={s.metaChip}>
-                <Icon name="clock" size={11} color={left < 0 ? UI.coral : UI.inkMuted} />
-                <Text style={[s.metaText, left < 0 && { color: UI.coral }]}>
-                  {left < 0 ? `באיחור ${-left}י׳` : `${left} ימים`}
-                </Text>
-              </View>
-            )}
-          </View>
-
-          <Bounce
-            testID={`dream-ai-${dream.id}`}
-            style={s.aiBtn}
-            scaleTo={0.94}
-            onPress={() => onAsk(dream)}
-          >
-            <Icon name="message-circle" size={13} color={UI.violetLo} />
-            <Text style={s.aiText}>קו-פיילוט</Text>
-          </Bounce>
-        </View>
+        </Card>
       </Bounce>
     </Animated.View>
   );
@@ -157,42 +164,47 @@ function NoteCard({ note, index, onOpen }) {
     ? "פתק נעול"
     : (note.isChecklist ? checklistToText(note.checklist) : note.body || "").slice(0, 150) || "פתק ריק";
   const tags = (note.tags || []).slice(0, 3);
+  // The note keeps its stock across launches, because the colour is derived
+  // from its id rather than drawn at render time.
+  const stock = pastelFor(note.id);
 
   return (
     <Animated.View
       entering={FadeInDown.delay(Math.min(index * 60, 320)).springify().damping(14)}
       layout={LinearTransition.springify().damping(15)}
-      style={s.cardShadow}
     >
       <Bounce testID={`note-${note.id}`} scaleTo={0.96} onPress={() => onOpen(note)}>
-        <GradCard colors={GRAD.surface} radius={UI.radiusSm}>
+        <Note tone={stock} seed={note.id} radius={UI.radiusSm}>
+          <FoldedCorner tone={stock} size={20} />
           <View style={s.note}>
-            {/* Ruled margin, as on a real notepad. */}
-            <View style={s.noteMargin} />
-
             <View style={s.noteHead}>
-              {note.pinned && <Icon name="bookmark" size={13} color={UI.amber} />}
-              {note.locked && <Icon name="lock" size={12} color={UI.inkMuted} />}
-              <Text style={s.noteTitle} numberOfLines={2}>{note.title || "ללא כותרת"}</Text>
+              {note.pinned && <Icon name="bookmark" size={13} color={stock.ink} />}
+              {note.locked && <Icon name="lock" size={12} color={stock.ink} />}
+              <Text style={[s.noteTitle, { color: stock.ink }]} numberOfLines={2}>
+                {note.title || "ללא כותרת"}
+              </Text>
             </View>
 
-            <Text style={[s.notePreview, note.locked && s.noteLocked]} numberOfLines={6}>
+            <Text
+              style={[s.notePreview, { color: stock.ink }, note.locked && s.noteLocked]}
+              numberOfLines={6}
+            >
               {preview}
             </Text>
 
             {tags.length > 0 && (
               <View style={s.tagRow}>
                 {tags.map((t) => (
-                  <View key={t} style={[s.tag, { backgroundColor: tint(tagTone(t), 0.18) }]}>
+                  <View key={t} style={[s.tag, { backgroundColor: "rgba(255,255,255,0.7)" }]}>
                     <Text style={[s.tagText, { color: tagTone(t) }]}>#{t}</Text>
                   </View>
                 ))}
               </View>
             )}
 
-            <Text style={s.noteTime}>{fmtUpdated(note.updatedAt)}</Text>
+            <Text style={[s.noteTime, { color: stock.ink }]}>{fmtUpdated(note.updatedAt)}</Text>
           </View>
-        </GradCard>
+        </Note>
       </Bounce>
     </Animated.View>
   );
@@ -251,7 +263,7 @@ export default function DreamsNotesHubScreen({ navigation }) {
   const isDreams = mode === "dreams";
 
   return (
-    <Canvas testID="library-screen" tone={isDreams ? UI.violet : UI.cyan}>
+    <Canvas testID="library-screen">
       <View style={{ paddingTop: insets.top + 12 }}>
         <View style={s.header}>
           <View style={{ flex: 1 }}>
@@ -278,7 +290,7 @@ export default function DreamsNotesHubScreen({ navigation }) {
         </View>
 
         {/* Segmented switch */}
-        <Glass style={s.segment} radius={18}>
+        <Card style={s.segment} radius={UI.radius}>
           <View style={s.segmentInner}>
             {[
               { key: "dreams", label: "חלומות", icon: "star" },
@@ -293,17 +305,17 @@ export default function DreamsNotesHubScreen({ navigation }) {
                   scaleTo={0.96}
                   onPress={() => { hapticLight(); setMode(seg.key); }}
                 >
-                  <Icon name={seg.icon} size={15} color={on ? UI.ink : UI.inkMuted} />
+                  <Icon name={seg.icon} size={15} color={on ? UI.violet : UI.inkMuted} />
                   <Text style={[s.segText, on && s.segTextOn]}>{seg.label}</Text>
                 </Bounce>
               );
             })}
           </View>
-        </Glass>
+        </Card>
       </View>
 
       <ScrollView
-        contentContainerStyle={{ paddingBottom: insets.bottom + 120, paddingTop: 14 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 120, paddingTop: 16 }}
         showsVerticalScrollIndicator={false}
       >
         {isDreams ? (
@@ -347,9 +359,10 @@ export default function DreamsNotesHubScreen({ navigation }) {
 function Empty({ icon, text, hint }) {
   return (
     <View style={s.empty}>
-      <View style={s.emptyBadge}>
-        <Icon name={icon} size={26} color={UI.inkMuted} />
-      </View>
+      <Note tone={PASTEL.butter} seed={text} style={s.emptyNote}>
+        <FoldedCorner tone={PASTEL.butter} size={18} />
+        <Icon name={icon} size={26} color={PASTEL.butter.ink} />
+      </Note>
       <Text style={s.emptyText}>{text}</Text>
       <Text style={s.emptyHint}>{hint}</Text>
     </View>
@@ -362,8 +375,8 @@ const s = StyleSheet.create({
   header: { flexDirection: ROW, alignItems: "center", gap: 12, paddingHorizontal: UI.cardMarginH },
   title: { fontFamily: FONTS.bold, fontSize: TYPE.hero, color: UI.ink, textAlign: "right" },
   subtitle: { fontFamily: FONTS.regular, fontSize: TYPE.caption, color: UI.inkMuted, textAlign: "right", marginTop: 2 },
-  primaryWrap: { borderRadius: 17, ...glow(UI.violet, 0.4) },
-  primary: { width: 50, height: 50, borderRadius: 17, alignItems: "center", justifyContent: "center", ...BEVEL },
+  primaryWrap: { borderRadius: 17, ...glow(UI.violet, 0.28) },
+  primary: { width: 50, height: 50, borderRadius: 17, alignItems: "center", justifyContent: "center" },
 
   segment: { marginHorizontal: UI.cardMarginH, marginTop: 14 },
   segmentInner: { flexDirection: ROW, padding: 5, gap: 5 },
@@ -374,39 +387,25 @@ const s = StyleSheet.create({
     justifyContent: "center",
     gap: 7,
     minHeight: 42,
-    borderRadius: 14,
+    borderRadius: UI.radiusSm,
   },
-  segBtnOn: { backgroundColor: "rgba(255,255,255,0.10)", ...BEVEL },
+  segBtnOn: { backgroundColor: tint(UI.violet, 0.1) },
   segText: { fontFamily: FONTS.semibold, fontSize: 13.5, color: UI.inkMuted },
-  segTextOn: { color: UI.ink },
+  segTextOn: { color: UI.violet },
 
   board: { flexDirection: ROW, gap: 12, paddingHorizontal: UI.cardMarginH, alignItems: "flex-start" },
-  column: { flex: 1, gap: 12 },
+  column: { flex: 1, gap: 14 },
 
-  cardShadow: {
-    borderRadius: UI.radiusSm,
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.42,
-    shadowRadius: 20,
-    elevation: 9,
-  },
-  cardClip: {
-    borderRadius: UI.radiusSm,
-    overflow: "hidden",
-    backgroundColor: UI.surface,
-    ...BEVEL,
-  },
-
-  cover: { height: 128, justifyContent: "flex-end", padding: 12 },
+  dreamCard: { overflow: "hidden" },
+  cover: { height: 124, justifyContent: "flex-end", padding: 12, margin: 6, borderRadius: UI.radiusSm, overflow: "hidden" },
   coverTitle: {
     fontFamily: FONTS.bold,
     fontSize: 15,
     color: "#FFFFFF",
     textAlign: "right",
-    textShadowColor: "rgba(0,0,0,0.6)",
+    textShadowColor: "rgba(0,0,0,0.55)",
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 6,
+    textShadowRadius: 5,
   },
   doneBadge: {
     position: "absolute",
@@ -420,11 +419,11 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
 
-  cardBody: { padding: 12, gap: 8 },
+  cardBody: { paddingHorizontal: 12, paddingBottom: 12, paddingTop: 2, gap: 8 },
   trackRow: { flexDirection: ROW, alignItems: "center", gap: 8 },
-  track: { flex: 1, height: 7, borderRadius: 4, backgroundColor: UI.surfaceAlt, overflow: "hidden" },
+  track: { flex: 1, height: 7, borderRadius: 4, backgroundColor: UI.surfaceHi, overflow: "hidden" },
   fill: { height: "100%", borderRadius: 4 },
-  pct: { fontFamily: FONTS.bold, fontSize: 11.5, color: UI.violetLo, minWidth: 30 },
+  pct: { fontFamily: FONTS.bold, fontSize: 11.5, color: UI.violet, minWidth: 30 },
 
   money: { fontFamily: FONTS.bold, fontSize: 13.5, color: UI.ink, textAlign: "right" },
   moneyOf: { fontFamily: FONTS.regular, fontSize: 11, color: UI.inkMuted },
@@ -438,6 +437,7 @@ const s = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 9,
     backgroundColor: UI.surfaceAlt,
+    ...BEVEL,
   },
   metaText: { fontFamily: FONTS.medium, fontSize: 10.5, color: UI.inkMuted },
 
@@ -447,41 +447,23 @@ const s = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     minHeight: 36,
-    borderRadius: 12,
-    backgroundColor: tint(UI.violet, 0.16),
-    ...BEVEL,
+    borderRadius: UI.radiusSm,
+    backgroundColor: tint(UI.violet, 0.09),
   },
-  aiText: { fontFamily: FONTS.semibold, fontSize: 12, color: UI.violetLo },
+  aiText: { fontFamily: FONTS.semibold, fontSize: 12, color: UI.violet },
 
   note: { padding: 14, gap: 8 },
-  noteMargin: {
-    position: "absolute",
-    top: 12,
-    bottom: 12,
-    right: 8,
-    width: 2,
-    borderRadius: 2,
-    backgroundColor: tint(UI.cyan, 0.35),
-  },
   noteHead: { flexDirection: ROW, alignItems: "center", gap: 6 },
-  noteTitle: { flex: 1, fontFamily: FONTS.bold, fontSize: 14.5, color: UI.ink, textAlign: "right" },
-  notePreview: { fontFamily: FONTS.regular, fontSize: 12.5, color: UI.inkSoft, textAlign: "right", lineHeight: 19 },
-  noteLocked: { color: UI.inkMuted, fontFamily: FONTS.medium },
+  noteTitle: { flex: 1, fontFamily: FONTS.bold, fontSize: 14.5, textAlign: "right" },
+  notePreview: { fontFamily: FONTS.regular, fontSize: 12.5, textAlign: "right", lineHeight: 19, opacity: 0.85 },
+  noteLocked: { fontFamily: FONTS.medium, opacity: 0.6 },
   tagRow: { flexDirection: ROW, gap: 5, flexWrap: "wrap" },
   tag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   tagText: { fontFamily: FONTS.semibold, fontSize: 10 },
-  noteTime: { fontFamily: FONTS.regular, fontSize: 10, color: UI.inkMuted, textAlign: "left" },
+  noteTime: { fontFamily: FONTS.regular, fontSize: 10, textAlign: "left", opacity: 0.55 },
 
   empty: { alignItems: "center", gap: 8, paddingVertical: 60 },
-  emptyBadge: {
-    width: 62,
-    height: 62,
-    borderRadius: 22,
-    backgroundColor: UI.surface,
-    alignItems: "center",
-    justifyContent: "center",
-    ...BEVEL,
-  },
-  emptyText: { fontFamily: FONTS.bold, fontSize: 15, color: UI.inkSoft, marginTop: 6 },
+  emptyNote: { width: 74, height: 74, alignItems: "center", justifyContent: "center" },
+  emptyText: { fontFamily: FONTS.bold, fontSize: 15, color: UI.inkSoft, marginTop: 10 },
   emptyHint: { fontFamily: FONTS.regular, fontSize: 12.5, color: UI.inkMuted },
 });
