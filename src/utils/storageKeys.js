@@ -18,4 +18,9 @@ export const STORAGE_KEYS = {
   savingsHistory: "@dreammanager/savings-history",
   ravKavBalance: "@dreammanager/ravkav-balance",
   ravKavHistory: "@dreammanager/ravkav-history",
+  moneyPiggy: "@dreammanager/money-piggy",
+  moneyWallet: "@dreammanager/money-wallet",
+  moneyLiquid: "@dreammanager/money-liquid",
+  moneyDeposits: "@dreammanager/money-deposits",
+  moneyLedger: "@dreammanager/money-ledger",
 };

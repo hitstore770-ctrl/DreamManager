@@ -4,7 +4,12 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import Icon from "../components/Icon";
 import { useAuth } from "../context/AuthContext";
+import { MoneyProvider } from "../context/MoneyContext";
+import CashRegisterScreen from "../screens/money/CashRegisterScreen";
 import ContextualAiChatScreen from "../screens/ContextualAiChatScreen";
+import LiveAiScreen from "../screens/LiveAiScreen";
+import MyMoneyDashboard from "../screens/MyMoneyDashboard";
+import SavingsHubScreen from "../screens/money/SavingsHubScreen";
 import SavingsScreen from "../screens/SavingsScreen";
 import TransitAssistantScreen from "../screens/TransitAssistantScreen";
 import LoginScreen from "../screens/LoginScreen";
@@ -19,20 +24,25 @@ import { UI, glow } from "../utils/ui";
 
 const RootStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+const ClassicTab = createBottomTabNavigator();
 
-// Five tabs, Notes (פתקים) centre and default. Declared left→right as
-// Tools/Dreams/Notes/Business/Settings so the natural RTL reading — rightmost
-// first — is: הגדרות · העסק שלי · פתקים · חלומות · כלים.
+// Two zones, per the blueprint: the live assistant and the money hub.
 //
-// Feather line icons only; the bar carries no emoji.
-const TAB_ICON = {
+// The five original screens are not gone — they live in ClassicTabs, reachable
+// from the money hub's "שאר האפליקציה" list. Deleting a working POS, 43 tools
+// and the notes system to honour a two-tab layout would have been a much
+// larger change than the blueprint asked for.
+const ZONE_ICON = { Assistant: "message-circle", Money: "trending-up" };
+const ZONE_LABEL = { Assistant: "עוזר חכם", Money: "הכסף שלי" };
+
+const CLASSIC_ICON = {
   Notes: "edit-3",
   Dreams: "star",
   Tools: "grid",
   Business: "briefcase",
   Settings: "settings",
 };
-const TAB_LABEL = {
+const CLASSIC_LABEL = {
   Notes: "פתקים",
   Dreams: "חלומות",
   Tools: "כלים",
@@ -40,7 +50,6 @@ const TAB_LABEL = {
   Settings: "הגדרות",
 };
 
-// The active tab's icon sits in a tinted violet chip.
 const ACTIVE_CHIP = {
   minWidth: 46,
   height: 28,
@@ -51,46 +60,55 @@ const ACTIVE_CHIP = {
 };
 const INACTIVE_CHIP = { minWidth: 46, height: 28, alignItems: "center", justifyContent: "center" };
 
-function MainTabs() {
+// Floating glass bar, shared by both tab navigators.
+const barOptions = (iconMap, labelMap) => ({ route }) => ({
+  headerShown: false,
+  tabBarActiveTintColor: UI.violet,
+  tabBarInactiveTintColor: UI.inkMuted,
+  tabBarStyle: {
+    position: "absolute",
+    left: 14,
+    right: 14,
+    bottom: 14,
+    height: 78,
+    paddingTop: 9,
+    paddingBottom: 9,
+    borderRadius: UI.radius,
+    backgroundColor: UI.glass,
+    borderTopWidth: 0,
+    ...glow(UI.violet, 0.18),
+  },
+  tabBarItemStyle: { borderRadius: UI.radiusSm },
+  tabBarLabelStyle: { fontFamily: FONTS.medium, fontSize: 10.5, lineHeight: 15, marginTop: 2 },
+  tabBarIcon: ({ focused }) => (
+    <View style={focused ? ACTIVE_CHIP : INACTIVE_CHIP}>
+      <Icon name={iconMap[route.name]} size={21} color={focused ? UI.violet : UI.inkMuted} />
+    </View>
+  ),
+  tabBarLabel: labelMap[route.name],
+});
+
+function ZoneTabs() {
   return (
-    <Tab.Navigator
-      initialRouteName="Notes"
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarActiveTintColor: UI.violet,
-        tabBarInactiveTintColor: UI.inkMuted,
-        // Floating glass bar: detached from the edges, translucent, lit by a
-        // violet halo instead of a hairline.
-        tabBarStyle: {
-          position: "absolute",
-          left: 14,
-          right: 14,
-          bottom: 14,
-          // Tall enough that Hebrew descenders in the labels clear the edge.
-          height: 78,
-          paddingTop: 9,
-          paddingBottom: 9,
-          borderRadius: UI.radius,
-          backgroundColor: UI.glass,
-          borderTopWidth: 0,
-          ...glow(UI.violet, 0.18),
-        },
-        tabBarItemStyle: { borderRadius: UI.radiusSm },
-        tabBarLabelStyle: { fontFamily: FONTS.medium, fontSize: 10.5, lineHeight: 15, marginTop: 2 },
-        tabBarIcon: ({ focused }) => (
-          <View style={focused ? ACTIVE_CHIP : INACTIVE_CHIP}>
-            <Icon name={TAB_ICON[route.name]} size={21} color={focused ? UI.violet : UI.inkMuted} />
-          </View>
-        ),
-        tabBarLabel: TAB_LABEL[route.name],
-      })}
-    >
-      <Tab.Screen name="Tools" component={ToolsScreen} />
-      <Tab.Screen name="Dreams" component={DreamsScreen} />
-      <Tab.Screen name="Notes" component={NotesHubScreen} />
-      <Tab.Screen name="Business" component={BusinessScreen} />
-      <Tab.Screen name="Settings" component={SettingsScreen} />
+    <Tab.Navigator initialRouteName="Money" screenOptions={barOptions(ZONE_ICON, ZONE_LABEL)}>
+      <Tab.Screen name="Assistant" component={LiveAiScreen} />
+      <Tab.Screen name="Money" component={MyMoneyDashboard} />
     </Tab.Navigator>
+  );
+}
+
+function ClassicTabs() {
+  return (
+    <ClassicTab.Navigator
+      initialRouteName="Notes"
+      screenOptions={barOptions(CLASSIC_ICON, CLASSIC_LABEL)}
+    >
+      <ClassicTab.Screen name="Tools" component={ToolsScreen} />
+      <ClassicTab.Screen name="Dreams" component={DreamsScreen} />
+      <ClassicTab.Screen name="Notes" component={NotesHubScreen} />
+      <ClassicTab.Screen name="Business" component={BusinessScreen} />
+      <ClassicTab.Screen name="Settings" component={SettingsScreen} />
+    </ClassicTab.Navigator>
   );
 }
 
@@ -108,10 +126,18 @@ export default function AppNavigator() {
   }
 
   return (
-    <RootStack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
+    <MoneyProvider>
+      <RootStack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
       {user ? (
         <>
-          <RootStack.Screen name="Main" component={MainTabs} />
+          <RootStack.Screen name="Main" component={ZoneTabs} />
+          <RootStack.Screen name="Classic" component={ClassicTabs} />
+          <RootStack.Screen
+            name="CashRegister"
+            component={CashRegisterScreen}
+            options={{ animation: "slide_from_bottom" }}
+          />
+          <RootStack.Screen name="SavingsHub" component={SavingsHubScreen} />
           {/* The note editor opens full-screen over the tab bar. */}
           <RootStack.Screen
             name="NoteEditor"
@@ -141,6 +167,7 @@ export default function AppNavigator() {
       ) : (
         <RootStack.Screen name="Login" component={LoginScreen} />
       )}
-    </RootStack.Navigator>
+      </RootStack.Navigator>
+    </MoneyProvider>
   );
 }
