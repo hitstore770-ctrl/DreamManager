@@ -3,7 +3,7 @@ import "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, I18nManager, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { NavigationContainer } from "@react-navigation/native";
+import { DarkTheme, NavigationContainer } from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useFonts } from "expo-font";
 // Per-weight entry points, not the package barrel: the barrel registers all
@@ -21,6 +21,24 @@ import { DreamProvider } from "./src/context/DreamContext";
 import { NotesProvider } from "./src/context/NotesContext";
 import { SettingsProvider, useSettings } from "./src/context/SettingsContext";
 import AppNavigator from "./src/navigation/AppNavigator";
+import { UI } from "./src/utils/ui";
+
+// React Navigation paints every scene container with theme.colors.background,
+// and the default is a light grey — which shows through as a white page behind
+// any screen whose own background is transparent (the savings pager, the tab
+// scenes). Theming the container is the one place that fixes all three
+// navigators at once.
+const NAV_THEME = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: UI.bg,
+    card: UI.surface,
+    text: UI.ink,
+    border: "rgba(255,255,255,0.08)",
+    primary: UI.violetLo,
+  },
+};
 
 // The app is Hebrew-only for now, so force RTL layout app-wide.
 // On native builds this takes full effect after the next app reload.
@@ -36,21 +54,21 @@ function Shell() {
 
   if (!loaded) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.background, alignItems: "center", justifyContent: "center" }}>
+      <View style={{ flex: 1, backgroundColor: UI.bg, alignItems: "center", justifyContent: "center" }}>
         <ActivityIndicator color={theme.accent} />
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <NavigationContainer>
+    <View style={{ flex: 1, backgroundColor: UI.bg }}>
+      <NavigationContainer theme={NAV_THEME}>
         <AppNavigator />
       </NavigationContainer>
       {pinRequired && (
         <PinLock mode="unlock" expected={pin} onSuccess={() => setUnlocked(true)} />
       )}
-      <StatusBar style={theme.scheme === "dark" ? "light" : "dark"} />
+      <StatusBar style="light" />
     </View>
   );
 }
@@ -70,8 +88,8 @@ export default function App() {
   // rather than hanging forever on a blank screen.
   if (!fontsLoaded && !fontError) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#F0F2F5", alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator color="#2E6BE6" />
+      <View style={{ flex: 1, backgroundColor: "#0F172A", alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator color="#A78BFA" />
       </View>
     );
   }

@@ -18,6 +18,7 @@ import Icon from "../components/Icon";
 import { GEMINI_API_KEY, GEMINI_ENDPOINT, isGeminiConfigured } from "../config/geminiConfig";
 import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
+import { Canvas } from "../components/Glass";
 import { CARD_SHADOW, TYPE, UI } from "../utils/ui";
 
 // Zone 1 — the live assistant. Glass surfaces, quick actions above the input,
@@ -172,7 +173,7 @@ export default function LiveAiScreen() {
   }, [messages.length, loading]);
 
   return (
-    <View style={[s.screen, { paddingTop: insets.top + 10 }]}>
+    <Canvas testID="ai-screen" style={{ paddingTop: insets.top + 10 }}>
       {/* Glass header */}
       <View style={s.header}>
         <View style={{ flex: 1 }}>
@@ -309,14 +310,13 @@ export default function LiveAiScreen() {
           />
         </View>
       </KeyboardAvoidingView>
-    </View>
+    </Canvas>
   );
 }
 
 const ROW = I18nManager.isRTL ? "row" : "row-reverse";
 
 const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: UI.bg },
 
   header: { flexDirection: ROW, alignItems: "center", gap: 12, paddingHorizontal: 16, paddingBottom: 10 },
   title: { fontFamily: FONTS.bold, fontSize: TYPE.hero, color: UI.ink, textAlign: "right" },
@@ -327,7 +327,7 @@ const s = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: UI.glass,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.6)",
+    borderColor: "rgba(255,255,255,0.14)",
     alignItems: "center",
     justifyContent: "center",
     ...CARD_SHADOW,
@@ -343,7 +343,7 @@ const s = StyleSheet.create({
   modelBubble: {
     backgroundColor: UI.glass,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.7)",
+    borderColor: "rgba(255,255,255,0.14)",
     borderBottomLeftRadius: 8,
     ...CARD_SHADOW,
   },
@@ -370,7 +370,7 @@ const s = StyleSheet.create({
     borderRadius: 28,
     backgroundColor: UI.glass,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.7)",
+    borderColor: "rgba(255,255,255,0.14)",
     alignItems: "center",
     justifyContent: "center",
     ...CARD_SHADOW,
@@ -386,7 +386,7 @@ const s = StyleSheet.create({
     padding: 14,
     marginTop: 4,
   },
-  keyWarningText: { flex: 1, fontFamily: FONTS.medium, fontSize: 12, color: "#8A6D00", textAlign: "right", lineHeight: 18 },
+  keyWarningText: { flex: 1, fontFamily: FONTS.medium, fontSize: 12, color: UI.amber, textAlign: "right", lineHeight: 18 },
 
   quickWrap: { paddingBottom: 8 },
   quickRow: { paddingHorizontal: 14, gap: 8 },
@@ -399,7 +399,7 @@ const s = StyleSheet.create({
     borderRadius: 22,
     backgroundColor: UI.glass,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.7)",
+    borderColor: "rgba(255,255,255,0.14)",
     ...CARD_SHADOW,
   },
   quickText: { fontFamily: FONTS.semibold, fontSize: 13, color: UI.ink },
@@ -414,7 +414,7 @@ const s = StyleSheet.create({
     borderTopLeftRadius: UI.radius,
     borderTopRightRadius: UI.radius,
     borderTopWidth: 1,
-    borderColor: "rgba(255,255,255,0.7)",
+    borderColor: "rgba(255,255,255,0.14)",
     ...CARD_SHADOW,
   },
   input: {

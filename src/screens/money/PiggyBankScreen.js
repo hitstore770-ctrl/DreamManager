@@ -1,41 +1,52 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { I18nManager, ScrollView, StyleSheet, Text, View } from "react-native";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   Easing,
   FadeIn,
+  FadeInDown,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
+  withRepeat,
   withSequence,
   withSpring,
   withTiming,
 } from "react-native-reanimated";
 
 import Bounce from "../../components/Bounce";
+import Coin from "../../components/money/Coin";
 import Icon from "../../components/Icon";
+import { GradCard } from "../../components/Glass";
 import { useMoney } from "../../context/MoneyContext";
 import { hapticLight, hapticSuccess, hapticWarning } from "../../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
 import { shekel } from "../../utils/posStore";
-import { CARD_SHADOW, TYPE, UI } from "../../utils/ui";
+import { BEVEL, CARD_SHADOW, GRAD, TYPE, UI, glow } from "../../utils/ui";
 
-// קופת חיסכון — the six coins actually in circulation, dropped into a jar.
+// קופת חיסכון — a glass jar you drop struck coins into.
+//
+// The jar is genuine glassmorphism rather than a light rectangle: blur behind
+// it, a translucent gradient body, a bright rim where the glass wall turns,
+// and two specular streaks down the left. What sells it is that the coins and
+// the fill are *inside* the clip, so the glass wall passes over them.
 
-const JAR_H = 230;
-const JAR_W = 186;
-const COIN = 40;
-const FALL_MS = 520;
+const JAR_H = 246;
+const JAR_W = 196;
+const COIN = 42;
+const FALL_MS = 540;
 
 // Agorot as integers: a jar filled 0.1 at a time on floats drifts within a
 // couple of dozen taps, and a savings counter that is wrong is worthless.
 const COINS = [
-  { agorot: 10, label: "10 אג׳", tone: "#B8BCC6", size: 34 },
-  { agorot: 50, label: "½ ₪", tone: "#A8ADB8", size: 37 },
-  { agorot: 100, label: "1 ₪", tone: "#9CA3AF", size: 40 },
-  { agorot: 200, label: "2 ₪", tone: "#8E97A6", size: 43 },
-  { agorot: 500, label: "5 ₪", tone: "#B08D57", size: 46 },
-  { agorot: 1000, label: "10 ₪", tone: "#C9A227", size: 49 },
+  { agorot: 10, label: "10 אג׳", size: 40 },
+  { agorot: 50, label: "½ ₪", size: 44 },
+  { agorot: 100, label: "1 ₪", size: 47 },
+  { agorot: 200, label: "2 ₪", size: 50 },
+  { agorot: 500, label: "5 ₪", size: 53 },
+  { agorot: 1000, label: "10 ₪", size: 56 },
 ];
 
 function FallingCoin({ coin, startX, onDone }) {
@@ -48,11 +59,11 @@ function FallingCoin({ coin, startX, onDone }) {
   useEffect(() => {
     // Ease-in, because gravity accelerates. A linear drop reads as a sticker
     // being slid down rather than a coin being dropped.
-    y.value = withTiming(JAR_H - COIN - 14, { duration: FALL_MS, easing: Easing.in(Easing.quad) });
+    y.value = withTiming(JAR_H - COIN - 22, { duration: FALL_MS, easing: Easing.in(Easing.quad) });
     spin.value = withTiming(300 + Math.random() * 240, { duration: FALL_MS });
-    sy.value = withDelay(FALL_MS, withSequence(withTiming(0.6, { duration: 70 }), withSpring(1, { damping: 6, stiffness: 320 })));
-    sx.value = withDelay(FALL_MS, withSequence(withTiming(1.32, { duration: 70 }), withSpring(1, { damping: 6, stiffness: 320 })));
-    fade.value = withDelay(FALL_MS + 230, withTiming(0, { duration: 250 }, (f) => {
+    sy.value = withDelay(FALL_MS, withSequence(withTiming(0.62, { duration: 70 }), withSpring(1, { damping: 6, stiffness: 320 })));
+    sx.value = withDelay(FALL_MS, withSequence(withTiming(1.3, { duration: 70 }), withSpring(1, { damping: 6, stiffness: 320 })));
+    fade.value = withDelay(FALL_MS + 240, withTiming(0, { duration: 250 }, (f) => {
       if (f) runOnJS(onDone)();
     }));
   }, []);
@@ -63,11 +74,8 @@ function FallingCoin({ coin, startX, onDone }) {
   }));
 
   return (
-    <Animated.View
-      pointerEvents="none"
-      style={[s.coin, { left: startX, backgroundColor: coin.tone, width: COIN, height: COIN }, style]}
-    >
-      <Text style={s.coinFaceText}>{coin.agorot >= 100 ? coin.agorot / 100 : `${coin.agorot}a`}</Text>
+    <Animated.View pointerEvents="none" style={[s.falling, { left: startX }, style]}>
+      <Coin agorot={coin.agorot} size={COIN} />
     </Animated.View>
   );
 }
@@ -82,17 +90,26 @@ export default function PiggyBankScreen() {
   // that early coins visibly move it and a full jar still has headroom.
   const level = useSharedValue(0);
   useEffect(() => {
-    const pct = Math.min(100, (Math.log10((piggy || 0) + 1) / Math.log10(201)) * 100);
+    const pct = Math.min(92, (Math.log10((piggy || 0) + 1) / Math.log10(201)) * 92);
     level.value = withSpring(pct, { damping: 15, stiffness: 90 });
   }, [piggy]);
-  const waterStyle = useAnimatedStyle(() => ({ height: `${level.value}%` }));
+  const fillStyle = useAnimatedStyle(() => ({ height: `${level.value}%` }));
+
+  // Slow drift on the surface, so the liquid is never perfectly still.
+  const swell = useSharedValue(0);
+  useEffect(() => {
+    swell.value = withRepeat(withTiming(1, { duration: 2600, easing: Easing.inOut(Easing.sin) }), -1, true);
+  }, []);
+  const crestStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: -2 + swell.value * 4 }, { scaleX: 1 + swell.value * 0.04 }],
+  }));
 
   const drop = useCallback(
     (coin) => {
       hapticLight();
       const id = nextId.current;
       nextId.current += 1;
-      setFlying((prev) => [...prev, { id, coin, startX: 20 + Math.random() * (JAR_W - COIN - 40) }]);
+      setFlying((prev) => [...prev, { id, coin, startX: 26 + Math.random() * (JAR_W - COIN - 52) }]);
       // Credited on landing, so the number and the animation tell one story.
       setTimeout(() => {
         addToPiggy(coin.agorot / 100);
@@ -116,12 +133,44 @@ export default function PiggyBankScreen() {
 
   return (
     <ScrollView style={s.screen} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
-      <View style={s.jarStage}>
-        <View style={s.jarLid} />
+      <View style={s.stage}>
+        {/* Light pooled under the jar, so it stands on something. */}
+        <View style={s.stageGlow} />
+
+        {/* Metal lid band. */}
+        <LinearGradient
+          colors={["#E2E8F0", "#94A3B8", "#64748B"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={s.lid}
+        />
+        <LinearGradient
+          colors={["#CBD5E1", "#64748B"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={s.neck}
+        />
+
         <View testID="piggy-jar" style={s.jar}>
-          <Animated.View style={[s.water, waterStyle]}>
-            <View style={s.crest} />
+          <BlurView intensity={18} tint="dark" style={StyleSheet.absoluteFill} />
+          <LinearGradient
+            colors={["rgba(255,255,255,0.14)", "rgba(255,255,255,0.03)"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+
+          {/* Contents */}
+          <Animated.View style={[s.fill, fillStyle]}>
+            <LinearGradient
+              colors={["#8B5CF6", "#4F46E5", "#0891B2"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <Animated.View style={[s.crest, crestStyle]} />
           </Animated.View>
+
           {flying.map((f) => (
             <FallingCoin
               key={f.id}
@@ -130,6 +179,18 @@ export default function PiggyBankScreen() {
               onDone={() => setFlying((prev) => prev.filter((x) => x.id !== f.id))}
             />
           ))}
+
+          {/* Glass wall, drawn over the contents. */}
+          <View style={s.streakA} pointerEvents="none" />
+          <View style={s.streakB} pointerEvents="none" />
+          <LinearGradient
+            colors={["rgba(255,255,255,0.22)", "rgba(255,255,255,0)", "rgba(0,0,0,0.28)"]}
+            locations={[0, 0.4, 1]}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
+          <View style={s.jarRim} pointerEvents="none" />
+
           <View style={s.readout} pointerEvents="none">
             <Text testID="piggy-balance" style={s.balance}>{shekel(piggy)}</Text>
             <Text style={s.balanceLabel}>בקופה</Text>
@@ -143,26 +204,33 @@ export default function PiggyBankScreen() {
         </Animated.View>
       )}
 
+      <Text style={s.sectionHead}>מטבעות</Text>
+
       <View style={s.grid}>
-        {COINS.map((c) => (
-          <Bounce
-            key={c.agorot}
-            testID={`coin-${c.agorot}`}
-            style={s.coinBtn}
-            scaleTo={0.88}
-            onPress={() => drop(c)}
-          >
-            <View style={[s.coinFace, { width: c.size, height: c.size, borderRadius: c.size / 2, backgroundColor: c.tone }]}>
-              <Text style={s.coinFaceText}>{c.agorot >= 100 ? c.agorot / 100 : c.agorot}</Text>
-            </View>
-            <Text style={s.coinLabel}>{c.label}</Text>
-          </Bounce>
+        {COINS.map((c, i) => (
+          <Animated.View key={c.agorot} entering={FadeInDown.delay(i * 50).springify().damping(14)}>
+            <Bounce testID={`coin-${c.agorot}`} style={s.coinBtn} scaleTo={0.88} onPress={() => drop(c)}>
+              <GradCard colors={GRAD.surface} radius={UI.radiusSm} style={s.coinCard}>
+                <View style={s.coinInner}>
+                  <Coin agorot={c.agorot} size={c.size} />
+                  <Text style={s.coinLabel}>{c.label}</Text>
+                </View>
+              </GradCard>
+            </Bounce>
+          </Animated.View>
         ))}
       </View>
 
-      <Bounce testID="piggy-transfer" style={s.transferBtn} scaleTo={0.96} onPress={transfer}>
-        <Icon name="arrow-left" size={18} color="#FFFFFF" />
-        <Text style={s.transferText}>העבר לארנק</Text>
+      <Bounce testID="piggy-transfer" style={s.transferWrap} scaleTo={0.96} onPress={transfer}>
+        <LinearGradient
+          colors={GRAD.violet}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={s.transferBtn}
+        >
+          <Icon name="arrow-left" size={18} color="#FFFFFF" />
+          <Text style={s.transferText}>העבר לארנק</Text>
+        </LinearGradient>
       </Bounce>
 
       <Text style={s.hint}>
@@ -174,47 +242,117 @@ export default function PiggyBankScreen() {
 }
 
 const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: UI.bg },
-  content: { paddingBottom: 120, paddingTop: 12 },
+  screen: { flex: 1, backgroundColor: "transparent" },
+  content: { paddingBottom: 130, paddingTop: 16 },
 
-  jarStage: { alignItems: "center" },
-  jarLid: { width: JAR_W - 30, height: 15, borderRadius: 8, backgroundColor: "#DDE2EC", marginBottom: -4, zIndex: 2 },
+  stage: { alignItems: "center" },
+  stageGlow: {
+    position: "absolute",
+    bottom: -30,
+    width: 240,
+    height: 90,
+    borderRadius: 120,
+    backgroundColor: UI.violet,
+    opacity: 0.18,
+  },
+
+  lid: {
+    width: JAR_W - 46,
+    height: 16,
+    borderRadius: 9,
+    zIndex: 3,
+    ...BEVEL,
+  },
+  neck: {
+    width: JAR_W - 62,
+    height: 12,
+    marginTop: -2,
+    marginBottom: -6,
+    borderBottomLeftRadius: 4,
+    borderBottomRightRadius: 4,
+    zIndex: 2,
+    opacity: 0.9,
+  },
+
   jar: {
     width: JAR_W,
     height: JAR_H,
-    borderRadius: 32,
-    backgroundColor: UI.surface,
-    borderWidth: 3,
-    borderColor: "#E4E8F0",
+    borderRadius: 38,
     overflow: "hidden",
+    backgroundColor: "rgba(148,163,184,0.06)",
     ...CARD_SHADOW,
   },
-  water: { position: "absolute", left: 0, right: 0, bottom: 0, backgroundColor: UI.violet, opacity: 0.9 },
-  crest: { position: "absolute", top: 0, left: 0, right: 0, height: 7, backgroundColor: "rgba(255,255,255,0.35)" },
-  readout: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
-  balance: { fontFamily: FONTS.bold, fontSize: 32, color: UI.ink },
-  balanceLabel: { fontFamily: FONTS.medium, fontSize: 12.5, color: UI.inkSoft, marginTop: 2 },
+  jarRim: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 38,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.28)",
+  },
+  // Two streaks at different widths: one sharp, one soft. A single streak
+  // reads as a stripe; two at different intensities read as a curved surface.
+  streakA: {
+    position: "absolute",
+    top: 18,
+    left: 20,
+    width: 12,
+    bottom: 26,
+    borderRadius: 8,
+    backgroundColor: "rgba(255,255,255,0.20)",
+  },
+  streakB: {
+    position: "absolute",
+    top: 26,
+    left: 40,
+    width: 5,
+    bottom: 40,
+    borderRadius: 4,
+    backgroundColor: "rgba(255,255,255,0.10)",
+  },
 
-  coin: {
+  fill: { position: "absolute", left: 0, right: 0, bottom: 0, overflow: "hidden" },
+  crest: {
     position: "absolute",
     top: 0,
-    borderRadius: COIN / 2,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.55)",
-    zIndex: 3,
+    left: -6,
+    right: -6,
+    height: 8,
+    borderRadius: 6,
+    backgroundColor: "rgba(255,255,255,0.45)",
   },
+
+  falling: { position: "absolute", top: 0, zIndex: 4 },
+
+  readout: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
+  balance: {
+    fontFamily: FONTS.bold,
+    fontSize: 34,
+    color: "#FFFFFF",
+    textShadowColor: "rgba(0,0,0,0.45)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
+  },
+  balanceLabel: { fontFamily: FONTS.medium, fontSize: 12.5, color: "rgba(255,255,255,0.75)", marginTop: 2 },
 
   flash: {
     alignSelf: "center",
-    backgroundColor: UI.ink,
+    backgroundColor: UI.surfaceHi,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 9,
-    marginTop: 12,
+    marginTop: 16,
+    ...BEVEL,
   },
-  flashText: { fontFamily: FONTS.semibold, fontSize: 13, color: "#FFFFFF" },
+  flashText: { fontFamily: FONTS.semibold, fontSize: 13, color: UI.ink },
+
+  sectionHead: {
+    fontFamily: FONTS.bold,
+    fontSize: TYPE.section,
+    color: UI.ink,
+    textAlign: "right",
+    paddingHorizontal: UI.cardMarginH,
+    marginTop: 28,
+    marginBottom: 12,
+  },
 
   grid: {
     flexDirection: "row",
@@ -222,36 +360,21 @@ const s = StyleSheet.create({
     justifyContent: "center",
     gap: 10,
     paddingHorizontal: UI.cardMarginH,
-    marginTop: 18,
   },
-  coinBtn: {
-    width: 100,
-    alignItems: "center",
-    gap: 7,
-    paddingVertical: 13,
-    borderRadius: UI.radiusSm,
-    backgroundColor: UI.surface,
-    ...CARD_SHADOW,
-  },
-  coinFace: { alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "rgba(255,255,255,0.6)" },
-  coinFaceText: { fontFamily: FONTS.bold, fontSize: 14, color: "#FFFFFF" },
+  coinBtn: { width: 104 },
+  coinCard: { width: 104 },
+  coinInner: { alignItems: "center", gap: 8, paddingVertical: 14 },
   coinLabel: { fontFamily: FONTS.semibold, fontSize: 11.5, color: UI.inkSoft },
 
+  transferWrap: { marginHorizontal: UI.cardMarginH, marginTop: 20, borderRadius: UI.radius, ...glow(UI.violet, 0.4) },
   transferBtn: {
     flexDirection: I18nManager.isRTL ? "row" : "row-reverse",
     alignItems: "center",
     justifyContent: "center",
     gap: 9,
-    minHeight: 56,
+    minHeight: 58,
     borderRadius: UI.radius,
-    backgroundColor: UI.violet,
-    marginHorizontal: UI.cardMarginH,
-    marginTop: 16,
-    shadowColor: UI.violet,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 18,
-    elevation: 6,
+    ...BEVEL,
   },
   transferText: { fontFamily: FONTS.bold, fontSize: 15.5, color: "#FFFFFF" },
 
@@ -262,6 +385,6 @@ const s = StyleSheet.create({
     textAlign: "center",
     paddingHorizontal: 30,
     lineHeight: 19,
-    marginTop: 18,
+    marginTop: 20,
   },
 });

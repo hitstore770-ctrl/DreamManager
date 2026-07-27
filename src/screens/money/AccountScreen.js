@@ -4,11 +4,12 @@ import Animated, { FadeIn, FadeInDown, LinearTransition } from "react-native-rea
 
 import Bounce from "../../components/Bounce";
 import Icon from "../../components/Icon";
+import { GradCard } from "../../components/Glass";
 import { useMoney } from "../../context/MoneyContext";
 import { hapticLight, hapticSuccess, hapticWarning } from "../../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
 import { shekel } from "../../utils/posStore";
-import { CARD_SHADOW, TYPE, UI } from "../../utils/ui";
+import { BEVEL, CARD_SHADOW, GRAD, TYPE, UI, tint } from "../../utils/ui";
 
 // החשבון שלי — one liquid balance on top, and named funds under it that the
 // liquid balance can be moved into.
@@ -68,21 +69,23 @@ export default function AccountScreen() {
   return (
     <ScrollView style={s.screen} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
       {/* Liquid balance */}
-      <View style={s.hero}>
-        <Text style={s.heroLabel}>יתרה נזילה</Text>
-        <Text testID="account-liquid" style={s.heroValue}>{shekel(liquid)}</Text>
-        <View style={s.heroMetaRow}>
-          <View style={s.heroMeta}>
-            <Text style={s.heroMetaValue}>{shekel(totalDeposited)}</Text>
-            <Text style={s.heroMetaLabel}>בקרנות</Text>
-          </View>
-          <View style={s.heroDivider} />
-          <View style={s.heroMeta}>
-            <Text testID="account-networth" style={s.heroMetaValue}>{shekel(netWorth)}</Text>
-            <Text style={s.heroMetaLabel}>סה״כ ברשותי</Text>
+      <GradCard colors={GRAD.violet} halo={UI.violet} radius={28} style={s.heroWrap}>
+        <View style={s.hero}>
+          <Text style={s.heroLabel}>יתרה נזילה</Text>
+          <Text testID="account-liquid" style={s.heroValue}>{shekel(liquid)}</Text>
+          <View style={s.heroMetaRow}>
+            <View style={s.heroMeta}>
+              <Text style={s.heroMetaValue}>{shekel(totalDeposited)}</Text>
+              <Text style={s.heroMetaLabel}>בקרנות</Text>
+            </View>
+            <View style={s.heroDivider} />
+            <View style={s.heroMeta}>
+              <Text testID="account-networth" style={s.heroMetaValue}>{shekel(netWorth)}</Text>
+              <Text style={s.heroMetaLabel}>סה״כ ברשותי</Text>
+            </View>
           </View>
         </View>
-      </View>
+      </GradCard>
 
       {!!flash && (
         <Animated.View entering={FadeIn.duration(200)} style={s.flash}>
@@ -242,40 +245,41 @@ export default function AccountScreen() {
 const ROW = I18nManager.isRTL ? "row" : "row-reverse";
 
 const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: UI.bg },
-  content: { paddingBottom: 120, paddingTop: 14 },
+  screen: { flex: 1, backgroundColor: "transparent" },
+  content: { paddingBottom: 130, paddingTop: 16 },
 
+  heroWrap: { marginHorizontal: UI.cardMarginH },
   hero: {
-    backgroundColor: UI.ink,
-    borderRadius: 28,
     paddingVertical: 24,
     paddingHorizontal: 20,
-    marginHorizontal: UI.cardMarginH,
     alignItems: "center",
     gap: 3,
-    shadowColor: "#111827",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.22,
-    shadowRadius: 22,
-    elevation: 7,
   },
-  heroLabel: { fontFamily: FONTS.medium, fontSize: 13, color: "rgba(255,255,255,0.7)" },
-  heroValue: { fontFamily: FONTS.bold, fontSize: 40, color: "#FFFFFF" },
+  heroLabel: { fontFamily: FONTS.medium, fontSize: 13, color: "rgba(255,255,255,0.75)" },
+  heroValue: {
+    fontFamily: FONTS.bold,
+    fontSize: 40,
+    color: "#FFFFFF",
+    textShadowColor: "rgba(0,0,0,0.35)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 10,
+  },
   heroMetaRow: { flexDirection: "row", alignItems: "center", gap: 18, marginTop: 12 },
   heroMeta: { alignItems: "center" },
   heroMetaValue: { fontFamily: FONTS.bold, fontSize: 15, color: "rgba(255,255,255,0.95)" },
-  heroMetaLabel: { fontFamily: FONTS.regular, fontSize: 10.5, color: "rgba(255,255,255,0.6)", marginTop: 2 },
-  heroDivider: { width: 1, height: 26, backgroundColor: "rgba(255,255,255,0.18)" },
+  heroMetaLabel: { fontFamily: FONTS.regular, fontSize: 10.5, color: "rgba(255,255,255,0.68)", marginTop: 2 },
+  heroDivider: { width: 1, height: 26, backgroundColor: "rgba(255,255,255,0.24)" },
 
   flash: {
     alignSelf: "center",
-    backgroundColor: UI.ink,
+    backgroundColor: UI.surfaceHi,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 9,
-    marginTop: 12,
+    marginTop: 14,
+    ...BEVEL,
   },
-  flashText: { fontFamily: FONTS.semibold, fontSize: 13, color: "#FFFFFF" },
+  flashText: { fontFamily: FONTS.semibold, fontSize: 13, color: UI.ink },
 
   headRow: {
     flexDirection: ROW,
@@ -290,9 +294,10 @@ const s = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 14,
-    backgroundColor: UI.violet + "14",
+    backgroundColor: tint(UI.violet, 0.2),
     alignItems: "center",
     justifyContent: "center",
+    ...BEVEL,
   },
 
   newCard: {
@@ -302,6 +307,7 @@ const s = StyleSheet.create({
     marginHorizontal: UI.cardMarginH,
     marginBottom: 12,
     gap: 10,
+    ...BEVEL,
     ...CARD_SHADOW,
   },
   newRow: { flexDirection: ROW, gap: 10, alignItems: "center" },
@@ -321,6 +327,7 @@ const s = StyleSheet.create({
     fontFamily: FONTS.semibold,
     fontSize: 15,
     color: UI.ink,
+    ...BEVEL,
   },
 
   empty: { alignItems: "center", gap: 8, paddingVertical: 26 },
@@ -332,6 +339,7 @@ const s = StyleSheet.create({
     padding: UI.cardPadding,
     marginHorizontal: UI.cardMarginH,
     marginBottom: UI.cardMarginB,
+    ...BEVEL,
     ...CARD_SHADOW,
   },
   cardHead: { flexDirection: ROW, alignItems: "center", gap: 12 },
@@ -341,9 +349,10 @@ const s = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 16,
-    backgroundColor: UI.violet + "14",
+    backgroundColor: tint(UI.violet, 0.2),
     alignItems: "center",
     justifyContent: "center",
+    ...BEVEL,
   },
 
   track: { height: 10, borderRadius: 5, backgroundColor: UI.surfaceAlt, overflow: "hidden", marginTop: 14 },
@@ -359,6 +368,7 @@ const s = StyleSheet.create({
     backgroundColor: UI.surfaceAlt,
     alignItems: "center",
     justifyContent: "center",
+    ...BEVEL,
   },
   quickText: { fontFamily: FONTS.bold, fontSize: 13.5, color: UI.inkSoft },
   customRow: { flexDirection: ROW, gap: 8, alignItems: "center" },

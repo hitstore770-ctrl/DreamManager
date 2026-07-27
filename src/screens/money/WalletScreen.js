@@ -1,28 +1,31 @@
 import { useRef, useState } from "react";
 import { Dimensions, I18nManager, ScrollView, StyleSheet, Text, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 
+import Banknote from "../../components/money/Banknote";
 import Bounce from "../../components/Bounce";
 import Icon from "../../components/Icon";
+import { GradCard } from "../../components/Glass";
 import { useMoney } from "../../context/MoneyContext";
 import { hapticLight, hapticSuccess, hapticWarning } from "../../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
 import { shekel } from "../../utils/posStore";
-import { CARD_SHADOW, TYPE, UI } from "../../utils/ui";
+import { BEVEL, GRAD, TYPE, UI, glow } from "../../utils/ui";
 
-// ארנק — cards on top, banknotes at the bottom, and a tap that moves a note
-// into the account.
+// ארנק — payment cards on top, printed banknotes at the bottom, and a tap that
+// moves a note into the account.
 
 const { width: SCREEN_W } = Dimensions.get("window");
-const CARD_W = Math.min(300, SCREEN_W - 70);
-const CARD_GAP = 12;
+const CARD_W = Math.min(304, SCREEN_W - 62);
+const CARD_GAP = 14;
 
-const NOTES = [
-  { value: 20, tone: "#C0392B", label: "20 ₪", face: "רחל" },
-  { value: 50, tone: "#16A085", label: "50 ₪", face: "עגנון" },
-  { value: 100, tone: "#8E44AD", label: "100 ₪", face: "גולדברג" },
-  { value: 200, tone: "#2980B9", label: "200 ₪", face: "אלתרמן" },
-];
+// Two per row at whatever width is left after the page margins, keeping the
+// 2:1.1 proportion of a real note.
+const NOTE_W = Math.min(164, (SCREEN_W - UI.cardMarginH * 2 - 12) / 2);
+const NOTE_H = Math.round(NOTE_W * 0.55);
+
+const NOTES = [20, 50, 100, 200];
 
 export default function WalletScreen() {
   const { wallet, piggy, liquid, addToWallet, walletToAccount } = useMoney();
@@ -33,9 +36,9 @@ export default function WalletScreen() {
   // The cards are a view of the same money, not extra accounts. Showing them
   // as separate balances would double-count what the user has.
   const CARDS = [
-    { key: "cash", label: "מזומן בארנק", value: wallet, tone: UI.violet, icon: "credit-card", note: "שטרות ומטבעות" },
-    { key: "piggy", label: "בקופת החיסכון", value: piggy, tone: UI.cyan, icon: "archive", note: "ממתין להעברה" },
-    { key: "account", label: "בחשבון", value: liquid, tone: "#111827", icon: "trending-up", note: "יתרה נזילה" },
+    { key: "cash", label: "מזומן בארנק", value: wallet, grad: GRAD.violet, halo: UI.violet, brand: "CASH", note: "שטרות ומטבעות" },
+    { key: "piggy", label: "בקופת החיסכון", value: piggy, grad: GRAD.cyan, halo: UI.cyan, brand: "SAVE", note: "ממתין להעברה" },
+    { key: "account", label: "בחשבון", value: liquid, grad: GRAD.ink, halo: "#000000", brand: "BANK", note: "יתרה נזילה" },
   ];
 
   const say = (text) => {
@@ -43,10 +46,10 @@ export default function WalletScreen() {
     setTimeout(() => setFlash(null), 2200);
   };
 
-  const addNote = (note) => {
+  const addNote = (value) => {
     hapticSuccess();
-    addToWallet(note.value);
-    say(`${note.label} נוספו לארנק`);
+    addToWallet(value);
+    say(`${value} ₪ נוספו לארנק`);
   };
 
   const deposit = (amount) => {
@@ -77,18 +80,44 @@ export default function WalletScreen() {
         }}
       >
         {CARDS.map((c, i) => (
-          <Animated.View
-            key={c.key}
-            entering={FadeInDown.delay(i * 90).springify().damping(14)}
-            style={[s.card, { backgroundColor: c.tone }]}
-          >
-            <View style={s.cardTop}>
-              <Icon name={c.icon} size={22} color="rgba(255,255,255,0.9)" />
-              <Text style={s.cardLabel}>{c.label}</Text>
-            </View>
-            <Text testID={`wallet-card-${c.key}`} style={s.cardValue}>{shekel(c.value)}</Text>
-            <Text style={s.cardNote}>{c.note}</Text>
-            <View style={s.cardChip} />
+          <Animated.View key={c.key} entering={FadeInDown.delay(i * 90).springify().damping(14)}>
+            <GradCard colors={c.grad} halo={c.halo} radius={26} style={{ width: CARD_W }}>
+              <View style={s.card}>
+                {/* Holographic band, as on a real card face. */}
+                <LinearGradient
+                  colors={["rgba(255,255,255,0.18)", "rgba(255,255,255,0)", "rgba(255,255,255,0.10)"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={s.holo}
+                  pointerEvents="none"
+                />
+
+                <View style={s.cardTop}>
+                  <Text style={s.cardBrand}>{c.brand}</Text>
+                  <Text style={s.cardLabel}>{c.label}</Text>
+                </View>
+
+                {/* Contact chip. */}
+                <View style={s.chipRow}>
+                  <LinearGradient colors={GRAD.gold} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.chip}>
+                    <View style={s.chipLineA} />
+                    <View style={s.chipLineB} />
+                  </LinearGradient>
+                  {/* Contactless arcs. */}
+                  <View style={s.wave}>
+                    {[10, 15, 20].map((r) => (
+                      <View key={r} style={[s.arc, { width: r, height: r * 2, borderRadius: r }]} />
+                    ))}
+                  </View>
+                </View>
+
+                <Text testID={`wallet-card-${c.key}`} style={s.cardValue}>{shekel(c.value)}</Text>
+                <View style={s.cardFoot}>
+                  <Text style={s.cardNote}>{c.note}</Text>
+                  <Text style={s.cardDots}>•••• 7708</Text>
+                </View>
+              </View>
+            </GradCard>
           </Animated.View>
         ))}
       </ScrollView>
@@ -106,52 +135,51 @@ export default function WalletScreen() {
       )}
 
       {/* Deposit to account */}
-      <View style={s.depositCard}>
-        <Text style={s.sectionLabel}>הפקדה לחשבון</Text>
-        <View style={s.depositRow}>
-          <Bounce
-            testID="deposit-all"
-            style={[s.depositBtn, { backgroundColor: UI.violet }]}
-            scaleTo={0.94}
-            onPress={() => deposit(wallet)}
-          >
-            <Icon name="arrow-left" size={16} color="#FFFFFF" />
-            <Text style={s.depositText}>הפקד הכול</Text>
-          </Bounce>
-          {[50, 100].map((amount) => (
-            <Bounce
-              key={amount}
-              testID={`deposit-${amount}`}
-              style={s.depositBtn}
-              scaleTo={0.94}
-              onPress={() => deposit(amount)}
-            >
-              <Text style={[s.depositText, { color: UI.inkSoft }]}>{amount} ₪</Text>
+      <GradCard colors={GRAD.surface} style={s.depositCard}>
+        <View style={s.depositInner}>
+          <Text style={s.sectionLabel}>הפקדה לחשבון</Text>
+          <View style={s.depositRow}>
+            <Bounce testID="deposit-all" style={s.depositPrimaryWrap} scaleTo={0.94} onPress={() => deposit(wallet)}>
+              <LinearGradient
+                colors={GRAD.violet}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={s.depositPrimary}
+              >
+                <Icon name="arrow-left" size={16} color="#FFFFFF" />
+                <Text style={s.depositText}>הפקד הכול</Text>
+              </LinearGradient>
             </Bounce>
-          ))}
+            {[50, 100].map((amount) => (
+              <Bounce
+                key={amount}
+                testID={`deposit-${amount}`}
+                style={s.depositBtn}
+                scaleTo={0.94}
+                onPress={() => deposit(amount)}
+              >
+                <Text style={[s.depositText, { color: UI.inkSoft }]}>{amount} ₪</Text>
+              </Bounce>
+            ))}
+          </View>
         </View>
-      </View>
+      </GradCard>
 
       {/* Banknotes */}
       <Text style={s.sectionHead}>שטרות</Text>
       <Text style={s.sectionHint}>הקש על שטר כדי להוסיף אותו לארנק</Text>
 
       <View style={s.notes}>
-        {NOTES.map((n, i) => (
-          <Animated.View key={n.value} entering={FadeInDown.delay(i * 70).springify().damping(14)}>
+        {NOTES.map((value, i) => (
+          <Animated.View key={value} entering={FadeInDown.delay(i * 70).springify().damping(14)}>
             <Bounce
-              testID={`note-${n.value}`}
-              style={[s.note, { backgroundColor: n.tone }]}
+              testID={`note-${value}`}
               scaleTo={0.94}
-              onPress={() => addNote(n)}
-              onLongPress={() => { hapticLight(); deposit(n.value); }}
+              onPress={() => addNote(value)}
+              onLongPress={() => { hapticLight(); deposit(value); }}
               delayLongPress={400}
             >
-              <View style={s.noteInner}>
-                <Text style={s.noteValue}>{n.value}</Text>
-                <Text style={s.noteCurrency}>₪</Text>
-              </View>
-              <Text style={s.noteFace}>{n.face}</Text>
+              <Banknote value={value} width={NOTE_W} height={NOTE_H} />
             </Bounce>
           </Animated.View>
         ))}
@@ -165,72 +193,94 @@ export default function WalletScreen() {
   );
 }
 
+const ROW = I18nManager.isRTL ? "row" : "row-reverse";
+
 const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: UI.bg },
-  content: { paddingBottom: 120, paddingTop: 14 },
+  screen: { flex: 1, backgroundColor: "transparent" },
+  content: { paddingBottom: 130, paddingTop: 16 },
 
-  cardRail: { paddingHorizontal: 24, gap: CARD_GAP },
-  card: {
-    width: CARD_W,
-    height: 168,
-    borderRadius: 26,
-    padding: 20,
-    justifyContent: "space-between",
-    overflow: "hidden",
-    shadowColor: "#111827",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.18,
-    shadowRadius: 22,
-    elevation: 7,
+  cardRail: { paddingHorizontal: 22, gap: CARD_GAP },
+  card: { height: 184, padding: 20, justifyContent: "space-between" },
+  holo: { ...StyleSheet.absoluteFillObject },
+  cardTop: { flexDirection: ROW, alignItems: "center", justifyContent: "space-between" },
+  cardBrand: {
+    fontFamily: FONTS.bold,
+    fontSize: 11,
+    letterSpacing: 2.5,
+    color: "rgba(255,255,255,0.6)",
   },
-  cardTop: { flexDirection: I18nManager.isRTL ? "row" : "row-reverse", alignItems: "center", gap: 9 },
-  cardLabel: { flex: 1, fontFamily: FONTS.semibold, fontSize: 13.5, color: "rgba(255,255,255,0.92)", textAlign: "right" },
-  cardValue: { fontFamily: FONTS.bold, fontSize: 34, color: "#FFFFFF", textAlign: "right" },
-  cardNote: { fontFamily: FONTS.regular, fontSize: 11.5, color: "rgba(255,255,255,0.75)", textAlign: "right" },
-  cardChip: {
-    position: "absolute",
-    top: 58,
-    left: 20,
-    width: 40,
-    height: 30,
+  cardLabel: { fontFamily: FONTS.semibold, fontSize: 13.5, color: "rgba(255,255,255,0.94)", textAlign: "right" },
+
+  chipRow: { flexDirection: ROW, alignItems: "center", gap: 12 },
+  chip: {
+    width: 42,
+    height: 32,
     borderRadius: 7,
-    backgroundColor: "rgba(255,255,255,0.28)",
+    padding: 5,
+    justifyContent: "space-between",
+    ...BEVEL,
+  },
+  chipLineA: { height: 1.5, backgroundColor: "rgba(0,0,0,0.28)", borderRadius: 1, width: "70%" },
+  chipLineB: { height: 1.5, backgroundColor: "rgba(0,0,0,0.28)", borderRadius: 1, width: "100%" },
+  wave: { flexDirection: ROW, alignItems: "center", gap: 3, opacity: 0.55 },
+  arc: {
+    borderWidth: 1.6,
+    borderColor: "rgba(255,255,255,0.85)",
+    borderLeftColor: "transparent",
+    borderTopColor: "transparent",
+    borderBottomColor: "transparent",
   },
 
-  dots: { flexDirection: "row", justifyContent: "center", gap: 6, marginTop: 12 },
-  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#D6DBE5" },
-  dotOn: { backgroundColor: UI.violet, width: 20 },
+  cardValue: {
+    fontFamily: FONTS.bold,
+    fontSize: 33,
+    color: "#FFFFFF",
+    textAlign: "right",
+    textShadowColor: "rgba(0,0,0,0.3)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
+  },
+  cardFoot: { flexDirection: ROW, alignItems: "center", justifyContent: "space-between" },
+  cardNote: { fontFamily: FONTS.regular, fontSize: 11.5, color: "rgba(255,255,255,0.72)", textAlign: "right" },
+  cardDots: { fontFamily: FONTS.medium, fontSize: 11.5, color: "rgba(255,255,255,0.6)", letterSpacing: 1.5 },
+
+  dots: { flexDirection: "row", justifyContent: "center", gap: 6, marginTop: 14 },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.18)" },
+  dotOn: { backgroundColor: UI.violetLo, width: 20 },
 
   flash: {
     alignSelf: "center",
-    backgroundColor: UI.ink,
+    backgroundColor: UI.surfaceHi,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 9,
-    marginTop: 12,
+    marginTop: 14,
+    ...BEVEL,
   },
-  flashText: { fontFamily: FONTS.semibold, fontSize: 13, color: "#FFFFFF" },
+  flashText: { fontFamily: FONTS.semibold, fontSize: 13, color: UI.ink },
 
-  depositCard: {
-    backgroundColor: UI.surface,
-    borderRadius: UI.radius,
-    padding: UI.cardPadding,
-    marginHorizontal: UI.cardMarginH,
-    marginTop: 16,
-    gap: 12,
-    ...CARD_SHADOW,
-  },
+  depositCard: { marginHorizontal: UI.cardMarginH, marginTop: 18 },
+  depositInner: { padding: UI.cardPadding, gap: 12 },
   sectionLabel: { fontFamily: FONTS.semibold, fontSize: 13, color: UI.inkSoft, textAlign: "right" },
-  depositRow: { flexDirection: I18nManager.isRTL ? "row" : "row-reverse", gap: 8 },
-  depositBtn: {
-    flex: 1,
-    flexDirection: I18nManager.isRTL ? "row" : "row-reverse",
+  depositRow: { flexDirection: ROW, gap: 8 },
+  depositPrimaryWrap: { flex: 1, borderRadius: UI.radiusSm, ...glow(UI.violet, 0.35) },
+  depositPrimary: {
+    flexDirection: ROW,
     alignItems: "center",
     justifyContent: "center",
     gap: 7,
     minHeight: 50,
     borderRadius: UI.radiusSm,
+    ...BEVEL,
+  },
+  depositBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 50,
+    borderRadius: UI.radiusSm,
     backgroundColor: UI.surfaceAlt,
+    ...BEVEL,
   },
   depositText: { fontFamily: FONTS.bold, fontSize: 14, color: "#FFFFFF" },
 
@@ -240,7 +290,7 @@ const s = StyleSheet.create({
     color: UI.ink,
     textAlign: "right",
     paddingHorizontal: UI.cardMarginH,
-    marginTop: 22,
+    marginTop: 26,
   },
   sectionHint: {
     fontFamily: FONTS.regular,
@@ -251,23 +301,14 @@ const s = StyleSheet.create({
     marginTop: 3,
   },
 
-  notes: { flexDirection: "row", flexWrap: "wrap", gap: 10, paddingHorizontal: UI.cardMarginH, marginTop: 12, justifyContent: "center" },
-  note: {
-    width: 150,
-    height: 82,
-    borderRadius: 14,
-    padding: 12,
-    justifyContent: "space-between",
-    shadowColor: "#111827",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.16,
-    shadowRadius: 12,
-    elevation: 4,
+  notes: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    paddingHorizontal: UI.cardMarginH,
+    marginTop: 14,
+    justifyContent: "center",
   },
-  noteInner: { flexDirection: "row", alignItems: "baseline", gap: 3, alignSelf: "flex-end" },
-  noteValue: { fontFamily: FONTS.bold, fontSize: 26, color: "#FFFFFF" },
-  noteCurrency: { fontFamily: FONTS.bold, fontSize: 15, color: "rgba(255,255,255,0.85)" },
-  noteFace: { fontFamily: FONTS.regular, fontSize: 11, color: "rgba(255,255,255,0.8)", textAlign: "right" },
 
   hint: {
     fontFamily: FONTS.regular,
@@ -276,6 +317,6 @@ const s = StyleSheet.create({
     textAlign: "center",
     paddingHorizontal: 30,
     lineHeight: 19,
-    marginTop: 20,
+    marginTop: 22,
   },
 });

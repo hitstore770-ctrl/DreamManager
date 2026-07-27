@@ -4,11 +4,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Bounce from "../../components/Bounce";
 import Icon from "../../components/Icon";
+import { Canvas } from "../../components/Glass";
 import { useMoney } from "../../context/MoneyContext";
 import { hapticLight } from "../../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
 import { shekel } from "../../utils/posStore";
-import { CARD_SHADOW, TYPE, UI } from "../../utils/ui";
+import { BEVEL, CARD_SHADOW, TYPE, UI, tint } from "../../utils/ui";
 import AccountScreen from "./AccountScreen";
 import PiggyBankScreen from "./PiggyBankScreen";
 import WalletScreen from "./WalletScreen";
@@ -28,7 +29,7 @@ export default function SavingsHubScreen({ navigation }) {
   const { netWorth } = useMoney();
 
   return (
-    <View style={[s.screen, { paddingTop: insets.top + 8 }]}>
+    <Canvas style={{ paddingTop: insets.top + 8 }}>
       <View style={s.header}>
         <Bounce style={s.iconBtn} scaleTo={0.9} onPress={() => navigation?.goBack()}>
           <Icon name={I18nManager.isRTL ? "arrow-right" : "arrow-left"} size={19} color={UI.ink} />
@@ -41,10 +42,12 @@ export default function SavingsHubScreen({ navigation }) {
 
       <Tab.Navigator
         initialRouteName="Piggy"
+        style={{ backgroundColor: "transparent" }}
+        sceneContainerStyle={{ backgroundColor: "transparent" }}
         screenOptions={{
           tabBarStyle: s.bar,
           tabBarIndicatorStyle: s.indicator,
-          tabBarActiveTintColor: UI.violet,
+          tabBarActiveTintColor: UI.violetLo,
           tabBarInactiveTintColor: UI.inkMuted,
           tabBarLabelStyle: { fontFamily: FONTS.bold, fontSize: 13.5, textTransform: "none" },
           tabBarPressColor: "transparent",
@@ -58,12 +61,11 @@ export default function SavingsHubScreen({ navigation }) {
         <Tab.Screen name="Wallet" component={WalletScreen} options={{ title: "ארנק" }} />
         <Tab.Screen name="Account" component={AccountScreen} options={{ title: "החשבון שלי" }} />
       </Tab.Navigator>
-    </View>
+    </Canvas>
   );
 }
 
 const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: UI.bg },
   header: {
     flexDirection: I18nManager.isRTL ? "row" : "row-reverse",
     alignItems: "center",
@@ -78,23 +80,25 @@ const s = StyleSheet.create({
     backgroundColor: UI.surface,
     alignItems: "center",
     justifyContent: "center",
+    ...BEVEL,
     ...CARD_SHADOW,
   },
   title: { fontFamily: FONTS.bold, fontSize: TYPE.title, color: UI.ink, textAlign: "right" },
   subtitle: { fontFamily: FONTS.regular, fontSize: TYPE.caption, color: UI.inkMuted, textAlign: "right", marginTop: 2 },
 
   bar: {
-    backgroundColor: UI.surface,
+    backgroundColor: UI.surfaceAlt,
     marginHorizontal: UI.cardMarginH,
     borderRadius: UI.radius,
     elevation: 0,
     shadowOpacity: 0,
     borderBottomWidth: 0,
     overflow: "hidden",
+    ...BEVEL,
   },
   indicator: {
     height: "100%",
     borderRadius: UI.radius,
-    backgroundColor: UI.violet + "16",
+    backgroundColor: tint(UI.violet, 0.26),
   },
 });

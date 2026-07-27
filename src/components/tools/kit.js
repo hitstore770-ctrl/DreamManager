@@ -16,15 +16,18 @@ import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
 // under ./apps and imports from here, so no single file grows without bound
 // as the catalogue fills in.
 
+// WHITE stays literally white on purpose: it is the foreground on coloured
+// buttons and — critically — the quiet zone behind a rendered QR code. A QR on
+// a dark substrate does not scan, so this one token must not follow the theme.
 export const WHITE = "#FFFFFF";
-export const CARD = "#F4F6F9";
-export const INK = "#111827";
-export const INK_SOFT = "#6B7280";
-export const INK_MUTED = "#9CA3AF";
-export const BLUE = "#7C3AED";
-export const GOLD = "#06B6D4";
+export const CARD = "#131C2E";
+export const INK = "#F1F5F9";
+export const INK_SOFT = "#94A3B8";
+export const INK_MUTED = "#64748B";
+export const BLUE = "#8B5CF6";
+export const GOLD = "#22D3EE";
 export const GREEN = "#10B981";
-export const RED = "#EF4444";
+export const RED = "#F87171";
 
 // The browser's focus ring draws a hard black box around a focused input,
 // which fights the soft 770JLM surfaces. No-op on native.
@@ -176,11 +179,11 @@ export const s = StyleSheet.create({
   segmentText: { fontFamily: FONTS.semibold, fontSize: 12.5, color: INK_SOFT },
 
   checkRow: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 48 },
-  checkbox: { width: 26, height: 26, borderRadius: 8, borderWidth: 2, borderColor: "#D6DBE5", alignItems: "center", justifyContent: "center" },
+  checkbox: { width: 26, height: 26, borderRadius: 8, borderWidth: 2, borderColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" },
   checkMark: { color: WHITE, fontFamily: FONTS.bold, fontSize: 14 },
   checkLabel: { flex: 1, fontFamily: FONTS.medium, fontSize: 13, color: INK_SOFT, textAlign: "right" },
 
-  previewStage: { backgroundColor: "#EDF0F4", borderRadius: 24, padding: 22, marginBottom: 6 },
+  previewStage: { backgroundColor: CARD, borderRadius: 24, padding: 22, marginBottom: 6 },
   previewTitle: { fontFamily: FONTS.bold, fontSize: 16, color: INK },
   previewSub: { fontFamily: FONTS.regular, fontSize: 12, color: INK_MUTED, marginTop: 3 },
   snippetBox: { backgroundColor: "#0E1729", borderRadius: 14, padding: 12, marginTop: 4 },

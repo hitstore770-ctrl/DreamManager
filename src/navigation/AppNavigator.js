@@ -1,74 +1,101 @@
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, I18nManager, Platform, StyleSheet, View } from "react-native";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import Icon from "../components/Icon";
+import { withBack } from "../components/BackFab";
 import { useAuth } from "../context/AuthContext";
 import { MoneyProvider } from "../context/MoneyContext";
+import BusinessScreen from "../screens/BusinessScreen";
 import CashRegisterScreen from "../screens/money/CashRegisterScreen";
 import ContextualAiChatScreen from "../screens/ContextualAiChatScreen";
+import DreamsNotesHubScreen from "../screens/DreamsNotesHubScreen";
+import DreamsScreen from "../screens/DreamsScreen";
 import LiveAiScreen from "../screens/LiveAiScreen";
-import MyMoneyDashboard from "../screens/MyMoneyDashboard";
+import LoginScreen from "../screens/LoginScreen";
+import MainDashboardScreen from "../screens/MainDashboardScreen";
+import MyMoneyHubScreen from "../screens/MyMoneyHubScreen";
+import NoteEditorScreen from "../screens/NoteEditorScreen";
 import SavingsHubScreen from "../screens/money/SavingsHubScreen";
 import SavingsScreen from "../screens/SavingsScreen";
-import TransitAssistantScreen from "../screens/TransitAssistantScreen";
-import LoginScreen from "../screens/LoginScreen";
-import NoteEditorScreen from "../screens/NoteEditorScreen";
-import NotesHubScreen from "../screens/NotesHubScreen";
-import BusinessScreen from "../screens/BusinessScreen";
-import DreamsScreen from "../screens/DreamsScreen";
 import SettingsScreen from "../screens/SettingsScreen";
-import ToolsScreen from "../screens/ToolsScreen";
+import ToolsWorkshopScreen from "../screens/ToolsWorkshopScreen";
+import TransitAssistantScreen from "../screens/TransitAssistantScreen";
 import { FONTS } from "../utils/theme";
-import { UI, glow } from "../utils/ui";
+import { BEVEL, UI, glow, tint } from "../utils/ui";
 
 const RootStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
-const ClassicTab = createBottomTabNavigator();
 
-// Two zones, per the blueprint: the live assistant and the money hub.
+// Five zones.
 //
-// The five original screens are not gone — they live in ClassicTabs, reachable
-// from the money hub's "שאר האפליקציה" list. Deleting a working POS, 43 tools
-// and the notes system to honour a two-tab layout would have been a much
-// larger change than the blueprint asked for.
-const ZONE_ICON = { Assistant: "message-circle", Money: "trending-up" };
-const ZONE_LABEL = { Assistant: "עוזר חכם", Money: "הכסף שלי" };
+// Declaration order is the RTL reading order — first declared sits rightmost,
+// because the app forces RTL and the bar is a flex row. So the money hub is
+// under the right thumb, the assistant next to it, the Core in the middle,
+// and the two libraries out to the left.
+const ZONES = [
+  { name: "Money", component: MyMoneyHubScreen, icon: "trending-up", label: "הכסף שלי" },
+  { name: "Assistant", component: LiveAiScreen, icon: "message-circle", label: "עוזר חכם" },
+  { name: "Core", component: MainDashboardScreen, icon: "hexagon", label: "הליבה" },
+  { name: "Library", component: DreamsNotesHubScreen, icon: "star", label: "חלומות" },
+  { name: "Workshop", component: ToolsWorkshopScreen, icon: "tool", label: "כלים" },
+];
 
-const CLASSIC_ICON = {
-  Notes: "edit-3",
-  Dreams: "star",
-  Tools: "grid",
-  Business: "briefcase",
-  Settings: "settings",
-};
-const CLASSIC_LABEL = {
-  Notes: "פתקים",
-  Dreams: "חלומות",
-  Tools: "כלים",
-  Business: "העסק שלי",
-  Settings: "הגדרות",
-};
+// Under real RTL a flex row lays itself out right to left, so declaring in RTL
+// order is all it takes. react-native-web reports isRTL === false — forceRTL
+// does not apply there — so the row runs left to right and the bar would come
+// out mirrored in the web preview. Reversing the declaration in that case is
+// the same compensation the rest of this codebase makes with its
+// `isRTL ? "row" : "row-reverse"` idiom.
+//
+// It has to be the mount order rather than a style: React Navigation builds
+// the bar's row from these children, and `tabBarStyle` lands on the outer
+// container, so a flexDirection override there does nothing.
+const ORDERED_ZONES = I18nManager.isRTL ? ZONES : [...ZONES].reverse();
+
+const ICONS = Object.fromEntries(ZONES.map((z) => [z.name, z.icon]));
+const LABELS = Object.fromEntries(ZONES.map((z) => [z.name, z.label]));
+
+// The bar is a real piece of frosted glass rather than a translucent colour:
+// blur behind it, a gradient sheen over it, and a top-light bevel. With five
+// items it also has to stay narrow, so the active state is a tinted pill
+// instead of anything that adds height.
+function TabBackground() {
+  return (
+    <View style={StyleSheet.absoluteFill}>
+      <BlurView intensity={34} tint="dark" style={StyleSheet.absoluteFill} />
+      <LinearGradient
+        colors={["rgba(255,255,255,0.10)", "rgba(255,255,255,0.02)"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+    </View>
+  );
+}
 
 const ACTIVE_CHIP = {
-  minWidth: 46,
-  height: 28,
-  borderRadius: 14,
+  minWidth: 44,
+  height: 30,
+  borderRadius: 15,
   alignItems: "center",
   justifyContent: "center",
-  backgroundColor: UI.violet + "16",
+  backgroundColor: tint(UI.violet, 0.28),
+  ...BEVEL,
 };
-const INACTIVE_CHIP = { minWidth: 46, height: 28, alignItems: "center", justifyContent: "center" };
+const INACTIVE_CHIP = { minWidth: 44, height: 30, alignItems: "center", justifyContent: "center" };
 
-// Floating glass bar, shared by both tab navigators.
-const barOptions = (iconMap, labelMap) => ({ route }) => ({
+const screenOptions = ({ route }) => ({
   headerShown: false,
-  tabBarActiveTintColor: UI.violet,
+  tabBarActiveTintColor: UI.violetLo,
   tabBarInactiveTintColor: UI.inkMuted,
+  tabBarBackground: TabBackground,
   tabBarStyle: {
     position: "absolute",
-    left: 14,
-    right: 14,
+    left: 12,
+    right: 12,
     bottom: 14,
     height: 78,
     paddingTop: 9,
@@ -76,39 +103,27 @@ const barOptions = (iconMap, labelMap) => ({ route }) => ({
     borderRadius: UI.radius,
     backgroundColor: UI.glass,
     borderTopWidth: 0,
-    ...glow(UI.violet, 0.18),
+    overflow: "hidden",
+    ...BEVEL,
+    ...glow("#000000", 0.5),
   },
   tabBarItemStyle: { borderRadius: UI.radiusSm },
-  tabBarLabelStyle: { fontFamily: FONTS.medium, fontSize: 10.5, lineHeight: 15, marginTop: 2 },
+  tabBarLabelStyle: { fontFamily: FONTS.medium, fontSize: 10, lineHeight: 15, marginTop: 2 },
   tabBarIcon: ({ focused }) => (
     <View style={focused ? ACTIVE_CHIP : INACTIVE_CHIP}>
-      <Icon name={iconMap[route.name]} size={21} color={focused ? UI.violet : UI.inkMuted} />
+      <Icon name={ICONS[route.name]} size={20} color={focused ? UI.violetLo : UI.inkMuted} />
     </View>
   ),
-  tabBarLabel: labelMap[route.name],
+  tabBarLabel: LABELS[route.name],
 });
 
 function ZoneTabs() {
   return (
-    <Tab.Navigator initialRouteName="Money" screenOptions={barOptions(ZONE_ICON, ZONE_LABEL)}>
-      <Tab.Screen name="Assistant" component={LiveAiScreen} />
-      <Tab.Screen name="Money" component={MyMoneyDashboard} />
+    <Tab.Navigator initialRouteName="Core" screenOptions={screenOptions}>
+      {ORDERED_ZONES.map((z) => (
+        <Tab.Screen key={z.name} name={z.name} component={z.component} />
+      ))}
     </Tab.Navigator>
-  );
-}
-
-function ClassicTabs() {
-  return (
-    <ClassicTab.Navigator
-      initialRouteName="Notes"
-      screenOptions={barOptions(CLASSIC_ICON, CLASSIC_LABEL)}
-    >
-      <ClassicTab.Screen name="Tools" component={ToolsScreen} />
-      <ClassicTab.Screen name="Dreams" component={DreamsScreen} />
-      <ClassicTab.Screen name="Notes" component={NotesHubScreen} />
-      <ClassicTab.Screen name="Business" component={BusinessScreen} />
-      <ClassicTab.Screen name="Settings" component={SettingsScreen} />
-    </ClassicTab.Navigator>
   );
 }
 
@@ -120,7 +135,7 @@ export default function AppNavigator() {
   if (authLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: UI.bg, alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator color={UI.violet} />
+        <ActivityIndicator color={UI.violetLo} />
       </View>
     );
   }
@@ -128,45 +143,55 @@ export default function AppNavigator() {
   return (
     <MoneyProvider>
       <RootStack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
-      {user ? (
-        <>
-          <RootStack.Screen name="Main" component={ZoneTabs} />
-          <RootStack.Screen name="Classic" component={ClassicTabs} />
-          <RootStack.Screen
-            name="CashRegister"
-            component={CashRegisterScreen}
-            options={{ animation: "slide_from_bottom" }}
-          />
-          <RootStack.Screen name="SavingsHub" component={SavingsHubScreen} />
-          {/* The note editor opens full-screen over the tab bar. */}
-          <RootStack.Screen
-            name="NoteEditor"
-            component={NoteEditorScreen}
-            options={{ animation: "slide_from_bottom" }}
-          />
-          {/* Per-item AI thread. Opened with { threadId, title, itemData }
-              from any details screen — see the usage block in the file. */}
-          <RootStack.Screen
-            name="ContextualAiChat"
-            component={ContextualAiChatScreen}
-            options={{ animation: "slide_from_bottom" }}
-          />
-          {/* אזור החיסכון — reached from the header of the Dreams tab. */}
-          <RootStack.Screen
-            name="Savings"
-            component={SavingsScreen}
-            options={{ animation: "slide_from_bottom" }}
-          />
-          {/* עוזר תחב"ץ — reached from the Tools hub header. */}
-          <RootStack.Screen
-            name="TransitAssistant"
-            component={TransitAssistantScreen}
-            options={{ animation: "slide_from_bottom" }}
-          />
-        </>
-      ) : (
-        <RootStack.Screen name="Login" component={LoginScreen} />
-      )}
+        {user ? (
+          <>
+            <RootStack.Screen name="Main" component={ZoneTabs} />
+
+            {/* Money */}
+            <RootStack.Screen
+              name="CashRegister"
+              component={CashRegisterScreen}
+              options={{ animation: "slide_from_bottom" }}
+            />
+            <RootStack.Screen name="SavingsHub" component={SavingsHubScreen} />
+            <RootStack.Screen
+              name="Savings"
+              component={SavingsScreen}
+              options={{ animation: "slide_from_bottom" }}
+            />
+
+            {/* Pushed from the Library zone: the full dream board, and the
+                note editor, which opens over the tab bar. */}
+            <RootStack.Screen name="DreamsFull" component={withBack(DreamsScreen)} />
+            <RootStack.Screen
+              name="NoteEditor"
+              component={NoteEditorScreen}
+              options={{ animation: "slide_from_bottom" }}
+            />
+
+            {/* Per-item AI thread. Opened with { threadId, title, itemData }
+                from any details screen — see the usage block in the file. */}
+            <RootStack.Screen
+              name="ContextualAiChat"
+              component={ContextualAiChatScreen}
+              options={{ animation: "slide_from_bottom" }}
+            />
+            <RootStack.Screen
+              name="TransitAssistant"
+              component={TransitAssistantScreen}
+              options={{ animation: "slide_from_bottom" }}
+            />
+
+            {/* Reached from the money hub and the Core. Kept as stack screens
+                rather than tabs: the blueprint calls for exactly five zones,
+                and deleting a working POS and settings screen to honour that
+                would be a much larger change than it asked for. */}
+            <RootStack.Screen name="Business" component={withBack(BusinessScreen)} />
+            <RootStack.Screen name="Settings" component={withBack(SettingsScreen)} />
+          </>
+        ) : (
+          <RootStack.Screen name="Login" component={LoginScreen} />
+        )}
       </RootStack.Navigator>
     </MoneyProvider>
   );
