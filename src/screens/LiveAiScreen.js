@@ -15,7 +15,7 @@ import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 
 import Bounce from "../components/Bounce";
 import Icon from "../components/Icon";
-import { GEMINI_API_KEY, GEMINI_ENDPOINT, isGeminiConfigured } from "../config/geminiConfig";
+import { callGemini, isGeminiConfigured } from "../config/geminiConfig";
 import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import { Canvas } from "../components/Glass";
@@ -121,32 +121,24 @@ export default function LiveAiScreen() {
       abortRef.current = controller;
 
       try {
-        const res = await fetch(`${GEMINI_ENDPOINT}?key=${GEMINI_API_KEY}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: controller.signal,
-          body: JSON.stringify({
+        const res = await callGemini(
+          {
             systemInstruction: { parts: [{ text: systemPrompt(place) }] },
             contents: next.map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
             generationConfig: { temperature: 0.4, maxOutputTokens: 900 },
-          }),
-        });
+          },
+          { signal: controller.signal }
+        );
 
-        const raw = await res.text();
-        let json = null;
-        try {
-          json = JSON.parse(raw);
-        } catch {
-          /* handled below */
-        }
         if (controller.signal.aborted) return;
         setLoading(false);
 
         if (!res.ok) {
           hapticWarning();
-          setError(json?.error?.message || `הבקשה נכשלה (${res.status}).`);
+          setError(res.detail || `הבקשה נכשלה (${res.status}).`);
           return;
         }
+        const { json } = res;
         const reply =
           json?.candidates?.[0]?.content?.parts?.map((p) => p.text).filter(Boolean).join("") || "";
         if (!reply) {

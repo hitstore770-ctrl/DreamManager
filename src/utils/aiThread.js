@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import { GEMINI_API_KEY, GEMINI_ENDPOINT, isGeminiConfigured } from "../config/geminiConfig";
+import { callGemini, isGeminiConfigured } from "../config/geminiConfig";
 
 // The storage and network half of a contextual AI thread, kept out of the
 // screen so the screen stays about rendering.
@@ -106,28 +106,19 @@ export async function askGemini({ messages, itemData, signal }) {
   };
 
   try {
-    const res = await fetch(`${GEMINI_ENDPOINT}?key=${GEMINI_API_KEY}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal,
-    });
-
-    // Read the body once, as text, so an HTML error page from a proxy does not
-    // blow up JSON.parse with an unhelpful message.
-    const raw = await res.text();
-    let json = null;
-    try {
-      json = JSON.parse(raw);
-    } catch {
-      /* leave null; handled below */
-    }
+    // callGemini walks the model list, so a retired model id is handled here
+    // rather than surfacing as a 404 the user has to decode.
+    const res = await callGemini(body, { signal });
 
     if (!res.ok) {
-      const detail = json?.error?.message || raw.slice(0, 140);
-      return { ok: false, reason: `http-${res.status}`, error: describeHttp(res.status, detail) };
+      return {
+        ok: false,
+        reason: `http-${res.status}`,
+        error: describeHttp(res.status, res.detail),
+      };
     }
 
+    const { json } = res;
     const candidate = json?.candidates?.[0];
     const text = candidate?.content?.parts?.map((p) => p.text).filter(Boolean).join("") || "";
 
@@ -160,7 +151,11 @@ function describeHttp(status, detail) {
     return "מפתח ה-API לא תקין. בדוק אותו בקובץ geminiConfig.js.";
   }
   if (status === 403) return "המפתח נדחה. ודא שה-Generative Language API מופעל בפרויקט.";
-  if (status === 404) return "המודל לא נמצא. ייתכן שהשם השתנה — עדכן את GEMINI_MODEL.";
+  // Reaching here on a 404 means every id in GEMINI_MODELS was rejected, not
+  // that one name is stale — so the message asks for the list, not for an edit.
+  if (status === 404) {
+    return "אף אחד מהמודלים ברשימה לא זמין למפתח הזה. עדכן את GEMINI_MODELS בקובץ geminiConfig.js.";
+  }
   if (status === 429) return "חריגה ממכסת הבקשות. המתן דקה ונסה שוב.";
   if (status >= 500) return "שגיאת שרת אצל Google. נסה שוב בעוד רגע.";
   return `הבקשה נכשלה (${status}). ${detail}`;
