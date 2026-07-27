@@ -13,4 +13,9 @@ export const STORAGE_KEYS = {
   posRegisterCloses: "@dreammanager/pos-register-closes",
   posPromos: "@dreammanager/pos-promos",
   toolFavorites: "@dreammanager/tool-favorites",
+  savingsBalance: "@dreammanager/savings-balance",
+  savingsGoal: "@dreammanager/savings-goal",
+  savingsHistory: "@dreammanager/savings-history",
+  ravKavBalance: "@dreammanager/ravkav-balance",
+  ravKavHistory: "@dreammanager/ravkav-history",
 };

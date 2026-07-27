@@ -21,7 +21,12 @@
 // point Firestore rules also let you require a signed-in user, which stops a
 // stranger from spending your quota.
 
-export const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY";
+// Read from .env first (EXPO_PUBLIC_GEMINI_API_KEY), falling back to the
+// literal below so the app still runs before a .env exists. Note that an
+// EXPO_PUBLIC_ variable is inlined into the bundle at build time — it is not
+// a secret either, and the server-side note above still applies.
+export const GEMINI_API_KEY =
+  process.env.EXPO_PUBLIC_GEMINI_API_KEY || "YOUR_GEMINI_API_KEY";
 
 // The model id is a constant so swapping it is a one-line change. Google
 // retires and renames these regularly; if a call starts returning 404 with

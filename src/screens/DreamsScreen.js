@@ -331,6 +331,33 @@ export default function DreamsScreen({ navigation }) {
   const openPct = open ? dreamProgress(open) : 0;
   const fundPct = open?.target ? Math.min(100, ((open.saved || 0) / open.target) * 100) : 0;
 
+  // Opens the per-item AI thread for one dream. The id keys the conversation
+  // and the data is what the model is briefed with, so the advice is about
+  // this dream and its current numbers rather than dreams in general.
+  const openCoPilot = (dream) => {
+    if (!dream) return;
+    hapticLight();
+    // Close the dream sheet first. A React Native Modal renders above
+    // everything — on web it is mounted at the document root — so leaving it
+    // open would park it on top of the chat screen we are about to push, and
+    // the composer would be unreachable.
+    setOpenId(null);
+    navigation?.navigate("ContextualAiChat", {
+      threadId: `dream-${dream.id}`,
+      title: dream.title,
+      itemData: {
+        title: dream.title,
+        why: dream.why || null,
+        target: dream.target || 0,
+        saved: dream.saved || 0,
+        progress: dream.target ? `${Math.round(((dream.saved || 0) / dream.target) * 100)}%` : "0%",
+        targetDate: dream.targetDate || null,
+        milestones: (dream.milestones || []).map((m) => ({ title: m.title, done: !!m.done })),
+        obstacles: (dream.obstacles || []).map((o) => ({ if: o.ifText, then: o.thenText })),
+      },
+    });
+  };
+
   return (
     <Animated.View entering={SCREEN_IN} style={{ flex: 1, backgroundColor: BG }}>
       <View style={[s.header, { paddingTop: insets.top + 12 }]}>
@@ -341,6 +368,15 @@ export default function DreamsScreen({ navigation }) {
           </View>
           {board.length > 0 && <Text style={s.headerSub}>{board.length} חלומות על הלוח</Text>}
         </View>
+        <TouchableOpacity
+          testID="open-savings"
+          style={s.savingsBtn}
+          onPress={() => { hapticLight(); navigation?.navigate("Savings"); }}
+          activeOpacity={0.75}
+        >
+          <Icon name="cash-outline" size={16} color={BLUE} />
+          <Text style={s.savingsBtnText}>חיסכון</Text>
+        </TouchableOpacity>
         {archived.length > 0 && (
           <TouchableOpacity style={s.archiveBtn} onPress={() => { hapticLight(); setArchiveOpen(true); }} activeOpacity={0.75}>
             <><Icon name="award" size={15} color="#0E7490" /><Text style={s.archiveBtnText}>{archived.length}</Text></>
@@ -443,6 +479,10 @@ export default function DreamsScreen({ navigation }) {
 
                     {/* Quick actions */}
                     <View style={s.quickRow}>
+                      <TouchableOpacity style={[s.quickBtn, s.quickBtnAi]} onPress={() => openCoPilot(open)} activeOpacity={0.75}>
+                        <Icon name="message-circle" size={19} color={BLUE} />
+                        <Text style={[s.quickText, { color: BLUE }]}>קו-פיילוט</Text>
+                      </TouchableOpacity>
                       <TouchableOpacity style={s.quickBtn} onPress={shareVision} activeOpacity={0.75}>
                         <Icon name="share-2" size={19} color={INK_SOFT} />
                         <Text style={s.quickText}>שתף</Text>
@@ -923,6 +963,19 @@ const s = StyleSheet.create({
     ...SHADOW,
   },
   archiveBtnText: { fontFamily: FONTS.bold, fontSize: 14, color: "#0E7490" },
+  savingsBtn: {
+    flexDirection: "row",
+    gap: 6,
+    minHeight: 44,
+    paddingHorizontal: 14,
+    borderRadius: 22,
+    backgroundColor: WHITE,
+    borderWidth: 1,
+    borderColor: BLUE,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  savingsBtnText: { fontFamily: FONTS.bold, fontSize: 14, color: BLUE },
 
   wallet: {
     flexDirection: "row",
@@ -1037,6 +1090,7 @@ const s = StyleSheet.create({
   sheetPct: { fontFamily: FONTS.bold, fontSize: 13, color: GOLD, textAlign: "right", marginTop: 3 },
 
   quickRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
+  quickBtnAi: { backgroundColor: BLUE + "14", borderWidth: 1, borderColor: BLUE + "44" },
   quickBtn: { flex: 1, minHeight: 56, borderRadius: 14, backgroundColor: CARD, alignItems: "center", justifyContent: "center", gap: 2 },
   quickBtnOn: { backgroundColor: GOLD + "1E" },
   iconLabel: { flexDirection: I18nManager.isRTL ? "row" : "row-reverse", alignItems: "center", gap: 7 },

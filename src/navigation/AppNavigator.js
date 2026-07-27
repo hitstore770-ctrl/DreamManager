@@ -5,6 +5,8 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import Icon from "../components/Icon";
 import { useAuth } from "../context/AuthContext";
 import ContextualAiChatScreen from "../screens/ContextualAiChatScreen";
+import SavingsScreen from "../screens/SavingsScreen";
+import TransitAssistantScreen from "../screens/TransitAssistantScreen";
 import LoginScreen from "../screens/LoginScreen";
 import NoteEditorScreen from "../screens/NoteEditorScreen";
 import NotesHubScreen from "../screens/NotesHubScreen";
@@ -121,6 +123,18 @@ export default function AppNavigator() {
           <RootStack.Screen
             name="ContextualAiChat"
             component={ContextualAiChatScreen}
+            options={{ animation: "slide_from_bottom" }}
+          />
+          {/* אזור החיסכון — reached from the header of the Dreams tab. */}
+          <RootStack.Screen
+            name="Savings"
+            component={SavingsScreen}
+            options={{ animation: "slide_from_bottom" }}
+          />
+          {/* עוזר תחב"ץ — reached from the Tools hub header. */}
+          <RootStack.Screen
+            name="TransitAssistant"
+            component={TransitAssistantScreen}
             options={{ animation: "slide_from_bottom" }}
           />
         </>

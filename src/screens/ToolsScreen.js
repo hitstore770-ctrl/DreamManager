@@ -53,7 +53,7 @@ const INK_MUTED = "#9CA3AF";
 const BLUE = "#7C3AED";
 const GOLD = "#06B6D4";
 
-export default function ToolsScreen() {
+export default function ToolsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { compactMode: compact } = useSettings();
   const [query, setQuery] = useState("");
@@ -169,6 +169,25 @@ export default function ToolsScreen() {
           <Text style={s.readyPillText}>{TOOL_CATEGORIES.length} קטגוריות</Text>
         </View>
       </View>
+
+      {/* עוזר תחב"ץ sits above the grid rather than inside it: it is a
+          conversation, not a calculator, and burying it in a category would
+          make the one tool with a live assistant the hardest to find. */}
+      <Bounce
+        testID="open-transit"
+        style={s.transitCard}
+        scaleTo={0.97}
+        onPress={() => { hapticLight(); navigation?.navigate("TransitAssistant"); }}
+      >
+        <Icon name="chevron-left" size={18} color={WHITE} />
+        <View style={{ flex: 1 }}>
+          <Text style={s.transitTitle}>עוזר תחב״ץ</Text>
+          <Text style={s.transitSub}>מסלולים בין ביתר לפנימייה · מעקב רב-קו</Text>
+        </View>
+        <View style={s.transitBadge}>
+          <Icon name="navigation" size={20} color={WHITE} />
+        </View>
+      </Bounce>
 
       <View style={s.searchWrap}>
         <TextInput
@@ -370,6 +389,32 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   readyPillText: { fontFamily: FONTS.bold, fontSize: 12, color: "#0E7490" },
+
+  transitCard: {
+    flexDirection: I18nManager.isRTL ? "row" : "row-reverse",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: BLUE,
+    borderRadius: 24,
+    padding: 16,
+    marginHorizontal: 12,
+    marginBottom: 12,
+    shadowColor: BLUE,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 6,
+  },
+  transitTitle: { fontFamily: FONTS.bold, fontSize: 16, color: WHITE, textAlign: "right" },
+  transitSub: { fontFamily: FONTS.regular, fontSize: 11.5, color: "rgba(255,255,255,0.85)", textAlign: "right", marginTop: 2 },
+  transitBadge: {
+    width: 46,
+    height: 46,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
   searchWrap: { paddingHorizontal: 12, marginBottom: 10, justifyContent: "center" },
   search: {
