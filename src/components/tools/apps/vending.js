@@ -2,7 +2,22 @@ import { useMemo, useState } from "react";
 import { Text, View } from "react-native";
 
 import { shekel } from "../../../utils/posStore";
-import { Field, Stat, Chips, Stepper, useCalcHaptic, BLUE, GOLD, GREEN, RED, s } from "../kit";
+import {
+  BLUE,
+  CARD,
+  Chips,
+  Field,
+  GOLD,
+  GREEN,
+  INK,
+  INK_SOFT,
+  RED,
+  Segment,
+  Stat,
+  Stepper,
+  s,
+  useCalcHaptic,
+} from "../kit";
 
 // Vending-machine and transit tools.
 
@@ -158,6 +173,128 @@ export function TransitLoadCalc() {
           <Text style={s.hint}>
             המטען המותר הוא ההפרש בין המשקל הכולל המותר לבין משקל הרכב העצמי — מופיע ברישיון הרכב. שים לב
             שנוסעים וציוד קבוע נחשבים גם הם על חשבון אותו מטען.
+          </Text>
+        </>
+      )}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// C. חוק אוהם לחומרה
+// ---------------------------------------------------------------------------
+
+// Which pair of values you know decides which formulas apply. Solving from the
+// wrong pair is the usual source of a wrong answer, so the pair is an explicit
+// choice rather than something inferred from which boxes happen to be filled.
+const OHM_MODES = [
+  { key: "vi", label: "V ו-I" },
+  { key: "vr", label: "V ו-R" },
+  { key: "ir", label: "I ו-R" },
+];
+
+// Common rails inside a vending machine's control side.
+const VOLT_PRESETS = [5, 12, 24, 230];
+
+export function OhmsLaw() {
+  const [mode, setMode] = useState("vi");
+  const [volts, setVolts] = useState("12");
+  const [amps, setAmps] = useState("2");
+  const [ohms, setOhms] = useState("6");
+
+  const r = useMemo(() => {
+    const V = parseFloat(volts);
+    const I = parseFloat(amps);
+    const R = parseFloat(ohms);
+    const round3 = (n) => Math.round(n * 1000) / 1000;
+
+    let v;
+    let i;
+    let res;
+    if (mode === "vi") {
+      v = V; i = I;
+      if (!Number.isFinite(v) || !Number.isFinite(i)) return { ready: false };
+      // R = V/I is undefined at zero current — an open circuit, not infinite
+      // resistance you can print.
+      res = i === 0 ? null : v / i;
+    } else if (mode === "vr") {
+      v = V; res = R;
+      if (!Number.isFinite(v) || !Number.isFinite(res)) return { ready: false };
+      i = res === 0 ? null : v / res;
+    } else {
+      i = I; res = R;
+      if (!Number.isFinite(i) || !Number.isFinite(res)) return { ready: false };
+      v = i * res;
+    }
+    if (i === null || res === null) {
+      return { ready: true, undef: true, v, i, res };
+    }
+    const watts = v * i;
+    return {
+      ready: true,
+      undef: false,
+      v: round3(v),
+      i: round3(i),
+      res: round3(res),
+      watts: round3(watts),
+      milliamps: Math.round(i * 1000),
+      // Resistors are sold in steps; a part run near its rating cooks itself,
+      // so the usual rule is to fit one rated at twice the dissipation.
+      suggestedRating: watts <= 0 ? 0 : Math.ceil(watts * 2 * 4) / 4,
+    };
+  }, [mode, volts, amps, ohms]);
+
+  useCalcHaptic(r.watts);
+
+  return (
+    <View style={{ gap: 12 }}>
+      <Segment options={OHM_MODES} value={mode} onChange={setMode} />
+
+      <View style={s.row}>
+        {mode !== "ir" && (
+          <Field label="מתח (V)" value={volts} onChange={setVolts} placeholder="12" suffix="V" />
+        )}
+        {mode !== "vr" && (
+          <Field label="זרם (I)" value={amps} onChange={setAmps} placeholder="2" suffix="A" />
+        )}
+        {mode !== "vi" && (
+          <Field label="התנגדות (R)" value={ohms} onChange={setOhms} placeholder="6" suffix="Ω" />
+        )}
+      </View>
+
+      {mode !== "ir" && <Chips options={VOLT_PRESETS} onPick={(v) => setVolts(String(v))} active={volts} />}
+
+      {!r.ready ? (
+        <Text style={s.hint}>הזן את שני הערכים הידועים כדי לפתור את השאר.</Text>
+      ) : r.undef ? (
+        <View style={[s.banner, { backgroundColor: GOLD + "16" }]}>
+          <Text style={[s.bannerText, { color: "#8A6D00" }]}>אין פתרון בערכים האלה</Text>
+          <Text style={[s.bannerSub, { color: "#8A6D00" }]}>
+            חלוקה באפס — זרם אפס פירושו מעגל פתוח, והתנגדות אפס פירושה קצר. שנה את אחד הערכים.
+          </Text>
+        </View>
+      ) : (
+        <>
+          <View style={s.statRow}>
+            <Stat label="הספק" value={`${r.watts} W`} color={BLUE} big />
+            <Stat label="התנגדות" value={`${r.res} Ω`} color={GOLD} />
+          </View>
+          <View style={s.statRow}>
+            <Stat label="מתח" value={`${r.v} V`} />
+            <Stat label="זרם" value={`${r.i} A`} />
+            <Stat label="במיליאמפר" value={`${r.milliamps} mA`} />
+          </View>
+
+          <View style={[s.banner, { backgroundColor: CARD }]}>
+            <Text style={[s.bannerText, { color: INK }]}>נגד מומלץ: {r.suggestedRating}W ומעלה</Text>
+            <Text style={[s.bannerSub, { color: INK_SOFT }]}>
+              פי שניים מההספק המחושב ({r.watts}W). רכיב שעובד קרוב לדירוג שלו מתחמם ומתקצר את חייו.
+            </Text>
+          </View>
+
+          <Text style={s.hint}>
+            V = I × R, ו-P = V × I. שים לב שהחישוב נכון לזרם ישר (DC) — ברשת 230V יש גם היגב והפרש
+            פאזה, וההספק בפועל נמוך מהמכפלה הפשוטה.
           </Text>
         </>
       )}

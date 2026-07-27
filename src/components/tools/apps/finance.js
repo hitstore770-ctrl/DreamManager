@@ -465,3 +465,188 @@ const f = StyleSheet.create({
     ...NO_OUTLINE,
   },
 });
+
+// ---------------------------------------------------------------------------
+// D. מעקב הוצאות רישיון נהיגה
+// ---------------------------------------------------------------------------
+
+// Israeli licence costs that are not per-lesson. Defaults reflect typical 2025
+// figures; every one is editable because they vary by school and region.
+const LICENCE_FEES = [
+  { key: "theory", label: "אגרת תיאוריה", def: "51" },
+  { key: "medical", label: "בדיקת רופא / טופס ירוק", def: "70" },
+  { key: "test", label: "אגרת מבחן מעשי", def: "180" },
+  { key: "vehicle", label: "השכרת רכב למבחן", def: "450" },
+  { key: "licence", label: "הנפקת הרישיון", def: "190" },
+];
+
+export function LicenseTracker() {
+  const [perLesson, setPerLesson] = useState("220");
+  const [done, setDone] = useState("14");
+  const [target, setTarget] = useState("28");
+  const [fees, setFees] = useState(() =>
+    LICENCE_FEES.reduce((acc, f) => ({ ...acc, [f.key]: f.def }), {})
+  );
+  const [tests, setTests] = useState("1");
+
+  const r = useMemo(() => {
+    const price = parseFloat(perLesson) || 0;
+    const lessonsDone = parseInt(done, 10) || 0;
+    const lessonsTarget = parseInt(target, 10) || 0;
+    const attempts = Math.max(1, parseInt(tests, 10) || 1);
+
+    const lessonSpend = price * lessonsDone;
+    // A retest re-charges the test fee and the vehicle rental, not the theory
+    // fee or the licence issue — those are paid once.
+    const perAttempt = (parseFloat(fees.test) || 0) + (parseFloat(fees.vehicle) || 0);
+    const oneOff =
+      (parseFloat(fees.theory) || 0) +
+      (parseFloat(fees.medical) || 0) +
+      (parseFloat(fees.licence) || 0);
+    const feeSpend = oneOff + perAttempt * attempts;
+
+    const spent = lessonSpend + feeSpend;
+    const remainingLessons = Math.max(0, lessonsTarget - lessonsDone);
+    const remaining = remainingLessons * price;
+
+    return {
+      spent: Math.round(spent),
+      lessonSpend: Math.round(lessonSpend),
+      feeSpend: Math.round(feeSpend),
+      remaining: Math.round(remaining),
+      projected: Math.round(spent + remaining),
+      remainingLessons,
+      pct: lessonsTarget > 0 ? Math.min(100, Math.round((lessonsDone / lessonsTarget) * 100)) : 0,
+      over: lessonsTarget > 0 && lessonsDone > lessonsTarget,
+    };
+  }, [perLesson, done, target, fees, tests]);
+
+  useCalcHaptic(r.spent);
+
+  return (
+    <View style={{ gap: 12 }}>
+      <View style={f.totalCard}>
+        <Text testID="licence-total" style={f.totalValue}>{shekel(r.spent)}</Text>
+        <Text style={f.totalLabel}>הוצאת עד כה · {done || 0} שיעורים</Text>
+      </View>
+
+      <View style={s.row}>
+        <Field label="מחיר שיעור" value={perLesson} onChange={setPerLesson} placeholder="220" suffix="₪" />
+        <Field label="שיעורים שבוצעו" value={done} onChange={setDone} placeholder="14" suffix="יח׳" />
+        <Field label="יעד שיעורים" value={target} onChange={setTarget} placeholder="28" suffix="יח׳" />
+      </View>
+
+      <View>
+        <View style={s.loadMetaRow}>
+          <Text style={s.loadMeta}>{r.pct}%</Text>
+          <Text style={s.loadMeta}>
+            {r.over ? "מעל היעד שהוגדר" : `נותרו ${r.remainingLessons} שיעורים`}
+          </Text>
+        </View>
+        <View style={[s.loadTrack, { marginTop: 6 }]}>
+          <View
+            testID="licence-bar"
+            style={[s.loadFill, { width: `${r.pct}%`, backgroundColor: r.over ? GOLD : BLUE }]}
+          />
+        </View>
+      </View>
+
+      <Text style={s.sectionLabel}>אגרות ותשלומים חד-פעמיים</Text>
+      {LICENCE_FEES.map((fee) => (
+        <Field
+          key={fee.key}
+          label={fee.label}
+          value={fees[fee.key]}
+          onChange={(v) => setFees((prev) => ({ ...prev, [fee.key]: v }))}
+          placeholder={fee.def}
+          suffix="₪"
+        />
+      ))}
+      <Field label="מספר גשות לטסט" value={tests} onChange={setTests} placeholder="1" suffix="פעמים" />
+
+      <View style={s.statRow}>
+        <Stat label="על שיעורים" value={shekel(r.lessonSpend)} />
+        <Stat label="על אגרות" value={shekel(r.feeSpend)} color={GOLD} />
+        <Stat label="נותר לשלם" value={shekel(r.remaining)} color={INK_SOFT} />
+      </View>
+      <View style={s.statRow}>
+        <Stat label="עלות כוללת צפויה" value={shekel(r.projected)} color={BLUE} big />
+      </View>
+
+      <Text style={s.hint}>
+        כל גשה נוספת לטסט מוסיפה את אגרת המבחן ואת השכרת הרכב בלבד — אגרת התיאוריה והנפקת הרישיון
+        משולמות פעם אחת. הסכומים הם ברירת מחדל וניתן לעדכן כל אחד מהם.
+      </Text>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// E. מחשבון מתח רווחים
+// ---------------------------------------------------------------------------
+export function ProfitMargin() {
+  const [cost, setCost] = useState("");
+  const [price, setPrice] = useState("");
+
+  const r = useMemo(() => {
+    const c = parseFloat(cost);
+    const p = parseFloat(price);
+    if (!Number.isFinite(c) || !Number.isFinite(p) || p <= 0) return { ready: false };
+    const profit = p - c;
+    const round2 = (n) => Math.round(n * 100) / 100;
+    return {
+      ready: true,
+      profit: round2(profit),
+      // Margin is profit over the selling price. Markup is profit over cost —
+      // a different, larger number, and confusing the two is how shops end up
+      // pricing below their target.
+      margin: round2((profit / p) * 100),
+      markup: c > 0 ? round2((profit / c) * 100) : null,
+      multiplier: c > 0 ? round2(p / c) : null,
+      loss: profit < 0,
+    };
+  }, [cost, price]);
+
+  useCalcHaptic(r.margin);
+
+  const tone = !r.ready ? INK_SOFT : r.loss ? RED : r.margin >= 30 ? GREEN : GOLD;
+
+  return (
+    <View style={{ gap: 12 }}>
+      <View style={s.row}>
+        <Field testID="margin-cost" label="מחיר עלות" value={cost} onChange={setCost} placeholder="6" suffix="₪" />
+        <Field testID="margin-price" label="מחיר מכירה" value={price} onChange={setPrice} placeholder="10" suffix="₪" />
+      </View>
+
+      {!r.ready ? (
+        <Text style={s.hint}>הזן מחיר עלות ומחיר מכירה כדי לחשב את מתח הרווח.</Text>
+      ) : (
+        <>
+          <View style={[m.verdict, { backgroundColor: tone + "12" }]}>
+            <Text testID="margin-result" style={[m.verdictValue, { color: tone }]}>{r.margin}%</Text>
+            <Text style={m.verdictLabel}>
+              {r.loss ? "מכירה בהפסד" : "מתח רווח גולמי מהמחיר"}
+            </Text>
+          </View>
+
+          <View style={s.statRow}>
+            <Stat label="רווח ליחידה" value={shekel(r.profit)} color={tone} />
+            <Stat label="אחוז תוספת על העלות" value={r.markup === null ? "—" : `${r.markup}%`} />
+            <Stat label="מכפיל" value={r.multiplier === null ? "—" : `×${r.multiplier}`} />
+          </View>
+
+          <Text style={s.hint}>
+            מתח הרווח מחושב מתוך מחיר המכירה, ולא מתוך העלות. תוספת של 100% על העלות היא מתח רווח של
+            50% בלבד — הבלבול בין השניים הוא הסיבה הנפוצה לתמחור נמוך מהיעד.
+          </Text>
+        </>
+      )}
+    </View>
+  );
+}
+
+const m = StyleSheet.create({
+  verdict: { borderRadius: 24, paddingVertical: 20, alignItems: "center", gap: 4 },
+  verdictValue: { fontFamily: FONTS.bold, fontSize: 34 },
+  verdictLabel: { fontFamily: FONTS.medium, fontSize: 12.5, color: INK_SOFT },
+});

@@ -464,3 +464,192 @@ const t = StyleSheet.create({
   verdictValue: { fontFamily: FONTS.bold, fontSize: 30, textAlign: "center" },
   verdictLabel: { fontFamily: FONTS.medium, fontSize: 12, color: INK_SOFT, textAlign: "center" },
 });
+
+// ---------------------------------------------------------------------------
+// E. ממיר שעות עולמי
+// ---------------------------------------------------------------------------
+
+// IANA zone ids, not fixed offsets. "EST" and "GMT" are only correct for part
+// of the year — New York is on EDT from March to November and London on BST —
+// so the zone is stored and the live abbreviation is read back from the
+// platform rather than hardcoded.
+const ZONES = [
+  { id: "Asia/Jerusalem", city: "ירושלים", icon: "home" },
+  { id: "America/New_York", city: "ניו יורק", icon: "map-pin" },
+  { id: "Europe/London", city: "לונדון", icon: "map-pin" },
+  { id: "Europe/Berlin", city: "ברלין", icon: "map-pin" },
+  { id: "Asia/Shanghai", city: "גואנגזו", icon: "package" },
+  { id: "America/Los_Angeles", city: "לוס אנג׳לס", icon: "map-pin" },
+];
+
+function zoneParts(date, timeZone) {
+  try {
+    const fmt = new Intl.DateTimeFormat("en-GB", {
+      timeZone,
+      hour: "2-digit",
+      minute: "2-digit",
+      weekday: "short",
+      day: "2-digit",
+      month: "2-digit",
+      hour12: false,
+      timeZoneName: "short",
+    });
+    const parts = fmt.formatToParts(date).reduce((acc, p) => ({ ...acc, [p.type]: p.value }), {});
+    return {
+      ok: true,
+      time: `${parts.hour}:${parts.minute}`,
+      day: `${parts.weekday} ${parts.day}/${parts.month}`,
+      abbr: parts.timeZoneName || "",
+    };
+  } catch {
+    // No ICU data on this build — say so instead of printing a wrong time.
+    return { ok: false };
+  }
+}
+
+// Difference in whole minutes between a zone's wall clock and the device's.
+function offsetMinutes(date, timeZone) {
+  try {
+    const asZone = new Date(date.toLocaleString("en-US", { timeZone }));
+    const asLocal = new Date(date.toLocaleString("en-US"));
+    return Math.round((asZone - asLocal) / 60000);
+  } catch {
+    return null;
+  }
+}
+
+export function TimezoneConverter() {
+  const [useNow, setUseNow] = useState(true);
+  const [hh, setHh] = useState("");
+  const [mm, setMm] = useState("");
+  const [tick, setTick] = useState(0);
+
+  // Only re-render on a clock tick while actually showing "now".
+  useEffect(() => {
+    if (!useNow) return undefined;
+    const id = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [useNow]);
+
+  const base = useMemo(() => {
+    if (useNow) return new Date();
+    const h = Math.min(23, Math.max(0, parseInt(hh, 10) || 0));
+    const m = Math.min(59, Math.max(0, parseInt(mm, 10) || 0));
+    // The typed time is read as Israel local time, since that is where the
+    // user is; everything else is derived from that instant.
+    const now = new Date();
+    const israelOffset = offsetMinutes(now, "Asia/Jerusalem") ?? 0;
+    const utcMs = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), h, m);
+    const deviceOffset = -now.getTimezoneOffset();
+    return new Date(utcMs - (israelOffset - deviceOffset) * 60000 + now.getTimezoneOffset() * 60000);
+  }, [useNow, hh, mm, tick]);
+
+  const rows = useMemo(
+    () => ZONES.map((z) => ({ ...z, ...zoneParts(base, z.id), offset: offsetMinutes(base, z.id) })),
+    [base]
+  );
+
+  const israelOffset = rows[0]?.offset ?? 0;
+  const supported = rows[0]?.ok;
+
+  return (
+    <View style={{ gap: 12 }}>
+      <Segment
+        options={[
+          { key: "now", label: "עכשיו" },
+          { key: "manual", label: "שעה ידנית" },
+        ]}
+        value={useNow ? "now" : "manual"}
+        onChange={(v) => { hapticLight(); setUseNow(v === "now"); }}
+      />
+
+      {!useNow && (
+        <View style={s.row}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.fieldLabel}>שעה (בישראל)</Text>
+            <View style={s.fieldRow}>
+              <TextInput
+                testID="tz-hh"
+                style={s.fieldInput}
+                value={hh}
+                onChangeText={setHh}
+                placeholder="14"
+                placeholderTextColor={INK_MUTED}
+                keyboardType="numeric"
+                maxLength={2}
+                textAlign="center"
+              />
+            </View>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.fieldLabel}>דקות</Text>
+            <View style={s.fieldRow}>
+              <TextInput
+                testID="tz-mm"
+                style={s.fieldInput}
+                value={mm}
+                onChangeText={setMm}
+                placeholder="30"
+                placeholderTextColor={INK_MUTED}
+                keyboardType="numeric"
+                maxLength={2}
+                textAlign="center"
+              />
+            </View>
+          </View>
+        </View>
+      )}
+
+      {!supported ? (
+        <View style={[t.verdict, { backgroundColor: CARD }]}>
+          <Icon name="alert-triangle" size={22} color={GOLD} />
+          <Text style={t.verdictLabel}>
+            הבילד הזה לא כולל נתוני אזורי זמן, ולכן אי אפשר להציג המרה אמינה.
+          </Text>
+        </View>
+      ) : (
+        rows.map((z) => {
+          const diff = z.offset === null ? null : Math.round((z.offset - israelOffset) / 60);
+          const home = z.id === "Asia/Jerusalem";
+          return (
+            <View key={z.id} style={[u.zoneRow, home && { backgroundColor: BLUE + "10" }]}>
+              <View style={{ alignItems: "flex-start" }}>
+                <Text testID={`tz-${z.id}`} style={[u.zoneTime, home && { color: BLUE }]}>{z.time}</Text>
+                <Text style={u.zoneDay}>{z.day}</Text>
+              </View>
+              <View style={{ flex: 1, alignItems: "flex-end" }}>
+                <Text style={u.zoneCity}>{z.city}</Text>
+                <Text style={u.zoneMeta}>
+                  {z.abbr}
+                  {diff !== null && !home ? ` · ${diff > 0 ? "+" : ""}${diff} שעות מישראל` : ""}
+                </Text>
+              </View>
+              <Icon name={z.icon} size={16} color={home ? BLUE : INK_MUTED} />
+            </View>
+          );
+        })
+      )}
+
+      <Text style={s.hint}>
+        ההמרה משתמשת באזורי זמן ולא בהיסטים קבועים, כך שהיא נכונה גם בשעון קיץ. הקיצור לצד כל עיר
+        (IST/IDT, EST/EDT, GMT/BST) משתנה לפי התאריך.
+      </Text>
+    </View>
+  );
+}
+
+const u = StyleSheet.create({
+  zoneRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: CARD,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    minHeight: 62,
+  },
+  zoneTime: { fontFamily: FONTS.bold, fontSize: 21, color: INK },
+  zoneDay: { fontFamily: FONTS.regular, fontSize: 10.5, color: INK_MUTED },
+  zoneCity: { fontFamily: FONTS.bold, fontSize: 14.5, color: INK, textAlign: "right" },
+  zoneMeta: { fontFamily: FONTS.regular, fontSize: 11, color: INK_MUTED, textAlign: "right", marginTop: 2 },
+});

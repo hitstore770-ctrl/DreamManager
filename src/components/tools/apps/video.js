@@ -1,7 +1,22 @@
 import { useMemo, useState } from "react";
 import { Text, View } from "react-native";
 
-import { Field, Stat, Segment, Chips, useCalcHaptic, BLUE, GOLD, GREEN, RED, s } from "../kit";
+import {
+  BLUE,
+  CARD,
+  Chips,
+  Field,
+  GOLD,
+  GREEN,
+  INK,
+  INK_MUTED,
+  INK_SOFT,
+  RED,
+  Segment,
+  Stat,
+  s,
+  useCalcHaptic,
+} from "../kit";
 
 // Video production tools.
 
@@ -163,6 +178,161 @@ export function SlowMoFps() {
           <Text style={s.hint}>
             כל פריים בטיימליין חייב פריים מוקלט משלו. ב-{recorded}fps על טיימליין {timeline}fps יש מרווח
             להאטה עד {r.slowest}% — מתחת לזה העורך ישכפל פריימים והתנועה תיראה קפואה.
+          </Text>
+        </>
+      )}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// C. הערכת זמן אוויר לרחפן
+// ---------------------------------------------------------------------------
+
+// Never plan to fly a pack to empty: lithium cells are damaged below ~20% and
+// you want the reserve for the landing approach. The usable fraction is the
+// single most important number in this calculation, so it is a control, not a
+// hidden constant.
+const RESERVES = [
+  { key: "0.8", label: "20% רזרבה" },
+  { key: "0.7", label: "30% רזרבה" },
+  { key: "1", label: "ללא רזרבה" },
+];
+
+export function DroneFlightTime() {
+  const [mah, setMah] = useState("5000");
+  const [amps, setAmps] = useState("15");
+  const [reserve, setReserve] = useState("0.8");
+
+  const r = useMemo(() => {
+    const capacity = parseFloat(mah) || 0;
+    const draw = parseFloat(amps) || 0;
+    const usable = parseFloat(reserve);
+    if (capacity <= 0 || draw <= 0) return { ready: false };
+    // (mAh / 1000) / A = hours; x60 = minutes.
+    const fullMinutes = (capacity / 1000 / draw) * 60;
+    const safeMinutes = fullMinutes * usable;
+    const round1 = (n) => Math.round(n * 10) / 10;
+    return {
+      ready: true,
+      full: round1(fullMinutes),
+      safe: round1(safeMinutes),
+      safeMin: Math.floor(safeMinutes),
+      safeSec: Math.round((safeMinutes % 1) * 60),
+      cRate: round1(draw / (capacity / 1000)),
+    };
+  }, [mah, amps, reserve]);
+
+  useCalcHaptic(r.safe);
+
+  return (
+    <View style={{ gap: 12 }}>
+      <View style={s.row}>
+        <Field label="קיבולת סוללה" value={mah} onChange={setMah} placeholder="5000" suffix="mAh" />
+        <Field label="צריכה ממוצעת" value={amps} onChange={setAmps} placeholder="15" suffix="A" />
+      </View>
+
+      <Segment options={RESERVES} value={reserve} onChange={setReserve} />
+
+      {!r.ready ? (
+        <Text style={s.hint}>הזן קיבולת סוללה וצריכת זרם ממוצעת כדי לחשב.</Text>
+      ) : (
+        <>
+          <View style={s.statRow}>
+            <Stat label="זמן טיסה בטוח" value={`${r.safeMin}:${String(r.safeSec).padStart(2, "0")}`} color={BLUE} big />
+            <Stat label="עד ריקון מלא" value={`${r.full} דק׳`} color={INK_MUTED} />
+            <Stat label="C-Rate" value={`${r.cRate}C`} color={r.cRate > 15 ? RED : GREEN} />
+          </View>
+
+          {r.cRate > 15 && (
+            <View style={[s.banner, { backgroundColor: RED + "14" }]}>
+              <Text style={[s.bannerText, { color: RED }]}>צריכה גבוהה ביחס לסוללה</Text>
+              <Text style={[s.bannerSub, { color: RED }]}>
+                {r.cRate}C — רוב סוללות הליפו לרחפנים מדורגות ל-10C עד 15C ברציפות. בדוק את דירוג
+                הפריקה של הסוללה לפני טיסה כזו.
+              </Text>
+            </View>
+          )}
+
+          <Text style={s.hint}>
+            החישוב הוא (mAh ÷ 1000) ÷ אמפר × 60. הוא מניח צריכה קבועה — ריחוף שקט מתקרב למספר הזה,
+            אבל טיפוסים, רוח ותמרונים מושכים הרבה יותר, ולכן טיסה אמיתית תמיד קצרה מהתחזית.
+          </Text>
+        </>
+      )}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// D. מחשבון טיימלאפס
+// ---------------------------------------------------------------------------
+export function TimelapseCalc() {
+  const [eventMinutes, setEventMinutes] = useState("120");
+  const [clipSeconds, setClipSeconds] = useState("20");
+  const [fps, setFps] = useState("24");
+
+  const r = useMemo(() => {
+    const realMin = parseFloat(eventMinutes) || 0;
+    const clipSec = parseFloat(clipSeconds) || 0;
+    const rate = parseFloat(fps) || 0;
+    if (realMin <= 0 || clipSec <= 0 || rate <= 0) return { ready: false };
+
+    const frames = Math.round(clipSec * rate);
+    const intervalSec = (realMin * 60) / frames;
+    const round1 = (n) => Math.round(n * 10) / 10;
+    return {
+      ready: true,
+      frames,
+      interval: round1(intervalSec),
+      // Below roughly a third of a second most cameras cannot finish writing
+      // one frame before the next is due.
+      tooFast: intervalSec < 0.33,
+      speedUp: Math.round((realMin * 60) / clipSec),
+      // 20 MB a frame is a fair figure for a large-sensor RAW still.
+      rawGb: round1((frames * 20) / 1024),
+    };
+  }, [eventMinutes, clipSeconds, fps]);
+
+  useCalcHaptic(r.interval);
+
+  return (
+    <View style={{ gap: 12 }}>
+      <View style={s.row}>
+        <Field label="אורך האירוע" value={eventMinutes} onChange={setEventMinutes} placeholder="120" suffix="דק׳" />
+        <Field label="אורך הסרטון" value={clipSeconds} onChange={setClipSeconds} placeholder="20" suffix="שנ׳" />
+      </View>
+      <Field label="פריימים לשנייה" value={fps} onChange={setFps} placeholder="24" suffix="fps" />
+      <Chips options={[24, 25, 30, 60]} onPick={(v) => setFps(String(v))} active={fps} />
+
+      {!r.ready ? (
+        <Text style={s.hint}>הזן אורך אירוע, אורך סרטון רצוי וקצב פריימים.</Text>
+      ) : (
+        <>
+          <View style={s.statRow}>
+            <Stat label="מרווח בין צילומים" value={`${r.interval} שנ׳`} color={BLUE} big />
+            <Stat label="סה״כ פריימים" value={r.frames} />
+            <Stat label="האצה" value={`×${r.speedUp}`} color={GOLD} />
+          </View>
+
+          {r.tooFast && (
+            <View style={[s.banner, { backgroundColor: RED + "14" }]}>
+              <Text style={[s.bannerText, { color: RED }]}>המרווח קצר מדי</Text>
+              <Text style={[s.bannerSub, { color: RED }]}>
+                {r.interval} שניות בין פריימים — רוב המצלמות לא מספיקות לכתוב פריים אחד לפני הבא.
+                הארך את האירוע, קצר את הסרטון או צלם בווידאו רגיל והאץ בעריכה.
+              </Text>
+            </View>
+          )}
+
+          <View style={s.statRow}>
+            <Stat label="נפח משוער ב-RAW" value={`${r.rawGb} GB`} />
+            <Stat label="פריימים לדקת אירוע" value={Math.round(r.frames / (parseFloat(eventMinutes) || 1))} />
+          </View>
+
+          <Text style={s.hint}>
+            מספר הפריימים הוא אורך הסרטון × fps, והמרווח הוא משך האירוע חלקי מספר הפריימים. הערכת
+            הנפח מניחה כ-20MB לפריים RAW בחיישן גדול.
           </Text>
         </>
       )}

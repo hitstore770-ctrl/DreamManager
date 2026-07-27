@@ -30,13 +30,14 @@ export const RED = "#EF4444";
 // which fights the soft 770JLM surfaces. No-op on native.
 export const NO_OUTLINE = Platform.OS === "web" ? { outlineStyle: "none", outlineWidth: 0 } : {};
 
-export function Field({ label, value, onChange, placeholder, suffix, numeric = true }) {
+export function Field({ label, value, onChange, placeholder, suffix, numeric = true, testID }) {
   return (
     <View style={{ flex: 1 }}>
       <Text style={s.fieldLabel}>{label}</Text>
       <View style={s.fieldRow}>
         {!!suffix && <Text style={s.fieldSuffix}>{suffix}</Text>}
         <TextInput
+          testID={testID}
           style={s.fieldInput}
           value={value}
           onChangeText={onChange}
