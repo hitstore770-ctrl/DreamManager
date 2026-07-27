@@ -43,12 +43,10 @@ export const GEMINI_API_KEY =
 // remembered for the rest of the session, so this costs one wasted request per
 // launch at most, and nothing once a working model is known.
 export const GEMINI_MODELS = [
-  "gemini-2.5-flash",
-  "gemini-2.0-flash",
-  "gemini-flash-latest",
-  "gemini-1.5-flash-latest",
+const GEMINI_MODELS = [
+  "gemini-3.6-flash", // המודל המוביל והעדכני 
+  "gemini-2.0-flash"  // גיבוי בלבד
 ];
-
 // Kept for anything that wants to name the preferred model in a message.
 export const GEMINI_MODEL = GEMINI_MODELS[0];
 
