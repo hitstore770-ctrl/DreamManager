@@ -6,18 +6,16 @@ import Animated, {
   Easing,
   FadeIn,
   FadeInDown,
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
   withRepeat,
-  withSequence,
   withSpring,
   withTiming,
 } from "react-native-reanimated";
 
 import Bounce from "../../components/Bounce";
 import Coin from "../../components/money/Coin";
+import FallingCoin from "../../components/money/FallingCoin";
 import Icon from "../../components/Icon";
 import { GradCard } from "../../components/Paper";
 import { useMoney } from "../../context/MoneyContext";
@@ -36,7 +34,6 @@ import { BEVEL, CARD_SHADOW, GRAD, TYPE, UI, glow } from "../../utils/ui";
 const JAR_H = 246;
 const JAR_W = 196;
 const COIN = 42;
-const FALL_MS = 540;
 
 // Agorot as integers: a jar filled 0.1 at a time on floats drifts within a
 // couple of dozen taps, and a savings counter that is wrong is worthless.
@@ -48,37 +45,6 @@ const COINS = [
   { agorot: 500, label: "5 ₪", size: 53 },
   { agorot: 1000, label: "10 ₪", size: 56 },
 ];
-
-function FallingCoin({ coin, startX, onDone }) {
-  const y = useSharedValue(-COIN);
-  const sx = useSharedValue(1);
-  const sy = useSharedValue(1);
-  const spin = useSharedValue(0);
-  const fade = useSharedValue(1);
-
-  useEffect(() => {
-    // Ease-in, because gravity accelerates. A linear drop reads as a sticker
-    // being slid down rather than a coin being dropped.
-    y.value = withTiming(JAR_H - COIN - 22, { duration: FALL_MS, easing: Easing.in(Easing.quad) });
-    spin.value = withTiming(300 + Math.random() * 240, { duration: FALL_MS });
-    sy.value = withDelay(FALL_MS, withSequence(withTiming(0.62, { duration: 70 }), withSpring(1, { damping: 6, stiffness: 320 })));
-    sx.value = withDelay(FALL_MS, withSequence(withTiming(1.3, { duration: 70 }), withSpring(1, { damping: 6, stiffness: 320 })));
-    fade.value = withDelay(FALL_MS + 240, withTiming(0, { duration: 250 }, (f) => {
-      if (f) runOnJS(onDone)();
-    }));
-  }, []);
-
-  const style = useAnimatedStyle(() => ({
-    transform: [{ translateY: y.value }, { scaleX: sx.value }, { scaleY: sy.value }, { rotate: `${spin.value}deg` }],
-    opacity: fade.value,
-  }));
-
-  return (
-    <Animated.View pointerEvents="none" style={[s.falling, { left: startX }, style]}>
-      <Coin agorot={coin.agorot} size={COIN} />
-    </Animated.View>
-  );
-}
 
 export default function PiggyBankScreen() {
   const { piggy, addToPiggy, piggyToWallet } = useMoney();
@@ -104,17 +70,19 @@ export default function PiggyBankScreen() {
     transform: [{ translateY: -2 + swell.value * 4 }, { scaleX: 1 + swell.value * 0.04 }],
   }));
 
-  const drop = useCallback(
+  const drop = useCallback((coin) => {
+    hapticLight();
+    const id = nextId.current;
+    nextId.current += 1;
+    setFlying((prev) => [...prev, { id, coin, startX: 26 + Math.random() * (JAR_W - COIN - 52) }]);
+  }, []);
+
+  // Credited by the coin itself, on the frame it first hits the pile — so the
+  // number and the impact are one event rather than two timers racing.
+  const land = useCallback(
     (coin) => {
-      hapticLight();
-      const id = nextId.current;
-      nextId.current += 1;
-      setFlying((prev) => [...prev, { id, coin, startX: 26 + Math.random() * (JAR_W - COIN - 52) }]);
-      // Credited on landing, so the number and the animation tell one story.
-      setTimeout(() => {
-        addToPiggy(coin.agorot / 100);
-        hapticSuccess();
-      }, FALL_MS);
+      addToPiggy(coin.agorot / 100);
+      hapticSuccess();
     },
     [addToPiggy]
   );
@@ -174,8 +142,11 @@ export default function PiggyBankScreen() {
           {flying.map((f) => (
             <FallingCoin
               key={f.id}
-              coin={f.coin}
+              agorot={f.coin.agorot}
+              size={COIN}
               startX={f.startX}
+              distance={JAR_H - 22}
+              onLand={() => land(f.coin)}
               onDone={() => setFlying((prev) => prev.filter((x) => x.id !== f.id))}
             />
           ))}
@@ -322,7 +293,6 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.45)",
   },
 
-  falling: { position: "absolute", top: 0, zIndex: 4 },
 
   readout: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
   readoutChip: {

@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { I18nManager, Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, { FadeIn, FadeInDown, LinearTransition } from "react-native-reanimated";
+import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
+import { MotiView } from "moti";
 
 import Bounce from "../components/Bounce";
 import Icon from "../components/Icon";
@@ -79,9 +80,18 @@ function DreamCard({ dream, index, onOpen, onAsk }) {
   const doneCount = milestones.filter((m) => m.done).length;
 
   return (
-    <Animated.View
-      entering={FadeInDown.delay(Math.min(index * 70, 340)).springify().damping(14)}
-      layout={LinearTransition.springify().damping(15)}
+    <MotiView
+      from={{ opacity: 0, translateY: 26, scale: 0.94 }}
+      animate={{ opacity: 1, translateY: 0, scale: 1 }}
+      transition={{
+        type: "spring",
+        damping: 16,
+        stiffness: 190,
+        mass: 0.9,
+        // Capped, so a long board still finishes settling in about half a
+        // second rather than trickling in for four.
+        delay: Math.min(index * 70, 340),
+      }}
     >
       <Bounce testID={`dream-${dream.id}`} scaleTo={0.96} onPress={() => onOpen(dream)}>
         <Card style={s.dreamCard} radius={UI.radius}>
@@ -155,7 +165,7 @@ function DreamCard({ dream, index, onOpen, onAsk }) {
           </View>
         </Card>
       </Bounce>
-    </Animated.View>
+    </MotiView>
   );
 }
 
@@ -169,9 +179,21 @@ function NoteCard({ note, index, onOpen }) {
   const stock = pastelFor(note.id);
 
   return (
-    <Animated.View
-      entering={FadeInDown.delay(Math.min(index * 60, 320)).springify().damping(14)}
-      layout={LinearTransition.springify().damping(15)}
+    // A note is *placed* on the board rather than faded in: it arrives lifted,
+    // slightly larger and turned a few degrees further than it will rest, then
+    // springs down into its own tilt. Rotating to 0 here is what makes it
+    // settle *into* the angle the Note component gives it, since the two
+    // transforms compose.
+    <MotiView
+      from={{ opacity: 0, translateY: 30, scale: 1.06, rotate: "-5deg" }}
+      animate={{ opacity: 1, translateY: 0, scale: 1, rotate: "0deg" }}
+      transition={{
+        type: "spring",
+        damping: 14,
+        stiffness: 170,
+        mass: 0.8,
+        delay: Math.min(index * 60, 320),
+      }}
     >
       <Bounce testID={`note-${note.id}`} scaleTo={0.96} onPress={() => onOpen(note)}>
         <Note tone={stock} seed={note.id} radius={UI.radiusSm}>
@@ -206,7 +228,7 @@ function NoteCard({ note, index, onOpen }) {
           </View>
         </Note>
       </Bounce>
-    </Animated.View>
+    </MotiView>
   );
 }
 
