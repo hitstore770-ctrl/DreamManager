@@ -16,12 +16,12 @@ import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import Bounce from "../components/Bounce";
 import Icon from "../components/Icon";
 import RichText from "../components/RichText";
-import { callGemini, isGeminiConfigured } from "../config/geminiConfig";
+import { NOA_TOOLS, callGeminiWithTools, isGeminiConfigured } from "../config/geminiConfig";
 import { NOA_MAX_OUTPUT_TOKENS, NOA_NAME, buildNoaPrompt } from "../config/noaPersona";
 import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import { Canvas } from "../components/Paper";
-import { BEVEL, CARD_SHADOW, TYPE, UI } from "../utils/ui";
+import { BEVEL, CARD_SHADOW, TYPE, UI, tint } from "../utils/ui";
 
 // Zone 1 — Noa, the assistant. Every bubble is a small sheet of paper, quick
 // actions above the input, and a GPS fix taken quietly in the background.
@@ -122,13 +122,17 @@ export default function LiveAiScreen() {
       abortRef.current = controller;
 
       try {
-        const res = await callGemini(
+        // The toolkit is offered, never forced. Most turns come back as prose
+        // having touched nothing; the runner only round-trips a function when
+        // the model actually asks for one, and hands back the finished text
+        // either way. The screen does not branch on it.
+        const res = await callGeminiWithTools(
           {
             systemInstruction: { parts: [{ text: systemPrompt(place) }] },
             contents: next.map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
             generationConfig: { temperature: 0.4, maxOutputTokens: NOA_MAX_OUTPUT_TOKENS },
           },
-          { signal: controller.signal }
+          { tools: NOA_TOOLS, signal: controller.signal }
         );
 
         if (controller.signal.aborted) return;
@@ -139,9 +143,7 @@ export default function LiveAiScreen() {
           setError(res.detail || `הבקשה נכשלה (${res.status}).`);
           return;
         }
-        const { json } = res;
-        const reply =
-          json?.candidates?.[0]?.content?.parts?.map((p) => p.text).filter(Boolean).join("") || "";
+        const reply = res.text || "";
         if (!reply) {
           hapticWarning();
           setError("המודל החזיר תשובה ריקה. נסה לנסח אחרת.");
@@ -153,7 +155,13 @@ export default function LiveAiScreen() {
         // badge reports that, so it can never claim a model that was not used.
         setMessages((prev) => [
           ...prev,
-          { id: `m-${Date.now()}`, role: "model", text: reply, model: res.model },
+          {
+            id: `m-${Date.now()}`,
+            role: "model",
+            text: reply,
+            model: res.model,
+            tools: res.toolsUsed,
+          },
         ]);
       } catch (e) {
         if (e?.name === "AbortError") return;
@@ -233,9 +241,17 @@ export default function LiveAiScreen() {
                   )}
                 </View>
                 {item.role === "model" && !!item.model && (
-                  <Text testID={`model-badge-${item.id}`} style={s.badge}>
-                    {NOA_NAME} • {item.model}
-                  </Text>
+                  <View style={s.badgeRow}>
+                    <Text testID={`model-badge-${item.id}`} style={s.badge}>
+                      {NOA_NAME} • {item.model}
+                    </Text>
+                    {!!item.tools?.length && (
+                      <View testID={`tool-chip-${item.id}`} style={s.toolChip}>
+                        <Icon name="database" size={9} color={UI.cyan} />
+                        <Text style={s.toolChipText}>{item.tools.join(" · ")}</Text>
+                      </View>
+                    )}
+                  </View>
                 )}
               </View>
             </Animated.View>
@@ -354,6 +370,20 @@ const s = StyleSheet.create({
   bubble: { borderRadius: UI.radius, paddingHorizontal: 16, paddingVertical: 12 },
   // Sits under the sheet, not on it: an attribution line is metadata about
   // the note, not part of what the note says.
+  badgeRow: { flexDirection: ROW, alignItems: "center", gap: 6, flexWrap: "wrap" },
+  // Only appears when a tool genuinely ran, so its presence is information
+  // rather than chrome: it marks the answers built on looked-up data.
+  toolChip: {
+    flexDirection: ROW,
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 7,
+    backgroundColor: tint(UI.cyan, 0.12),
+    marginTop: 5,
+  },
+  toolChipText: { fontFamily: FONTS.medium, fontSize: 9, color: UI.cyan },
   badge: {
     fontFamily: FONTS.regular,
     fontSize: 10,

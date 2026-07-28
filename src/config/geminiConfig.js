@@ -1,3 +1,5 @@
+import { NOA_TOOLS, runNoaTool } from "./NoaTools";
+
 // Gemini REST configuration, kept in one file so the key has exactly one home.
 //
 // SECURITY, READ THIS BEFORE SHIPPING
@@ -52,6 +54,10 @@ export const GEMINI_MODELS = [
 ];
 // Kept for anything that wants to name the preferred model in a message.
 export const GEMINI_MODEL = GEMINI_MODELS[0];
+
+// Re-exported so a screen imports its toolkit from the same place it imports
+// the transport, rather than reaching into two modules to make one call.
+export { NOA_TOOLS };
 
 export const endpointFor = (model) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
@@ -128,6 +134,80 @@ export async function callGemini(body, { signal } = {}) {
   }
 
   return { ok: false, status: lastStatus, detail: lastDetail, triedAll: true };
+}
+
+/**
+ * A full turn with tools available.
+ *
+ * The model is offered the toolkit and decides for itself whether to use it.
+ * If it answers in prose, that prose comes straight back — one round trip, no
+ * tool touched. If it asks for a function, the function runs, its result goes
+ * back as a functionResponse, and the model writes its answer from that.
+ *
+ * Returns { ok, text, model, toolsUsed } so the caller does not have to know
+ * whether a tool was involved.
+ */
+export async function callGeminiWithTools(base, { tools, signal, maxRounds = 3 } = {}) {
+  // AUTO is the entire reason Noa stays a general assistant. It leaves the
+  // decision with the model, which is what lets "explain closures in
+  // JavaScript" come back as prose while "when is the next bus" reaches for
+  // getTransitRoute. ANY would force a call on every single turn — including
+  // the ones that are just conversation — and NONE would make the toolkit
+  // decorative. It is stated explicitly rather than left to the default so
+  // that nobody later "fixes" it to ANY.
+  const body = {
+    ...base,
+    tools,
+    toolConfig: { functionCallingConfig: { mode: "AUTO" } },
+  };
+
+  const contents = [...(base.contents || [])];
+  const toolsUsed = [];
+  let model;
+
+  for (let round = 0; round < maxRounds; round += 1) {
+    const res = await callGemini({ ...body, contents }, { signal });
+    if (!res.ok) return { ...res, toolsUsed };
+
+    model = res.model;
+    const candidate = res.json?.candidates?.[0];
+    const parts = candidate?.content?.parts || [];
+    const calls = parts.filter((p) => p.functionCall).map((p) => p.functionCall);
+
+    // No function call: this is the answer. The overwhelmingly common path.
+    if (!calls.length) {
+      const text = parts.map((p) => p.text).filter(Boolean).join("");
+      return { ok: true, text, model, toolsUsed, json: res.json };
+    }
+
+    // The model's own turn has to go back verbatim — it carries the call ids
+    // the API matches the responses against.
+    contents.push(candidate.content);
+
+    // Gemini may request several tools in one turn; run them together rather
+    // than serially, since none of them depend on each other.
+    const responses = await Promise.all(
+      calls.map(async (call) => {
+        toolsUsed.push(call.name);
+        const result = await runNoaTool(call.name, call.args);
+        return { functionResponse: { name: call.name, response: result } };
+      })
+    );
+
+    // Function results are sent back on a `user` turn. The REST API has only
+    // `user` and `model` roles — there is no `function` role to put these on.
+    contents.push({ role: "user", parts: responses });
+  }
+
+  // Ran out of rounds — the model kept asking for tools. Better to say so than
+  // to loop forever burning quota.
+  return {
+    ok: false,
+    status: 0,
+    detail: `המודל ביקש כלים ${maxRounds} פעמים ברצף ולא סיים תשובה.`,
+    model,
+    toolsUsed,
+  };
 }
 
 /**
