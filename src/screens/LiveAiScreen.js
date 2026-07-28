@@ -15,13 +15,15 @@ import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 
 import Bounce from "../components/Bounce";
 import Icon from "../components/Icon";
+import RichText from "../components/RichText";
 import { callGemini, isGeminiConfigured } from "../config/geminiConfig";
+import { NOA_MAX_OUTPUT_TOKENS, NOA_NAME, buildNoaPrompt } from "../config/noaPersona";
 import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import { Canvas } from "../components/Paper";
 import { BEVEL, CARD_SHADOW, TYPE, UI } from "../utils/ui";
 
-// Zone 1 — the live assistant. Every bubble is a small sheet of paper, quick
+// Zone 1 — Noa, the assistant. Every bubble is a small sheet of paper, quick
 // actions above the input, and a GPS fix taken quietly in the background.
 //
 // "Silently" means without a modal or a spinner in the way, not without asking:
@@ -40,22 +42,21 @@ const QUICK = [
   { key: "near", icon: "map-pin", label: "תחנות קרובות", q: "אילו תחנות אוטובוס קרובות למיקום שלי ואילו קווים עוצרים בהן?" },
 ];
 
+// Noa's persona, plus the facts this screen actually holds.
+//
+// The persona tells her to cross-reference physical location and to interrogate
+// rather than guess when data is missing. Handing her the GPS the phone is
+// already reporting is therefore part of the brief, not a deviation from it —
+// withholding it would have her demand a location the app already knows.
 function systemPrompt(place) {
-  const where = place ? `${place.lat.toFixed(5)}, ${place.lon.toFixed(5)}` : "לא ידוע";
-  return [
-    "You are an expert Israeli public transit routing assistant.",
-    `The user commutes frequently between ${HOME} and their residential boarding school.`,
-    `The user's current GPS location is [${where}].`,
-    "Provide exact bus line numbers, estimated times, and optimal routes for their query.",
-    "",
-    "Rules:",
-    "- Answer in Hebrew.",
-    "- Lead with the line number and the boarding stop. Details after.",
-    "- Give times as ranges. You do not have live timetables — say so when it matters",
-    "  and point to Moovit or the operator's app for the departure running now.",
-    "- If the location is unknown, ask where they are starting from rather than guessing.",
-    "- Friday and holiday-eve services stop early in this area. Mention it when relevant.",
-  ].join("\n");
+  return buildNoaPrompt({
+    "Current GPS": place ? `${place.lat.toFixed(5)}, ${place.lon.toFixed(5)}` : null,
+    "Home base": HOME,
+    "Weekday base": "residential boarding school (פנימייה)",
+    "Local time": new Date().toLocaleString("he-IL", { timeZone: "Asia/Jerusalem" }),
+    "Known constraint":
+      "Israeli public transit stops early on Fridays and holiday eves. No live timetable is available to you — give ranges and name the app to check.",
+  });
 }
 
 export default function LiveAiScreen() {
@@ -125,7 +126,7 @@ export default function LiveAiScreen() {
           {
             systemInstruction: { parts: [{ text: systemPrompt(place) }] },
             contents: next.map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
-            generationConfig: { temperature: 0.4, maxOutputTokens: 900 },
+            generationConfig: { temperature: 0.4, maxOutputTokens: NOA_MAX_OUTPUT_TOKENS },
           },
           { signal: controller.signal }
         );
@@ -147,7 +148,13 @@ export default function LiveAiScreen() {
           return;
         }
         hapticSuccess();
-        setMessages((prev) => [...prev, { id: `m-${Date.now()}`, role: "model", text: reply }]);
+        // res.model is the id that *answered*, which is not always the id at
+        // the head of the list — the fallback chain may have moved on. The
+        // badge reports that, so it can never claim a model that was not used.
+        setMessages((prev) => [
+          ...prev,
+          { id: `m-${Date.now()}`, role: "model", text: reply, model: res.model },
+        ]);
       } catch (e) {
         if (e?.name === "AbortError") return;
         setLoading(false);
@@ -169,7 +176,7 @@ export default function LiveAiScreen() {
       {/* Header */}
       <View style={s.header}>
         <View style={{ flex: 1 }}>
-          <Text style={s.title}>עוזר חכם</Text>
+          <Text style={s.title}>נועה</Text>
           <Text style={s.subtitle} numberOfLines={1}>
             {locState === "ok" && place
               ? `מיקום ${place.lat.toFixed(3)}, ${place.lon.toFixed(3)}`
@@ -177,7 +184,7 @@ export default function LiveAiScreen() {
                 ? "מאתר מיקום..."
                 : locState === "denied"
                   ? "ללא מיקום — כתוב מאיפה אתה יוצא"
-                  : "ביתר עילית · פנימייה"}
+                  : "סגנית מנהל תפעול"}
           </Text>
         </View>
         <Bounce
@@ -212,10 +219,24 @@ export default function LiveAiScreen() {
               entering={FadeInDown.delay(Math.min(index * 40, 240)).springify().damping(15)}
               style={[s.row, item.role === "user" ? s.rowMine : s.rowTheirs]}
             >
-              <View style={[s.bubble, item.role === "user" ? s.userBubble : s.modelBubble]}>
-                <Text style={[s.bubbleText, item.role === "user" && { color: "#FFFFFF" }]} selectable>
-                  {item.text}
-                </Text>
+              <View style={{ maxWidth: "88%" }}>
+                <View style={[s.bubble, item.role === "user" ? s.userBubble : s.modelBubble]}>
+                  {item.role === "user" ? (
+                    <Text style={[s.bubbleText, { color: "#FFFFFF" }]} selectable>
+                      {item.text}
+                    </Text>
+                  ) : (
+                    // Noa is instructed to write Markdown, so her replies have
+                    // to be rendered as Markdown — otherwise the persona makes
+                    // the output harder to read than plain prose.
+                    <RichText text={item.text} color={UI.ink} size={15} />
+                  )}
+                </View>
+                {item.role === "model" && !!item.model && (
+                  <Text testID={`model-badge-${item.id}`} style={s.badge}>
+                    {NOA_NAME} • {item.model}
+                  </Text>
+                )}
               </View>
             </Animated.View>
           )}
@@ -224,10 +245,10 @@ export default function LiveAiScreen() {
               <View style={s.emptyGlass}>
                 <Icon name="navigation" size={30} color={UI.violet} />
               </View>
-              <Text style={s.emptyTitle}>לאן נוסעים?</Text>
+              <Text style={s.emptyTitle}>מה על הפרק?</Text>
               <Text style={s.emptyBody}>
-                בחר פעולה מהירה למטה או כתוב שאלה. המיקום הנוכחי נשלח יחד עם השאלה כדי לקבל קווים
-                מהתחנה שקרובה אליך.
+נועה — סגנית מנהל התפעול שלך. לוגיסטיקה, מספרים, תכנון. המיקום הנוכחי נשלח יחד עם
+                השאלה, כדי שהיא לא תצטרך לשאול איפה אתה.
               </Text>
               {!isGeminiConfigured && (
                 <View style={s.keyWarning}>
@@ -330,7 +351,17 @@ const s = StyleSheet.create({
   row: { flexDirection: "row" },
   rowMine: { justifyContent: "flex-end" },
   rowTheirs: { justifyContent: "flex-start" },
-  bubble: { maxWidth: "88%", borderRadius: UI.radius, paddingHorizontal: 16, paddingVertical: 12 },
+  bubble: { borderRadius: UI.radius, paddingHorizontal: 16, paddingVertical: 12 },
+  // Sits under the sheet, not on it: an attribution line is metadata about
+  // the note, not part of what the note says.
+  badge: {
+    fontFamily: FONTS.regular,
+    fontSize: 10,
+    color: UI.inkMuted,
+    textAlign: "left",
+    marginTop: 5,
+    marginLeft: 6,
+  },
   userBubble: { backgroundColor: UI.violet, borderBottomRightRadius: 8, ...CARD_SHADOW },
   // The assistant's replies are white pages; the user's are violet cards. The
   // squared-off corner on each is what keeps two stacked bubbles from reading

@@ -43,8 +43,12 @@ export const GEMINI_API_KEY =
 // remembered for the rest of the session, so this costs one wasted request per
 // launch at most, and nothing once a working model is known.
 export const GEMINI_MODELS = [
-  "gemini-3.6-flash", // המודל המוביל והעדכני 
-  "gemini-2.0-flash"  // גיבוי בלבד
+  "gemini-3.6-flash", // המודל המוביל והעדכני
+  // Same model, the alias form. Which spelling an endpoint accepts is not
+  // consistent across model families, so both are tried before falling back a
+  // generation — that is cheaper than guessing which one this key wants.
+  "gemini-3.6-flash-latest",
+  "gemini-2.0-flash", // גיבוי בלבד
 ];
 // Kept for anything that wants to name the preferred model in a message.
 export const GEMINI_MODEL = GEMINI_MODELS[0];

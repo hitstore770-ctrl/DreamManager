@@ -37,7 +37,7 @@ const Tab = createBottomTabNavigator();
 // and the two libraries out to the left.
 const ZONES = [
   { name: "Money", component: MyMoneyHubScreen, icon: "trending-up", label: "הכסף שלי" },
-  { name: "Assistant", component: LiveAiScreen, icon: "message-circle", label: "עוזר חכם" },
+  { name: "Assistant", component: LiveAiScreen, icon: "message-circle", label: "נועה" },
   { name: "Core", component: MainDashboardScreen, icon: "hexagon", label: "הליבה" },
   { name: "Library", component: DreamsNotesHubScreen, icon: "star", label: "חלומות" },
   { name: "Workshop", component: ToolsWorkshopScreen, icon: "tool", label: "כלים" },
