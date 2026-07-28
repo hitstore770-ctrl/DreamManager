@@ -1,7 +1,8 @@
-import { Modal, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
+import { Modal, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 
 import Icon from "../Icon";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
+import CustomText from "../../components/CustomText";
 
 // Shared Pro-Tools bottom sheet + floating button used by the POS and
 // Warehouse modules. The sheet itself is dumb — each screen composes its own
@@ -31,10 +32,10 @@ export function SheetRow({ icon, label, sub, onPress, danger, active, disabled }
       disabled={disabled}
       activeOpacity={0.7}
     >
-      <Text style={s.rowChevron}>‹</Text>
+      <CustomText style={s.rowChevron}>‹</CustomText>
       <View style={{ flex: 1, alignItems: "flex-end" }}>
-        <Text style={[s.rowLabel, danger && { color: RED }]}>{label}</Text>
-        {!!sub && <Text style={s.rowSub}>{sub}</Text>}
+        <CustomText style={[s.rowLabel, danger && { color: RED }]}>{label}</CustomText>
+        {!!sub && <CustomText style={s.rowSub}>{sub}</CustomText>}
       </View>
       <View style={s.rowBadge}>
         <Icon name={icon || "circle"} size={19} color={danger ? "#EF4444" : "#7C3AED"} />
@@ -51,7 +52,7 @@ export default function ToolsSheet({ visible, onClose, title, children }) {
           <TouchableWithoutFeedback onPress={() => {}}>
             <View style={s.sheet}>
               <View style={s.grabber} />
-              <Text style={s.title}>{title}</Text>
+              <CustomText style={s.title}>{title}</CustomText>
               {children}
             </View>
           </TouchableWithoutFeedback>

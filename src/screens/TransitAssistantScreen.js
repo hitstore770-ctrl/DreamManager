@@ -1,15 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  I18nManager,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, FlatList, I18nManager, KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 
@@ -22,6 +12,7 @@ import { shekel } from "../utils/posStore";
 import { STORAGE_KEYS } from "../utils/storageKeys";
 import { CARD_SHADOW, TYPE, UI } from "../utils/ui";
 import { usePersistentState } from "../utils/usePersistentState";
+import CustomText from "../components/CustomText";
 
 // עוזר תחב"ץ — a routing assistant for the commute between Beitar Illit and
 // the boarding school, plus a Rav-Kav balance you keep by hand.
@@ -198,12 +189,12 @@ export default function TransitAssistantScreen({ navigation }) {
           <Icon name={I18nManager.isRTL ? "arrow-right" : "arrow-left"} size={19} color={UI.ink} />
         </Bounce>
         <View style={{ flex: 1 }}>
-          <Text style={s.title}>עוזר תחב״ץ</Text>
-          <Text style={s.subtitle} numberOfLines={1}>
+          <CustomText style={s.title}>עוזר תחב״ץ</CustomText>
+          <CustomText style={s.subtitle} numberOfLines={1}>
             {locState === "ok" && place
               ? `מיקום נוכחי ${place.lat.toFixed(3)}, ${place.lon.toFixed(3)}`
               : "ביתר עילית · פנימייה"}
-          </Text>
+          </CustomText>
         </View>
         <Bounce
           testID="transit-locate"
@@ -238,9 +229,9 @@ export default function TransitAssistantScreen({ navigation }) {
               style={[s.bubbleRow, item.role === "user" ? s.rowMine : s.rowTheirs]}
             >
               <View style={[s.bubble, item.role === "user" ? s.userBubble : s.modelBubble]}>
-                <Text style={[s.bubbleText, item.role === "user" && { color: "#FFFFFF" }]} selectable>
+                <CustomText style={[s.bubbleText, item.role === "user" && { color: "#FFFFFF" }]} selectable>
                   {item.text}
-                </Text>
+                </CustomText>
               </View>
             </Animated.View>
           )}
@@ -250,11 +241,11 @@ export default function TransitAssistantScreen({ navigation }) {
               <View style={s.ravkav}>
                 <View style={s.ravkavTop}>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.ravkavLabel}>רב-קו · מעקב ידני</Text>
-                    <Text testID="ravkav-balance" style={s.ravkavValue}>{shekel(balance || 0)}</Text>
-                    <Text style={s.ravkavHint}>
+                    <CustomText style={s.ravkavLabel}>רב-קו · מעקב ידני</CustomText>
+                    <CustomText testID="ravkav-balance" style={s.ravkavValue}>{shekel(balance || 0)}</CustomText>
+                    <CustomText style={s.ravkavHint}>
                       {ridesLeft > 0 ? `בערך ${ridesLeft} נסיעות בתעריף 6 ₪` : "לא מספיק לנסיעה"}
-                    </Text>
+                    </CustomText>
                   </View>
                   <View style={s.ravkavChip}>
                     <Icon name="credit-card" size={22} color={UI.violet} />
@@ -270,7 +261,7 @@ export default function TransitAssistantScreen({ navigation }) {
                       scaleTo={0.92}
                       onPress={() => topUp(amount)}
                     >
-                      <Text style={s.topUpText}>+{amount}</Text>
+                      <CustomText style={s.topUpText}>+{amount}</CustomText>
                     </Bounce>
                   ))}
                   <Bounce
@@ -280,14 +271,14 @@ export default function TransitAssistantScreen({ navigation }) {
                     onPress={() => logRide(6)}
                   >
                     <Icon name="minus" size={14} color="#FFFFFF" />
-                    <Text style={[s.topUpText, { color: "#FFFFFF" }]}>נסיעה</Text>
+                    <CustomText style={[s.topUpText, { color: "#FFFFFF" }]}>נסיעה</CustomText>
                   </Bounce>
                 </View>
 
-                <Text style={s.ravkavNote}>
+                <CustomText style={s.ravkavNote}>
                   המספר הזה נשמר במכשיר ואינו נקרא מהכרטיס. אין ממשק ציבורי ליתרת רב-קו — האפליקציה
                   הרשמית קוראת אותה ב-NFC. זה פנקס, לא הכרטיס.
-                </Text>
+                </CustomText>
               </View>
 
               {/* Quick actions */}
@@ -301,7 +292,7 @@ export default function TransitAssistantScreen({ navigation }) {
                     onPress={() => send(q.q)}
                   >
                     <Icon name={q.icon} size={17} color={UI.violet} />
-                    <Text style={s.quickText}>{q.label}</Text>
+                    <CustomText style={s.quickText}>{q.label}</CustomText>
                   </Bounce>
                 ))}
               </View>
@@ -309,22 +300,22 @@ export default function TransitAssistantScreen({ navigation }) {
               {locState !== "ok" && (
                 <Bounce testID="transit-locate-cta" style={s.locCard} scaleTo={0.97} onPress={locate}>
                   <Icon name="map-pin" size={17} color={UI.violet} />
-                  <Text style={s.locText}>
+                  <CustomText style={s.locText}>
                     {locState === "denied"
                       ? "ההרשאה נדחתה — אפשר לכתוב מאיפה יוצאים במקום"
                       : locState === "error"
                         ? "לא הצלחנו לקבל מיקום. נסה שוב או כתוב מאיפה אתה יוצא"
                         : "שתף מיקום כדי לקבל מסלול מדויק מהנקודה שלך"}
-                  </Text>
+                  </CustomText>
                 </Bounce>
               )}
 
               {!isGeminiConfigured && (
                 <View style={s.keyWarning}>
                   <Icon name="key" size={15} color="#8A6D00" />
-                  <Text style={s.keyWarningText}>
+                  <CustomText style={s.keyWarningText}>
                     אין מפתח Gemini. הוסף EXPO_PUBLIC_GEMINI_API_KEY לקובץ .env כדי להפעיל את השיחה.
-                  </Text>
+                  </CustomText>
                 </View>
               )}
             </View>
@@ -334,13 +325,13 @@ export default function TransitAssistantScreen({ navigation }) {
               {loading && (
                 <Animated.View entering={FadeIn.duration(200)} style={[s.bubble, s.modelBubble, s.typing]}>
                   <ActivityIndicator size="small" color={UI.violet} />
-                  <Text style={s.typingText}>בודק מסלולים...</Text>
+                  <CustomText style={s.typingText}>בודק מסלולים...</CustomText>
                 </Animated.View>
               )}
               {!!error && (
                 <Animated.View entering={FadeIn.duration(200)} style={s.errorCard}>
                   <Icon name="alert-circle" size={16} color={UI.coral} />
-                  <Text style={s.errorText}>{error}</Text>
+                  <CustomText style={s.errorText}>{error}</CustomText>
                 </Animated.View>
               )}
             </>

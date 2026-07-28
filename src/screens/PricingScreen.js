@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 
 import Icon from "../components/Icon";
 import { hapticLight } from "../utils/haptics";
 import { shekel } from "../utils/posStore";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
+import CustomText from "../components/CustomText";
 
 // תמחור ורווחיות — import/print-job pricing calculator. Two modes:
 //  • margin mode: enter desired profit % over total cost → sell price
@@ -26,9 +27,9 @@ const AMBER = "#B8791A";
 function Field({ label, value, onChange, placeholder, suffix }) {
   return (
     <View style={s.fieldWrap}>
-      <Text style={s.fieldLabel}>{label}</Text>
+      <CustomText style={s.fieldLabel}>{label}</CustomText>
       <View style={s.fieldRow}>
-        {!!suffix && <Text style={s.fieldSuffix}>{suffix}</Text>}
+        {!!suffix && <CustomText style={s.fieldSuffix}>{suffix}</CustomText>}
         <TextInput
           style={s.fieldInput}
           value={value}
@@ -90,14 +91,14 @@ export default function PricingScreen() {
           onPress={() => { hapticLight(); setMode("target"); }}
           activeOpacity={0.7}
         >
-          <Text style={[s.segmentText, mode === "target" && { color: WHITE }]}>לפי מחיר יעד</Text>
+          <CustomText style={[s.segmentText, mode === "target" && { color: WHITE }]}>לפי מחיר יעד</CustomText>
         </TouchableOpacity>
         <TouchableOpacity
           style={[s.segmentBtn, mode === "margin" && s.segmentActive]}
           onPress={() => { hapticLight(); setMode("margin"); }}
           activeOpacity={0.7}
         >
-          <Text style={[s.segmentText, mode === "margin" && { color: WHITE }]}>לפי אחוז רווח</Text>
+          <CustomText style={[s.segmentText, mode === "margin" && { color: WHITE }]}>לפי אחוז רווח</CustomText>
         </TouchableOpacity>
       </View>
 
@@ -110,26 +111,26 @@ export default function PricingScreen() {
       {/* Results */}
       <View style={s.resultCard}>
         <View style={s.resultRow}>
-          <Text style={s.resultValueSmall}>{shekel(calc.totalCost)}</Text>
-          <Text style={s.resultLabel}>עלות כוללת</Text>
+          <CustomText style={s.resultValueSmall}>{shekel(calc.totalCost)}</CustomText>
+          <CustomText style={s.resultLabel}>עלות כוללת</CustomText>
         </View>
         <View style={s.hr} />
         <View style={s.resultHero}>
-          <Text style={s.sellValue}>{calc.ready ? shekel(Math.round(calc.sell * 100) / 100) : "—"}</Text>
-          <Text style={s.resultLabel}>מחיר מכירה סופי</Text>
+          <CustomText style={s.sellValue}>{calc.ready ? shekel(Math.round(calc.sell * 100) / 100) : "—"}</CustomText>
+          <CustomText style={s.resultLabel}>מחיר מכירה סופי</CustomText>
         </View>
         <View style={[s.profitBox, calc.ready && { backgroundColor: profitColor + "14" }]}>
-          <Text style={[s.profitValue, { color: calc.ready ? profitColor : INK_MUTED }]}>
+          <CustomText style={[s.profitValue, { color: calc.ready ? profitColor : INK_MUTED }]}>
             {calc.ready ? shekel(Math.round(calc.profit * 100) / 100) : "—"}
-          </Text>
-          <Text style={[s.profitLabel, { color: calc.ready ? profitColor : INK_MUTED }]}>
+          </CustomText>
+          <CustomText style={[s.profitLabel, { color: calc.ready ? profitColor : INK_MUTED }]}>
             רווח נקי {calc.ready ? `· ${Math.round(calc.profitPct)}% מהעלות · ${Math.round(calc.marginOfPrice)}% מהמחיר` : ""}
-          </Text>
+          </CustomText>
         </View>
         {calc.ready && calc.rounded !== Math.round(calc.sell) && (
-          <Text style={s.roundHint}>מחיר מדף מומלץ (עיגול ל-5): {shekel(calc.rounded)}</Text>
+          <CustomText style={s.roundHint}>מחיר מדף מומלץ (עיגול ל-5): {shekel(calc.rounded)}</CustomText>
         )}
-        <Text style={s.legend}>ירוק: רווח מעל 30% · כתום: 10–30% · אדום: מתחת ל-10%</Text>
+        <CustomText style={s.legend}>ירוק: רווח מעל 30% · כתום: 10–30% · אדום: מתחת ל-10%</CustomText>
       </View>
     </ScrollView>
   );

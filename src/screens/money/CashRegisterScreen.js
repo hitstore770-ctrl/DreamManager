@@ -1,4 +1,4 @@
-import { I18nManager, ScrollView, StyleSheet, Text, View } from "react-native";
+import { I18nManager, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Bounce from "../../components/Bounce";
@@ -6,6 +6,7 @@ import Icon from "../../components/Icon";
 import { TillCounter } from "../../components/tools/apps/finance";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
 import { CARD_SHADOW, TYPE, UI } from "../../utils/ui";
+import CustomText from "../../components/CustomText";
 
 // הקופה — end-of-shift counting. The counting itself is TillCounter, which is
 // the same component the Business tab uses; this screen is the standalone
@@ -21,8 +22,8 @@ export default function CashRegisterScreen({ navigation }) {
           <Icon name={I18nManager.isRTL ? "arrow-right" : "arrow-left"} size={19} color={UI.ink} />
         </Bounce>
         <View style={{ flex: 1 }}>
-          <Text style={s.title}>ספירת קופה</Text>
-          <Text style={s.subtitle}>סגירת משמרת · מטבעות ושטרות</Text>
+          <CustomText style={s.title}>ספירת קופה</CustomText>
+          <CustomText style={s.subtitle}>סגירת משמרת · מטבעות ושטרות</CustomText>
         </View>
         <View style={s.badge}>
           <Icon name="cash-outline" size={20} color={UI.violet} />

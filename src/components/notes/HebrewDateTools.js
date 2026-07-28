@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { I18nManager, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { I18nManager, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 
 import { useSettings } from "../../context/SettingsContext";
 import {
@@ -14,6 +14,7 @@ import Icon from "../Icon";
 import { NOTES_FONTS as FONTS, NOTES_THEME } from "../../utils/notesTheme";
 import { computeZmanim, fmtTime, JERUSALEM } from "../../utils/zmanim";
 import { RADIUS_SM } from "../../utils/theme";
+import CustomText from "../../components/CustomText";
 
 // The Hebrew Calendar Pro panel: live Hebrew date, a two-way date converter, a
 // "link this note to a Hebrew date" action, and today's zmanim computed on the
@@ -51,35 +52,35 @@ export default function HebrewDateTools({ onLink, onClose }) {
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
       <View style={s.headerRow}>
-        <View style={s.titleRow}><Icon name="calendar" size={17} color={theme.accent} /><Text style={s.title}>לוח עברי</Text></View>
+        <View style={s.titleRow}><Icon name="calendar" size={17} color={theme.accent} /><CustomText style={s.title}>לוח עברי</CustomText></View>
         <TouchableOpacity onPress={onClose}><Icon name="x" size={17} color={theme.textMuted} /></TouchableOpacity>
       </View>
 
       {/* Today */}
       <View style={s.card}>
-        <Text style={s.todayLabel}>התאריך העברי היום</Text>
-        <Text style={s.todayBig}>{today.formatted}</Text>
-        <Text style={s.todaySub}>{hebrewWeekday(new Date())} · {gDate.toLocaleDateString("he-IL")}</Text>
+        <CustomText style={s.todayLabel}>התאריך העברי היום</CustomText>
+        <CustomText style={s.todayBig}>{today.formatted}</CustomText>
+        <CustomText style={s.todaySub}>{hebrewWeekday(new Date())} · {gDate.toLocaleDateString("he-IL")}</CustomText>
       </View>
 
       {/* Gregorian → Hebrew */}
-      <Text style={s.section}>המרה: לועזי ← עברי</Text>
+      <CustomText style={s.section}>המרה: לועזי ← עברי</CustomText>
       <View style={s.card2}>
         <View style={s.inputRow}>
           <Field label="יום" value={g.d} onChange={(v) => setG((p) => ({ ...p, d: v }))} theme={theme} />
           <Field label="חודש" value={g.m} onChange={(v) => setG((p) => ({ ...p, m: v }))} theme={theme} />
           <Field label="שנה" value={g.y} onChange={(v) => setG((p) => ({ ...p, y: v }))} theme={theme} wide />
         </View>
-        <Text style={s.result}>{gToHeb ? gToHeb.formatted : "תאריך לא תקין"}</Text>
+        <CustomText style={s.result}>{gToHeb ? gToHeb.formatted : "תאריך לא תקין"}</CustomText>
         {gToHeb && (
           <TouchableOpacity style={[s.linkBtn, { backgroundColor: theme.accent }]} onPress={() => onLink({ iso: gDate.toISOString(), formatted: gToHeb.formatted })}>
-            <View style={s.titleRow}><Icon name="link-2" size={14} color="#FFFFFF" /><Text style={s.linkText}>קשר הערה לתאריך זה</Text></View>
+            <View style={s.titleRow}><Icon name="link-2" size={14} color="#FFFFFF" /><CustomText style={s.linkText}>קשר הערה לתאריך זה</CustomText></View>
           </TouchableOpacity>
         )}
       </View>
 
       {/* Hebrew → Gregorian */}
-      <Text style={s.section}>המרה: עברי ← לועזי</Text>
+      <CustomText style={s.section}>המרה: עברי ← לועזי</CustomText>
       <View style={s.card2}>
         <View style={s.inputRow}>
           <Field label="יום" value={h.d} onChange={(v) => setH((p) => ({ ...p, d: v }))} theme={theme} />
@@ -92,19 +93,19 @@ export default function HebrewDateTools({ onLink, onClose }) {
               style={[s.monthChip, h.m === mo && { backgroundColor: theme.accent }]}
               onPress={() => setH((p) => ({ ...p, m: mo }))}
             >
-              <Text style={[s.monthChipText, { color: h.m === mo ? "#FFF" : theme.textSecondary }]}>
+              <CustomText style={[s.monthChipText, { color: h.m === mo ? "#FFF" : theme.textSecondary }]}>
                 {hYear ? hebrewMonthName(mo, hYear) : mo}
-              </Text>
+              </CustomText>
             </TouchableOpacity>
           ))}
         </ScrollView>
-        <Text style={s.result}>
+        <CustomText style={s.result}>
           {hToGreg ? `${numberToHebrew(Number(h.d))} ${hebrewMonthName(h.m, hYear)} → ${hToGreg.toLocaleDateString("he-IL")}` : "תאריך לא תקין"}
-        </Text>
+        </CustomText>
       </View>
 
       {/* Scaffolds */}
-      <Text style={s.section}>זמני היום</Text>
+      <CustomText style={s.section}>זמני היום</CustomText>
       <View style={s.card2}>
         {[
           { icon: "sunrise", name: "עלות השחר", value: zmanim.dawn },
@@ -115,14 +116,14 @@ export default function HebrewDateTools({ onLink, onClose }) {
           { icon: "moon", name: "צאת הכוכבים", value: zmanim.nightfall },
         ].map((z) => (
           <View key={z.name} style={s.zmanRow}>
-            <Text style={s.zmanValue}>{z.value ? fmtTime(z.value) : "--:--"}</Text>
+            <CustomText style={s.zmanValue}>{z.value ? fmtTime(z.value) : "--:--"}</CustomText>
             <View style={s.titleRow}>
               <Icon name={z.icon} size={14} color={theme.textMuted} />
-              <Text style={s.zmanName}>{z.name}</Text>
+              <CustomText style={s.zmanName}>{z.name}</CustomText>
             </View>
           </View>
         ))}
-        <Text style={s.hint}>מחושב במכשיר לפי מיקום השמש ב{JERUSALEM.name}.</Text>
+        <CustomText style={s.hint}>מחושב במכשיר לפי מיקום השמש ב{JERUSALEM.name}.</CustomText>
       </View>
     </ScrollView>
   );
@@ -131,7 +132,7 @@ export default function HebrewDateTools({ onLink, onClose }) {
 function Field({ label, value, onChange, theme, wide }) {
   return (
     <View style={{ flex: wide ? 1.4 : 1 }}>
-      <Text style={{ color: theme.textMuted, fontSize: 12, fontFamily: FONTS.medium, textAlign: "right", marginBottom: 4 }}>{label}</Text>
+      <CustomText style={{ color: theme.textMuted, fontSize: 12, fontFamily: FONTS.medium, textAlign: "right", marginBottom: 4 }}>{label}</CustomText>
       <TextInput
         style={{ backgroundColor: theme.surfaceAlt, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12, color: theme.textPrimary, fontFamily: FONTS.bold, fontSize: 16, textAlign: "center", borderWidth: 1, borderColor: theme.hairline }}
         value={value}

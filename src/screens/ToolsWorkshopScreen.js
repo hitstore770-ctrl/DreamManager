@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { I18nManager, Platform, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { I18nManager, Platform, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
@@ -19,6 +19,7 @@ import { STORAGE_KEYS } from "../utils/storageKeys";
 import { ALL_TOOLS } from "../utils/toolsCatalog";
 import { usePersistentState } from "../utils/usePersistentState";
 import { BEVEL, GRAD, TYPE, UI, glow, tint } from "../utils/ui";
+import CustomText from "../components/CustomText";
 
 // בית המלאכה — the tools tab, organised as workbenches rather than as a
 // flat directory.
@@ -156,8 +157,8 @@ export default function ToolsWorkshopScreen() {
       <View style={{ paddingTop: insets.top + 12 }}>
         <View style={s.header}>
           <View style={{ flex: 1 }}>
-            <Text style={s.title}>בית המלאכה</Text>
-            <Text style={s.subtitle}>{TOTAL} כלים · {WORKBENCHES.length} עמדות עבודה</Text>
+            <CustomText style={s.title}>בית המלאכה</CustomText>
+            <CustomText style={s.subtitle}>{TOTAL} כלים · {WORKBENCHES.length} עמדות עבודה</CustomText>
           </View>
           <View style={s.headerBadge}>
             <Icon name="tool" size={20} color={UI.cyan} />
@@ -194,11 +195,11 @@ export default function ToolsWorkshopScreen() {
           results.length === 0 ? (
             <View style={s.empty}>
               <Icon name="search" size={26} color={UI.inkMuted} />
-              <Text style={s.emptyText}>לא נמצא כלי בשם הזה</Text>
+              <CustomText style={s.emptyText}>לא נמצא כלי בשם הזה</CustomText>
             </View>
           ) : (
             <Animated.View entering={FadeIn.duration(200)}>
-              <Text style={s.resultHead}>{results.length} תוצאות</Text>
+              <CustomText style={s.resultHead}>{results.length} תוצאות</CustomText>
               <View style={s.grid}>
                 {results.map((t, i) => (
                   <ToolTile
@@ -307,7 +308,7 @@ export default function ToolsWorkshopScreen() {
                 color={activeTool && favSet.has(activeTool.id) ? UI.gold : UI.inkMuted}
               />
             </Bounce>
-            <Text style={s.sheetTitle} numberOfLines={1}>{activeTool?.name}</Text>
+            <CustomText style={s.sheetTitle} numberOfLines={1}>{activeTool?.name}</CustomText>
           </View>
           <ToolRenderer toolId={activeTool?.id} tool={activeTool} />
         </BottomSheetView>
@@ -324,11 +325,11 @@ function BenchHead({ icon, tone, grad, label, hint, count }) {
         <Icon name={icon} size={18} color="#FFFFFF" />
       </LinearGradient>
       <View style={{ flex: 1 }}>
-        <Text style={s.benchLabel}>{label}</Text>
-        <Text style={s.benchHint}>{hint}</Text>
+        <CustomText style={s.benchLabel}>{label}</CustomText>
+        <CustomText style={s.benchHint}>{hint}</CustomText>
       </View>
       <View style={[s.benchCount, { backgroundColor: tint(tone, 0.18) }]}>
-        <Text style={[s.benchCountText, { color: tone }]}>{count}</Text>
+        <CustomText style={[s.benchCountText, { color: tone }]}>{count}</CustomText>
       </View>
     </View>
   );
@@ -362,7 +363,7 @@ function ToolTile({ tool, index, tone, fav, onPress, onLongPress }) {
             <View style={[s.tileGem, { backgroundColor: tint(tone, 0.18) }]}>
               <Icon name={tool.icon} size={19} color={tone} />
             </View>
-            <Text style={s.tileName} numberOfLines={2}>{tool.name}</Text>
+            <CustomText style={s.tileName} numberOfLines={2}>{tool.name}</CustomText>
           </View>
         </GradCard>
       </Bounce>

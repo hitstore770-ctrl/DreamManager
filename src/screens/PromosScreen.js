@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View } from "react-native";
 
 import Icon from "../components/Icon";
 import { useBusiness } from "../context/BusinessContext";
 import { hapticLight, hapticSuccess } from "../utils/haptics";
 import { shekel, uid } from "../utils/posStore";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
+import CustomText from "../components/CustomText";
 
 // מבצעים ומארזים — smart bundles pushed straight to the POS: every active
 // promo shows up as a gold quick-add chip at the front of the POS product
@@ -51,9 +52,9 @@ export default function PromosScreen() {
       contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
     >
       <View style={s.banner}>
-        <Text style={s.bannerText}>
+        <CustomText style={s.bannerText}>
           מבצעים פעילים מופיעים כצ׳יפ זהב בקופה · פעילים כעת: {activeCount}
-        </Text>
+        </CustomText>
       </View>
 
       {list.map((p) => (
@@ -65,13 +66,13 @@ export default function PromosScreen() {
             thumbColor={WHITE}
           />
           <View style={{ flex: 1, alignItems: "flex-end" }}>
-            <Text style={[s.name, !p.active && { color: INK_MUTED }]} numberOfLines={2}>
+            <CustomText style={[s.name, !p.active && { color: INK_MUTED }]} numberOfLines={2}>
               {p.name}
-            </Text>
-            <Text style={[s.price, !p.active && { color: INK_MUTED }]}>{shekel(p.price)}</Text>
+            </CustomText>
+            <CustomText style={[s.price, !p.active && { color: INK_MUTED }]}>{shekel(p.price)}</CustomText>
           </View>
           <View style={[s.badge, { backgroundColor: p.active ? GOLD + "26" : CARD }]}>
-            <Text style={{ fontSize: 20 }}>{p.emoji}</Text>
+            <CustomText style={{ fontSize: 20 }}>{p.emoji}</CustomText>
           </View>
         </View>
       ))}
@@ -98,20 +99,20 @@ export default function PromosScreen() {
           />
           <View style={{ flexDirection: "row", gap: 8 }}>
             <TouchableOpacity style={[s.formBtn, { backgroundColor: CARD }]} onPress={() => setShowForm(false)} activeOpacity={0.7}>
-              <Text style={[s.formBtnText, { color: INK_MUTED }]}>ביטול</Text>
+              <CustomText style={[s.formBtnText, { color: INK_MUTED }]}>ביטול</CustomText>
             </TouchableOpacity>
             <TouchableOpacity
               style={[s.formBtn, { backgroundColor: BLUE, flex: 2 }, !(name.trim() && parseFloat(price) > 0) && { opacity: 0.35 }]}
               onPress={addPromo}
               activeOpacity={0.8}
             >
-              <Text style={[s.formBtnText, { color: WHITE }]}>שמור מבצע</Text>
+              <CustomText style={[s.formBtnText, { color: WHITE }]}>שמור מבצע</CustomText>
             </TouchableOpacity>
           </View>
         </View>
       ) : (
         <TouchableOpacity style={s.addBtn} onPress={() => { hapticLight(); setShowForm(true); }} activeOpacity={0.75}>
-          <Text style={s.addBtnText}>＋ מבצע חדש</Text>
+          <CustomText style={s.addBtnText}>＋ מבצע חדש</CustomText>
         </TouchableOpacity>
       )}
     </ScrollView>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 
 import Icon from "../../Icon";
 import Slider from "../Slider";
@@ -22,6 +22,7 @@ import {
   s,
   useCalcHaptic,
 } from "../kit";
+import CustomText from "../../../components/CustomText";
 
 // Pricing: what to charge, what is left over, and how much of a price is tax.
 
@@ -102,7 +103,7 @@ export function VatDiscount() {
         <View style={[s.checkbox, vatOn && { backgroundColor: BLUE, borderColor: BLUE }]}>
           {vatOn && <Icon name="check" size={13} color={WHITE} />}
         </View>
-        <Text style={s.checkLabel}>כלול מע״מ בחישוב</Text>
+        <CustomText style={s.checkLabel}>כלול מע״מ בחישוב</CustomText>
       </TouchableOpacity>
       {vatOn && (
         <Segment
@@ -137,13 +138,13 @@ export function VatDiscount() {
             <Stat label={vatOn ? `מע״מ ${rate}%` : "ללא מע״מ"} value={shekel(r.vat)} color={vatOn ? GOLD : INK_MUTED} />
             <Stat label="עיגול לשקל" value={shekel(r.rounded)} />
           </View>
-          <Text style={s.hint}>
+          <CustomText style={s.hint}>
             ההנחה מחושבת קודם, והמע״מ נגבה על המחיר שאחרי ההנחה — כפי שנדרש בחשבונית. שיעור המע״מ בישראל
             הוא 18% מינואר 2025; 17% נשאר לבחירה לתמחורים ולחשבוניות ישנות.
-          </Text>
+          </CustomText>
         </>
       ) : (
-        <Text style={s.hint}>הזן מחיר בסיס כדי לחשב.</Text>
+        <CustomText style={s.hint}>הזן מחיר בסיס כדי לחשב.</CustomText>
       )}
     </View>
   );
@@ -192,14 +193,14 @@ export function ProfitMargin() {
       </View>
 
       {!r.ready ? (
-        <Text style={s.hint}>הזן מחיר עלות ומחיר מכירה כדי לחשב את מתח הרווח.</Text>
+        <CustomText style={s.hint}>הזן מחיר עלות ומחיר מכירה כדי לחשב את מתח הרווח.</CustomText>
       ) : (
         <>
           <View style={[m.verdict, { backgroundColor: tone + "12" }]}>
-            <Text testID="margin-result" style={[m.verdictValue, { color: tone }]}>{r.margin}%</Text>
-            <Text style={m.verdictLabel}>
+            <CustomText testID="margin-result" style={[m.verdictValue, { color: tone }]}>{r.margin}%</CustomText>
+            <CustomText style={m.verdictLabel}>
               {r.loss ? "מכירה בהפסד" : "מתח רווח גולמי מהמחיר"}
-            </Text>
+            </CustomText>
           </View>
 
           <View style={s.statRow}>
@@ -208,10 +209,10 @@ export function ProfitMargin() {
             <Stat label="מכפיל" value={r.multiplier === null ? "—" : `×${r.multiplier}`} />
           </View>
 
-          <Text style={s.hint}>
+          <CustomText style={s.hint}>
             מתח הרווח מחושב מתוך מחיר המכירה, ולא מתוך העלות. תוספת של 100% על העלות היא מתח רווח של
             50% בלבד — הבלבול בין השניים הוא הסיבה הנפוצה לתמחור נמוך מהיעד.
-          </Text>
+          </CustomText>
         </>
       )}
     </View>
@@ -260,12 +261,12 @@ export function DiscountCalc() {
       <Chips options={[10, 15, 20, 25, 30, 50]} onPick={(v) => setPercent(String(v))} active={percent} />
 
       {!r.ready ? (
-        <Text style={s.hint}>הזן מחיר מקורי ואחוז הנחה.</Text>
+        <CustomText style={s.hint}>הזן מחיר מקורי ואחוז הנחה.</CustomText>
       ) : (
         <>
           <View style={[m.verdict, { backgroundColor: BLUE + "12" }]}>
-            <Text testID="disc-final" style={[m.verdictValue, { color: BLUE }]}>{shekel(r.final)}</Text>
-            <Text style={m.verdictLabel}>מחיר לתשלום</Text>
+            <CustomText testID="disc-final" style={[m.verdictValue, { color: BLUE }]}>{shekel(r.final)}</CustomText>
+            <CustomText style={m.verdictLabel}>מחיר לתשלום</CustomText>
           </View>
 
           <View style={s.statRow}>
@@ -276,10 +277,10 @@ export function DiscountCalc() {
 
           {r.clampedFrom !== null && (
             <View style={[s.banner, { backgroundColor: GOLD + "16" }]}>
-              <Text style={[s.bannerText, { color: "#8A6D00" }]}>ההנחה הוגבלה ל-{r.clamped}%</Text>
-              <Text style={[s.bannerSub, { color: "#8A6D00" }]}>
+              <CustomText style={[s.bannerText, { color: "#8A6D00" }]}>ההנחה הוגבלה ל-{r.clamped}%</CustomText>
+              <CustomText style={[s.bannerSub, { color: "#8A6D00" }]}>
                 הוזן {r.clampedFrom}% — הנחה מעל 100% הייתה מייצרת מחיר שלילי.
-              </Text>
+              </CustomText>
             </View>
           )}
         </>
@@ -378,26 +379,26 @@ export function MarkupVsMargin() {
       </View>
 
       {!r.ready ? (
-        <Text style={s.hint}>הזן מחיר עלות ואת הערך השני.</Text>
+        <CustomText style={s.hint}>הזן מחיר עלות ואת הערך השני.</CustomText>
       ) : r.impossible ? (
         <View style={[s.banner, { backgroundColor: RED + "14" }]}>
-          <Text style={[s.bannerText, { color: RED }]}>מתח רווח של 100% ומעלה אינו אפשרי</Text>
-          <Text style={[s.bannerSub, { color: RED }]}>
+          <CustomText style={[s.bannerText, { color: RED }]}>מתח רווח של 100% ומעלה אינו אפשרי</CustomText>
+          <CustomText style={[s.bannerSub, { color: RED }]}>
             מתח רווח נמדד מתוך מחיר המכירה, ולכן הוא תמיד קטן מ-100% כל עוד יש עלות כלשהי.
-          </Text>
+          </CustomText>
         </View>
       ) : (
         <>
           <View style={mm.pair}>
             <View style={[mm.half, { backgroundColor: GOLD + "14" }]}>
-              <Text testID="mm-out-markup" style={[mm.halfValue, { color: "#0E7490" }]}>{r.markup}%</Text>
-              <Text style={mm.halfLabel}>מארק-אפ</Text>
-              <Text style={mm.halfHint}>תוספת על העלות</Text>
+              <CustomText testID="mm-out-markup" style={[mm.halfValue, { color: "#0E7490" }]}>{r.markup}%</CustomText>
+              <CustomText style={mm.halfLabel}>מארק-אפ</CustomText>
+              <CustomText style={mm.halfHint}>תוספת על העלות</CustomText>
             </View>
             <View style={[mm.half, { backgroundColor: BLUE + "12" }]}>
-              <Text testID="mm-out-margin" style={[mm.halfValue, { color: BLUE }]}>{r.margin}%</Text>
-              <Text style={mm.halfLabel}>מתח רווח</Text>
-              <Text style={mm.halfHint}>חלק מהמחיר</Text>
+              <CustomText testID="mm-out-margin" style={[mm.halfValue, { color: BLUE }]}>{r.margin}%</CustomText>
+              <CustomText style={mm.halfLabel}>מתח רווח</CustomText>
+              <CustomText style={mm.halfHint}>חלק מהמחיר</CustomText>
             </View>
           </View>
 
@@ -407,10 +408,10 @@ export function MarkupVsMargin() {
             <Stat label="רווח" value={shekel(r.profit)} color={GREEN} />
           </View>
 
-          <Text style={s.hint}>
+          <CustomText style={s.hint}>
             שני המספרים מתארים את אותו רווח משתי זוויות. הקשר ביניהם הוא מתח = מארק-אפ ÷ (1 + מארק-אפ):
             תוספת של 100% על העלות היא מתח רווח של 50%, ותוספת של 50% היא מתח של 33.3%.
-          </Text>
+          </CustomText>
         </>
       )}
     </View>
@@ -455,17 +456,17 @@ export function VatExtract() {
       <Chips options={[17, 18]} onPick={(v) => setRate(String(v))} active={rate} />
 
       {!r.ready ? (
-        <Text style={s.hint}>הזן מחיר סופי כולל מע״מ.</Text>
+        <CustomText style={s.hint}>הזן מחיר סופי כולל מע״מ.</CustomText>
       ) : (
         <>
           <View style={mm.pair}>
             <View style={[mm.half, { backgroundColor: BLUE + "12" }]}>
-              <Text testID="vx-net" style={[mm.halfValue, { color: BLUE }]}>{shekel(r.net)}</Text>
-              <Text style={mm.halfLabel}>לפני מע״מ</Text>
+              <CustomText testID="vx-net" style={[mm.halfValue, { color: BLUE }]}>{shekel(r.net)}</CustomText>
+              <CustomText style={mm.halfLabel}>לפני מע״מ</CustomText>
             </View>
             <View style={[mm.half, { backgroundColor: GOLD + "14" }]}>
-              <Text testID="vx-vat" style={[mm.halfValue, { color: "#0E7490" }]}>{shekel(r.vat)}</Text>
-              <Text style={mm.halfLabel}>המע״מ שבתוכו</Text>
+              <CustomText testID="vx-vat" style={[mm.halfValue, { color: "#0E7490" }]}>{shekel(r.vat)}</CustomText>
+              <CustomText style={mm.halfLabel}>המע״מ שבתוכו</CustomText>
             </View>
           </View>
 
@@ -474,10 +475,10 @@ export function VatExtract() {
             <Stat label="החישוב השגוי הנפוץ" value={shekel(r.wrong)} color={RED} />
           </View>
 
-          <Text style={s.hint}>
+          <CustomText style={s.hint}>
             להוריד {rate}% מהמחיר הסופי היה נותן {shekel(r.wrong)} — יותר מדי. המע״מ מחושב על המחיר לפני
             מע״מ, ולכן חילוץ נכון הוא חלוקה ב-{(1 + (parseFloat(rate) || 0) / 100).toFixed(2)}.
-          </Text>
+          </CustomText>
         </>
       )}
     </View>
@@ -550,23 +551,23 @@ export function DiscountStacking() {
       </View>
 
       {!r.ready ? (
-        <Text style={s.hint}>הזן מחיר מקורי ואת אחוזי ההנחה שמצטברים.</Text>
+        <CustomText style={s.hint}>הזן מחיר מקורי ואת אחוזי ההנחה שמצטברים.</CustomText>
       ) : r.none ? (
-        <Text style={s.hint}>הזן לפחות אחוז הנחה אחד.</Text>
+        <CustomText style={s.hint}>הזן לפחות אחוז הנחה אחד.</CustomText>
       ) : (
         <>
           <View style={[st.verdict, { backgroundColor: BLUE + "12" }]}>
-            <Text testID="stack-final" style={[st.verdictValue, { color: BLUE }]}>{shekel(r.final)}</Text>
-            <Text style={st.verdictLabel}>מחיר סופי · הנחה אפקטיבית {r.effective}%</Text>
+            <CustomText testID="stack-final" style={[st.verdictValue, { color: BLUE }]}>{shekel(r.final)}</CustomText>
+            <CustomText style={st.verdictLabel}>מחיר סופי · הנחה אפקטיבית {r.effective}%</CustomText>
           </View>
 
-          <Text style={s.sectionLabel}>שרשרת ההנחות</Text>
+          <CustomText style={s.sectionLabel}>שרשרת ההנחות</CustomText>
           {r.chain.map((step, i) => (
             <View key={i} style={s.routineRow}>
-              <Text style={s.routineTime}>{shekel(step.after)}</Text>
-              <Text style={[s.routineLabel, { flex: 1 }]}>
+              <CustomText style={s.routineTime}>{shekel(step.after)}</CustomText>
+              <CustomText style={[s.routineLabel, { flex: 1 }]}>
                 הנחה {i + 1} · {step.pct}% ({shekel(step.off)})
-              </Text>
+              </CustomText>
             </View>
           ))}
 
@@ -576,13 +577,13 @@ export function DiscountStacking() {
           </View>
 
           <View style={[s.banner, { backgroundColor: GOLD + "16" }]}>
-            <Text style={[s.bannerText, { color: "#8A6D00" }]}>
+            <CustomText style={[s.bannerText, { color: "#8A6D00" }]}>
               לא {r.naiveTotal}% — אלא {r.effective}%
-            </Text>
-            <Text style={[s.bannerSub, { color: "#8A6D00" }]}>
+            </CustomText>
+            <CustomText style={[s.bannerSub, { color: "#8A6D00" }]}>
               חיבור פשוט של האחוזים היה נותן {shekel(r.naivePrice)}, נמוך ב-{shekel(Math.abs(r.gap))} מהמחיר
               האמיתי. ההנחה השנייה נלקחת ממחיר שכבר הוזל.
-            </Text>
+            </CustomText>
           </View>
         </>
       )}

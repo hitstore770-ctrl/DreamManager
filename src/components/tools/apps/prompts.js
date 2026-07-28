@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import * as Clipboard from "expo-clipboard";
-import { Text, TextInput, TouchableOpacity, View } from "react-native";
+import { TextInput, TouchableOpacity, View } from "react-native";
 
 import { hapticSuccess } from "../../../utils/haptics";
 import { Segment, Chips, BtnLabel, INK_MUTED, GREEN, s } from "../kit";
+import CustomText from "../../../components/CustomText";
 
 // Prompt-writing tools.
 
@@ -81,7 +82,7 @@ export function PromptBuilder() {
       />
 
       <View>
-        <Text style={s.fieldLabel}>נושא / תחום המומחיות</Text>
+        <CustomText style={s.fieldLabel}>נושא / תחום המומחיות</CustomText>
         <TextInput
           style={s.textField}
           value={topic}
@@ -94,7 +95,7 @@ export function PromptBuilder() {
       <Chips options={PROMPT_TOPICS} onPick={setTopic} active={topic} />
 
       <View>
-        <Text style={s.fieldLabel}>פורמט התוצר</Text>
+        <CustomText style={s.fieldLabel}>פורמט התוצר</CustomText>
         <TextInput
           style={s.textField}
           value={format}
@@ -106,7 +107,7 @@ export function PromptBuilder() {
       </View>
       <Chips options={PROMPT_FORMATS} onPick={setFormat} active={format} />
 
-      <Text style={s.fieldLabel}>סגנון</Text>
+      <CustomText style={s.fieldLabel}>סגנון</CustomText>
       <Segment
         options={PROMPT_TONES.map((t) => ({ key: t.key, label: t.label }))}
         value={toneKey}
@@ -115,7 +116,7 @@ export function PromptBuilder() {
 
       <View style={s.row}>
         <View style={{ flex: 1 }}>
-          <Text style={s.fieldLabel}>קהל יעד (רשות)</Text>
+          <CustomText style={s.fieldLabel}>קהל יעד (רשות)</CustomText>
           <TextInput
             style={s.textField}
             value={audience}
@@ -128,7 +129,7 @@ export function PromptBuilder() {
       </View>
 
       <View>
-        <Text style={s.fieldLabel}>הקשר נוסף (רשות)</Text>
+        <CustomText style={s.fieldLabel}>הקשר נוסף (רשות)</CustomText>
         <TextInput
           style={[s.textField, { minHeight: 74, textAlignVertical: "top", paddingTop: 12 }]}
           value={details}
@@ -140,9 +141,9 @@ export function PromptBuilder() {
         />
       </View>
 
-      <Text style={s.fieldLabel}>הפרומפט המוכן</Text>
+      <CustomText style={s.fieldLabel}>הפרומפט המוכן</CustomText>
       <View style={s.promptBox}>
-        <Text style={[s.promptText, lang === "en" && { textAlign: "left" }]}>{prompt}</Text>
+        <CustomText style={[s.promptText, lang === "en" && { textAlign: "left" }]}>{prompt}</CustomText>
       </View>
 
       <TouchableOpacity

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { I18nManager, ScrollView, StyleSheet, Text, View } from "react-native";
+import { I18nManager, ScrollView, StyleSheet, View } from "react-native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
@@ -23,6 +23,7 @@ import { hapticLight, hapticSuccess, hapticWarning } from "../../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
 import { shekel } from "../../utils/posStore";
 import { BEVEL, CARD_SHADOW, GRAD, TYPE, UI, glow } from "../../utils/ui";
+import CustomText from "../../components/CustomText";
 
 // קופת חיסכון — a glass jar you drop struck coins into.
 //
@@ -164,8 +165,8 @@ export default function PiggyBankScreen() {
 
           <View style={s.readout} pointerEvents="none">
             <View style={s.readoutChip}>
-              <Text testID="piggy-balance" style={s.balance}>{shekel(piggy)}</Text>
-              <Text style={s.balanceLabel}>בקופה</Text>
+              <CustomText testID="piggy-balance" style={s.balance}>{shekel(piggy)}</CustomText>
+              <CustomText style={s.balanceLabel}>בקופה</CustomText>
             </View>
           </View>
         </View>
@@ -173,11 +174,11 @@ export default function PiggyBankScreen() {
 
       {!!flash && (
         <Animated.View entering={FadeIn.duration(200)} style={s.flash}>
-          <Text style={s.flashText}>{flash}</Text>
+          <CustomText style={s.flashText}>{flash}</CustomText>
         </Animated.View>
       )}
 
-      <Text style={s.sectionHead}>מטבעות</Text>
+      <CustomText style={s.sectionHead}>מטבעות</CustomText>
 
       <View style={s.grid}>
         {COINS.map((c, i) => (
@@ -186,7 +187,7 @@ export default function PiggyBankScreen() {
               <GradCard colors={GRAD.surface} radius={UI.radiusSm} style={s.coinCard}>
                 <View style={s.coinInner}>
                   <Coin agorot={c.agorot} size={c.size} />
-                  <Text style={s.coinLabel}>{c.label}</Text>
+                  <CustomText style={s.coinLabel}>{c.label}</CustomText>
                 </View>
               </GradCard>
             </Bounce>
@@ -202,14 +203,14 @@ export default function PiggyBankScreen() {
           style={s.transferBtn}
         >
           <Icon name="arrow-left" size={18} color="#FFFFFF" />
-          <Text style={s.transferText}>העבר לארנק</Text>
+          <CustomText style={s.transferText}>העבר לארנק</CustomText>
         </LinearGradient>
       </Bounce>
 
-      <Text style={s.hint}>
+      <CustomText style={s.hint}>
         הסכומים נספרים באגורות ומחולקים ב-100 רק בתצוגה, כך שקופה שמתמלאת במטבעות של 10 אגורות לא
         צוברת שגיאות עיגול. המטבע נזקף ברגע הנחיתה.
-      </Text>
+      </CustomText>
     </ScrollView>
   );
 }

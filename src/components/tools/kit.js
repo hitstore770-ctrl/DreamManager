@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as Clipboard from "expo-clipboard";
-import { Linking, Platform, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Linking, Platform, Share, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 
 import Icon from "../Icon";
 import Slider from "./Slider";
@@ -10,6 +10,7 @@ import { gregorianToHebrew, hebrewWeekday } from "../../utils/hebrewDate";
 import { shekel } from "../../utils/posStore";
 import { computeZmanim, fmtTime, JERUSALEM } from "../../utils/zmanim";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
+import CustomText from "../../components/CustomText";
 
 // Shared kit for the tool mini-apps: the input/stat/segment primitives and
 // the one StyleSheet they all draw from. Each tool lives in its own file
@@ -36,9 +37,9 @@ export const NO_OUTLINE = Platform.OS === "web" ? { outlineStyle: "none", outlin
 export function Field({ label, value, onChange, placeholder, suffix, numeric = true, testID }) {
   return (
     <View style={{ flex: 1 }}>
-      <Text style={s.fieldLabel}>{label}</Text>
+      <CustomText style={s.fieldLabel}>{label}</CustomText>
       <View style={s.fieldRow}>
-        {!!suffix && <Text style={s.fieldSuffix}>{suffix}</Text>}
+        {!!suffix && <CustomText style={s.fieldSuffix}>{suffix}</CustomText>}
         <TextInput
           testID={testID}
           style={s.fieldInput}
@@ -57,8 +58,8 @@ export function Field({ label, value, onChange, placeholder, suffix, numeric = t
 export function Stat({ label, value, color = INK, big }) {
   return (
     <View style={s.stat}>
-      <Text style={[s.statValue, big && { fontSize: 25 }, { color }]}>{value}</Text>
-      <Text style={s.statLabel}>{label}</Text>
+      <CustomText style={[s.statValue, big && { fontSize: 25 }, { color }]}>{value}</CustomText>
+      <CustomText style={s.statLabel}>{label}</CustomText>
     </View>
   );
 }
@@ -73,7 +74,7 @@ export function Segment({ options, value, onChange }) {
           onPress={() => { hapticLight(); onChange(o.key); }}
           activeOpacity={0.75}
         >
-          <Text style={[s.segmentText, value === o.key && { color: WHITE }]}>{o.label}</Text>
+          <CustomText style={[s.segmentText, value === o.key && { color: WHITE }]}>{o.label}</CustomText>
         </TouchableOpacity>
       ))}
     </View>
@@ -93,7 +94,7 @@ export function Chips({ options, onPick, active }) {
             onPress={() => { hapticLight(); onPick(o); }}
             activeOpacity={0.75}
           >
-            <Text style={[s.chipText, on && { color: WHITE }]}>{o}</Text>
+            <CustomText style={[s.chipText, on && { color: WHITE }]}>{o}</CustomText>
           </TouchableOpacity>
         );
       })}
@@ -111,17 +112,17 @@ export function Stepper({ label, value, onChange, min = 1, max = 30, suffix }) {
   };
   return (
     <View>
-      <Text style={s.fieldLabel}>{label}</Text>
+      <CustomText style={s.fieldLabel}>{label}</CustomText>
       <View style={s.stepperRow}>
         <TouchableOpacity testID="stepper-minus" style={s.stepBtn} onPress={() => bump(-1)} activeOpacity={0.7}>
-          <Text style={s.stepBtnText}>−</Text>
+          <CustomText style={s.stepBtnText}>−</CustomText>
         </TouchableOpacity>
-        <Text style={s.stepValue}>
+        <CustomText style={s.stepValue}>
           {value}
           {suffix ? ` ${suffix}` : ""}
-        </Text>
+        </CustomText>
         <TouchableOpacity testID="stepper-plus" style={s.stepBtn} onPress={() => bump(1)} activeOpacity={0.7}>
-          <Text style={s.stepBtnText}>+</Text>
+          <CustomText style={s.stepBtnText}>+</CustomText>
         </TouchableOpacity>
       </View>
     </View>
@@ -146,7 +147,7 @@ export function BtnLabel({ icon, text, style, color = WHITE }) {
   return (
     <View style={s.btnLabel}>
       <Icon name={icon} size={16} color={color} />
-      <Text style={style}>{text}</Text>
+      <CustomText style={style}>{text}</CustomText>
     </View>
   );
 }

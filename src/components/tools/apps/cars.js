@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { NOTES_FONTS as FONTS } from "../../../utils/notesTheme";
 import { shekel } from "../../../utils/posStore";
@@ -19,6 +19,7 @@ import {
   s,
   useCalcHaptic,
 } from "../kit";
+import CustomText from "../../../components/CustomText";
 
 // Vehicle tools: running a car and driving a machine round.
 
@@ -76,13 +77,13 @@ export function FuelTripCost() {
       <Chips options={[8, 10, 12, 15, 18]} onPick={(v) => setKmPerLitre(String(v))} active={kmPerLitre} />
 
       {!r.ready ? (
-        <Text style={s.hint}>הזן מרחק, צריכת דלק ומחיר לליטר.</Text>
+        <CustomText style={s.hint}>הזן מרחק, צריכת דלק ומחיר לליטר.</CustomText>
       ) : r.badEfficiency ? (
         <View style={[s.banner, { backgroundColor: RED + "14" }]}>
-          <Text style={[s.bannerText, { color: RED }]}>צריכת דלק חייבת להיות גדולה מאפס</Text>
-          <Text style={[s.bannerSub, { color: RED }]}>
+          <CustomText style={[s.bannerText, { color: RED }]}>צריכת דלק חייבת להיות גדולה מאפס</CustomText>
+          <CustomText style={[s.bannerSub, { color: RED }]}>
             הערך הוא כמה קילומטרים הרכב עושה על ליטר — בדרך כלל בין 8 ל-18.
-          </Text>
+          </CustomText>
         </View>
       ) : (
         <>
@@ -95,10 +96,10 @@ export function FuelTripCost() {
             <Stat label="עלות לקילומטר" value={shekel(r.perKm)} color={GOLD} />
             <Stat label="עלות ל-100 ק״מ" value={shekel(r.per100)} />
           </View>
-          <Text style={s.hint}>
+          <CustomText style={s.hint}>
             החישוב מכסה דלק בלבד. העלות האמיתית לקילומטר כוללת גם שחיקה, צמיגים, ביטוח וירידת ערך —
             בדרך כלל פי שניים עד שלושה מהמספר הזה.
-          </Text>
+          </CustomText>
         </>
       )}
     </View>
@@ -152,12 +153,12 @@ export function CarDepreciation() {
       <Chips options={[10, 12, 15, 18, 20]} onPick={(v) => setRate(String(v))} active={rate} />
 
       {!r.ready ? (
-        <Text style={s.hint}>הזן מחיר קנייה, כמה שנים הרכב בבעלותך ואחוז ירידת ערך שנתי.</Text>
+        <CustomText style={s.hint}>הזן מחיר קנייה, כמה שנים הרכב בבעלותך ואחוז ירידת ערך שנתי.</CustomText>
       ) : (
         <>
           <View style={[v.verdict, { backgroundColor: BLUE + "12" }]}>
-            <Text testID="dep-value" style={[v.verdictValue, { color: BLUE }]}>{shekel(r.value)}</Text>
-            <Text style={v.verdictLabel}>שווי מוערך היום</Text>
+            <CustomText testID="dep-value" style={[v.verdictValue, { color: BLUE }]}>{shekel(r.value)}</CustomText>
+            <CustomText style={v.verdictLabel}>שווי מוערך היום</CustomText>
           </View>
 
           <View style={s.statRow}>
@@ -166,18 +167,18 @@ export function CarDepreciation() {
             <Stat label="ממוצע לשנה" value={shekel(r.perYearAvg)} />
           </View>
 
-          <Text style={s.sectionLabel}>שווי לפי שנה</Text>
+          <CustomText style={s.sectionLabel}>שווי לפי שנה</CustomText>
           {r.perYear.map((row) => (
             <View key={row.year} style={s.routineRow}>
-              <Text style={s.routineTime}>{shekel(row.value)}</Text>
-              <Text style={s.routineLabel}>שנה {row.year}</Text>
+              <CustomText style={s.routineTime}>{shekel(row.value)}</CustomText>
+              <CustomText style={s.routineLabel}>שנה {row.year}</CustomText>
             </View>
           ))}
 
-          <Text style={s.hint}>
+          <CustomText style={s.hint}>
             הירידה מחושבת כאחוז מהשווי שנותר בכל שנה, ולכן היא תלולה בהתחלה ומתמתנת. בישראל השנה
             הראשונה בדרך כלל חדה יותר מהשאר, במיוחד ברכב חדש מהיבואן.
-          </Text>
+          </CustomText>
         </>
       )}
     </View>
@@ -242,12 +243,12 @@ export function DeliveryRoute() {
       <Field testID="route-start" label="שעת יציאה" value={startHour} onChange={setStartHour} placeholder="8" suffix=":00" />
 
       {!r.ready ? (
-        <Text style={s.hint}>הזן מספר עצירות, זמן ממוצע בכל עצירה וזמן נסיעה ביניהן.</Text>
+        <CustomText style={s.hint}>הזן מספר עצירות, זמן ממוצע בכל עצירה וזמן נסיעה ביניהן.</CustomText>
       ) : (
         <>
           <View style={[v.verdict, { backgroundColor: BLUE + "12" }]}>
-            <Text testID="route-total" style={[v.verdictValue, { color: BLUE }]}>{hhmm(r.total)}</Text>
-            <Text style={v.verdictLabel}>סיום משוער בשעה {r.finish}</Text>
+            <CustomText testID="route-total" style={[v.verdictValue, { color: BLUE }]}>{hhmm(r.total)}</CustomText>
+            <CustomText style={v.verdictLabel}>סיום משוער בשעה {r.finish}</CustomText>
           </View>
 
           <View style={s.statRow}>
@@ -262,17 +263,17 @@ export function DeliveryRoute() {
 
           {r.overDay && (
             <View style={[s.banner, { backgroundColor: GOLD + "16" }]}>
-              <Text style={[s.bannerText, { color: "#8A6D00" }]}>הסבב חוצה את חצות</Text>
-              <Text style={[s.bannerSub, { color: "#8A6D00" }]}>
+              <CustomText style={[s.bannerText, { color: "#8A6D00" }]}>הסבב חוצה את חצות</CustomText>
+              <CustomText style={[s.bannerSub, { color: "#8A6D00" }]}>
                 בקצב הזה הסבב לא נסגר ביום אחד. שווה לפצל אותו לשניים או לקצר את הזמן בכל עצירה.
-              </Text>
+              </CustomText>
             </View>
           )}
 
-          <Text style={s.hint}>
+          <CustomText style={s.hint}>
             {r.legs} קטעי נסיעה ל-{stops} עצירות — בין n עצירות יש n פחות אחת נסיעות. החישוב לא כולל
             פקקים, חניה או הפסקות.
-          </Text>
+          </CustomText>
         </>
       )}
     </View>

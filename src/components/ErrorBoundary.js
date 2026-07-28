@@ -1,6 +1,7 @@
 import { Component } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import Icon from "./Icon";
+import CustomText from "../components/CustomText";
 
 // Catches any render/runtime error in the tree and shows a readable message
 // instead of a blank white screen. Without this, a single thrown error unmounts
@@ -27,16 +28,16 @@ export default class ErrorBoundary extends Component {
           <View style={{ alignItems: "center", marginBottom: 12 }}>
             <Icon name="alert-triangle" size={38} color="#EF4444" />
           </View>
-          <Text style={{ fontSize: 18, fontWeight: "700", textAlign: "center", color: "#111827", marginBottom: 8 }}>
+          <CustomText style={{ fontSize: 18, fontWeight: "700", textAlign: "center", color: "#111827", marginBottom: 8 }}>
             משהו השתבש
-          </Text>
-          <Text style={{ fontSize: 14, textAlign: "center", color: "#4B5563", marginBottom: 16 }}>
+          </CustomText>
+          <CustomText style={{ fontSize: 14, textAlign: "center", color: "#4B5563", marginBottom: 16 }}>
             אירעה שגיאה בטעינת האפליקציה. נסה לרענן.
-          </Text>
+          </CustomText>
           <ScrollView style={{ maxHeight: 220, backgroundColor: "#F9FAFC", borderRadius: 12, padding: 12 }}>
-            <Text style={{ fontSize: 12, color: "#EF4444" }}>
+            <CustomText style={{ fontSize: 12, color: "#EF4444" }}>
               {String(this.state.error?.message || this.state.error)}
-            </Text>
+            </CustomText>
           </ScrollView>
         </View>
       );

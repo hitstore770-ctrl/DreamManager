@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Icon from "./Icon";
 import { useSettings } from "../context/SettingsContext";
 import { FONTS, RADIUS, SHADOW_SM } from "../utils/theme";
+import CustomText from "../components/CustomText";
 
 // A numeric PIN gate. Two modes:
 //   mode="unlock" → compares against the saved PIN, calls onSuccess() when it
@@ -77,7 +78,7 @@ export default function PinLock({ mode = "unlock", expected, onSuccess, onSet, o
     <View style={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top + 40, paddingBottom: insets.bottom + 24 }]}>
       <View style={styles.top}>
         <Icon name="lock" size={32} color={theme.accent} style={styles.lockIcon} />
-        <Text style={[styles.title, { color: theme.textPrimary, fontSize: 20 * fontScale }]}>{title}</Text>
+        <CustomText style={[styles.title, { color: theme.textPrimary, fontSize: 20 * fontScale }]}>{title}</CustomText>
 
         <View style={styles.dots}>
           {[0, 1, 2, 3].map((i) => (
@@ -110,9 +111,9 @@ export default function PinLock({ mode = "unlock", expected, onSuccess, onSet, o
               activeOpacity={0.7}
               onPress={() => (isBack ? backspace() : press(k))}
             >
-              <Text style={[styles.keyText, { color: theme.textPrimary, fontSize: (isBack ? 22 : 26) * fontScale }]}>
+              <CustomText style={[styles.keyText, { color: theme.textPrimary, fontSize: (isBack ? 22 : 26) * fontScale }]}>
                 {k}
-              </Text>
+              </CustomText>
             </TouchableOpacity>
           );
         })}
@@ -120,7 +121,7 @@ export default function PinLock({ mode = "unlock", expected, onSuccess, onSet, o
 
       {onCancel && (
         <TouchableOpacity onPress={onCancel} style={styles.cancel} activeOpacity={0.7}>
-          <Text style={[styles.cancelText, { color: theme.textSecondary }]}>ביטול</Text>
+          <CustomText style={[styles.cancelText, { color: theme.textSecondary }]}>ביטול</CustomText>
         </TouchableOpacity>
       )}
     </View>

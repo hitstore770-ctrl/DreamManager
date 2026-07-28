@@ -1,19 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  I18nManager,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  Share,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
-} from "react-native";
+import { I18nManager, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, Share, StyleSheet, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown, FadeInUp, LinearTransition } from "react-native-reanimated";
 
@@ -43,6 +29,7 @@ import { NOTES_FONTS as FONTS, NOTES_THEME } from "../utils/notesTheme";
 import { shekel } from "../utils/posStore";
 import { STORAGE_KEYS } from "../utils/storageKeys";
 import { usePersistentState } from "../utils/usePersistentState";
+import CustomText from "../components/CustomText";
 
 // חלומות — visual vision board wired to the business ledger: dreams can be
 // funded from POS revenue, locked behind a PIN, exported to Notes, and
@@ -77,7 +64,7 @@ function SectionTitle({ icon, text }) {
   return (
     <View style={s.sectionTitleRow}>
       <Icon name={icon} size={15} color={BLUE} />
-      <Text style={s.sectionTitle}>{text}</Text>
+      <CustomText style={s.sectionTitle}>{text}</CustomText>
     </View>
   );
 }
@@ -364,9 +351,9 @@ export default function DreamsScreen({ navigation }) {
         <View style={{ flex: 1 }}>
           <View style={s.titleRow}>
             <Icon name="star" size={20} color={GOLD} />
-            <Text style={s.title}>חלומות</Text>
+            <CustomText style={s.title}>חלומות</CustomText>
           </View>
-          {board.length > 0 && <Text style={s.headerSub}>{board.length} חלומות על הלוח</Text>}
+          {board.length > 0 && <CustomText style={s.headerSub}>{board.length} חלומות על הלוח</CustomText>}
         </View>
         <TouchableOpacity
           testID="open-savings"
@@ -375,11 +362,11 @@ export default function DreamsScreen({ navigation }) {
           activeOpacity={0.75}
         >
           <Icon name="cash-outline" size={16} color={BLUE} />
-          <Text style={s.savingsBtnText}>חיסכון</Text>
+          <CustomText style={s.savingsBtnText}>חיסכון</CustomText>
         </TouchableOpacity>
         {archived.length > 0 && (
           <TouchableOpacity style={s.archiveBtn} onPress={() => { hapticLight(); setArchiveOpen(true); }} activeOpacity={0.75}>
-            <><Icon name="award" size={15} color="#0E7490" /><Text style={s.archiveBtnText}>{archived.length}</Text></>
+            <><Icon name="award" size={15} color="#0E7490" /><CustomText style={s.archiveBtnText}>{archived.length}</CustomText></>
           </TouchableOpacity>
         )}
       </View>
@@ -387,8 +374,8 @@ export default function DreamsScreen({ navigation }) {
       {/* Business wallet strip */}
       {totalRevenue > 0 && (
         <View style={s.wallet}>
-          <Text style={s.walletValue}>{shekel(available)}</Text>
-          <View style={s.iconLabel}><Icon name="briefcase" size={14} color={INK_SOFT} /><Text style={s.walletLabel}>זמין להפקדה מהעסק</Text></View>
+          <CustomText style={s.walletValue}>{shekel(available)}</CustomText>
+          <View style={s.iconLabel}><Icon name="briefcase" size={14} color={INK_SOFT} /><CustomText style={s.walletLabel}>זמין להפקדה מהעסק</CustomText></View>
         </View>
       )}
 
@@ -405,10 +392,10 @@ export default function DreamsScreen({ navigation }) {
             <Icon name="moon" size={44} color={BLUE} />
           </View>
           </Pulse>
-          <Text style={s.emptyTitle}>מה החלום הבא שלך?</Text>
-          <Text style={s.emptyText}>
+          <CustomText style={s.emptyTitle}>מה החלום הבא שלך?</CustomText>
+          <CustomText style={s.emptyText}>
             הוסף חלום ראשון ללוח החזון — תמונה, יעד ואבני דרך שיקרבו אותך אליו.
-          </Text>
+          </CustomText>
         </Animated.View>
       ) : (
         <ScrollView
@@ -437,13 +424,13 @@ export default function DreamsScreen({ navigation }) {
         style={s.fab}
         onPress={() => { hapticLight(); setCreateOpen(true); }}
       >
-        <Text style={s.fabPlus}>＋</Text>
+        <CustomText style={s.fabPlus}>＋</CustomText>
       </Bounce>
       </Pulse>
 
       {toast && (
         <Animated.View entering={FadeInUp.duration(200)} style={[s.toast, { bottom: insets.bottom + 100 }]}>
-          <Text style={s.toastText}>{toast}</Text>
+          <CustomText style={s.toastText}>{toast}</CustomText>
         </Animated.View>
       )}
 
@@ -472,8 +459,8 @@ export default function DreamsScreen({ navigation }) {
                       )}
                       <Scrim />
                       <View style={s.sheetHeroText}>
-                        <Text style={s.sheetTitle} numberOfLines={2}>{open.title}</Text>
-                        <Text style={s.sheetPct}>{openPct}% הושלם</Text>
+                        <CustomText style={s.sheetTitle} numberOfLines={2}>{open.title}</CustomText>
+                        <CustomText style={s.sheetPct}>{openPct}% הושלם</CustomText>
                       </View>
                     </View>
 
@@ -481,29 +468,29 @@ export default function DreamsScreen({ navigation }) {
                     <View style={s.quickRow}>
                       <TouchableOpacity style={[s.quickBtn, s.quickBtnAi]} onPress={() => openCoPilot(open)} activeOpacity={0.75}>
                         <Icon name="message-circle" size={19} color={BLUE} />
-                        <Text style={[s.quickText, { color: BLUE }]}>קו-פיילוט</Text>
+                        <CustomText style={[s.quickText, { color: BLUE }]}>קו-פיילוט</CustomText>
                       </TouchableOpacity>
                       <TouchableOpacity style={s.quickBtn} onPress={shareVision} activeOpacity={0.75}>
                         <Icon name="share-2" size={19} color={INK_SOFT} />
-                        <Text style={s.quickText}>שתף</Text>
+                        <CustomText style={s.quickText}>שתף</CustomText>
                       </TouchableOpacity>
                       <TouchableOpacity style={s.quickBtn} onPress={sendToNotes} activeOpacity={0.75}>
                         <Icon name="edit-3" size={19} color={INK_SOFT} />
-                        <Text style={s.quickText}>לפתקים</Text>
+                        <CustomText style={s.quickText}>לפתקים</CustomText>
                       </TouchableOpacity>
                       <TouchableOpacity style={[s.quickBtn, open.paused && s.quickBtnOn]} onPress={togglePause} activeOpacity={0.75}>
                         <Icon name={open.paused ? "play" : "snow-outline"} size={19} color={open.paused ? GOLD : INK_SOFT} />
-                        <Text style={[s.quickText, open.paused && { color: GOLD }]}>
+                        <CustomText style={[s.quickText, open.paused && { color: GOLD }]}>
                           {open.paused ? "הפשר" : "הקפא"}
-                        </Text>
+                        </CustomText>
                       </TouchableOpacity>
                       <TouchableOpacity style={[s.quickBtn, open.locked && s.quickBtnOn]} onPress={toggleVault} activeOpacity={0.75}>
                         <Icon name={open.locked ? "lock" : "unlock"} size={19} color={open.locked ? GOLD : INK_SOFT} />
-                        <Text style={[s.quickText, open.locked && { color: GOLD }]}>כספת</Text>
+                        <CustomText style={[s.quickText, open.locked && { color: GOLD }]}>כספת</CustomText>
                       </TouchableOpacity>
                       <TouchableOpacity style={s.quickBtn} onPress={() => archiveDream(open)} activeOpacity={0.75}>
                         <Icon name="archive" size={19} color={INK_SOFT} />
-                        <Text style={s.quickText}>ארכיון</Text>
+                        <CustomText style={s.quickText}>ארכיון</CustomText>
                       </TouchableOpacity>
                     </View>
 
@@ -528,22 +515,22 @@ export default function DreamsScreen({ navigation }) {
                       {/* Financial target + funding */}
                       <View style={s.finCard}>
                         <View style={s.finRow}>
-                          <Text style={s.finTarget}>{shekel(open.target || 0)}</Text>
-                          <View style={s.iconLabel}><Icon name="target" size={14} color={INK_SOFT} /><Text style={s.finLabel}>יעד כספי</Text></View>
+                          <CustomText style={s.finTarget}>{shekel(open.target || 0)}</CustomText>
+                          <View style={s.iconLabel}><Icon name="target" size={14} color={INK_SOFT} /><CustomText style={s.finLabel}>יעד כספי</CustomText></View>
                         </View>
                         <View style={s.finRow}>
-                          <Text style={s.finSaved}>{shekel(open.saved || 0)}</Text>
-                          <View style={s.iconLabel}><Icon name="cash-outline" size={14} color={INK_SOFT} /><Text style={s.finLabel}>נחסך עד כה</Text></View>
+                          <CustomText style={s.finSaved}>{shekel(open.saved || 0)}</CustomText>
+                          <View style={s.iconLabel}><Icon name="cash-outline" size={14} color={INK_SOFT} /><CustomText style={s.finLabel}>נחסך עד כה</CustomText></View>
                         </View>
                         <ProgressBar pct={fundPct} height={8} track="#EEF1F6" style={{ marginTop: 10 }} />
 
                         {/* Fund from business */}
                         <View style={s.fundBox}>
-                          <View style={s.iconLabel}><Icon name="briefcase" size={15} color={INK} /><Text style={s.fundTitle}>הפקד מרווחי העסק</Text></View>
-                          <Text style={s.fundAvail}>
+                          <View style={s.iconLabel}><Icon name="briefcase" size={15} color={INK} /><CustomText style={s.fundTitle}>הפקד מרווחי העסק</CustomText></View>
+                          <CustomText style={s.fundAvail}>
                             זמין: {shekel(available)}
                             {open.fundedFromBusiness > 0 ? ` · הופקד לחלום זה: ${shekel(open.fundedFromBusiness)}` : ""}
-                          </Text>
+                          </CustomText>
                           <View style={s.fundRow}>
                             <TextInput
                               style={s.fundInput}
@@ -560,7 +547,7 @@ export default function DreamsScreen({ navigation }) {
                               onPress={() => fund(parseFloat(fundInput) || 0)}
                               activeOpacity={0.8}
                             >
-                              <Text style={s.fundBtnText}>הפקד</Text>
+                              <CustomText style={s.fundBtnText}>הפקד</CustomText>
                             </TouchableOpacity>
                           </View>
                           <View style={s.fundChips}>
@@ -571,7 +558,7 @@ export default function DreamsScreen({ navigation }) {
                                 onPress={() => fund(amt)}
                                 activeOpacity={0.7}
                               >
-                                <Text style={s.fundChipText}>+{amt}</Text>
+                                <CustomText style={s.fundChipText}>+{amt}</CustomText>
                               </TouchableOpacity>
                             ))}
                             <TouchableOpacity
@@ -579,7 +566,7 @@ export default function DreamsScreen({ navigation }) {
                               onPress={() => fund(available)}
                               activeOpacity={0.7}
                             >
-                              <Text style={[s.fundChipText, { color: "#0E7490" }]}>הכול</Text>
+                              <CustomText style={[s.fundChipText, { color: "#0E7490" }]}>הכול</CustomText>
                             </TouchableOpacity>
                           </View>
                         </View>
@@ -601,7 +588,7 @@ export default function DreamsScreen({ navigation }) {
                           />
                           {[50, 100, 500].map((amt) => (
                             <TouchableOpacity key={amt} style={s.finChip} onPress={() => addSavings(amt)} activeOpacity={0.7}>
-                              <Text style={s.finChipText}>+{amt}</Text>
+                              <CustomText style={s.finChipText}>+{amt}</CustomText>
                             </TouchableOpacity>
                           ))}
                         </View>
@@ -620,15 +607,15 @@ export default function DreamsScreen({ navigation }) {
                         textAlign="right"
                       />
                       <TouchableOpacity style={s.whySave} onPress={saveWhy} activeOpacity={0.7}>
-                        <Text style={s.whySaveText}>שמור את ה״למה״</Text>
+                        <CustomText style={s.whySaveText}>שמור את ה״למה״</CustomText>
                       </TouchableOpacity>
 
                       {/* Target date */}
                       <SectionTitle icon="calendar" text="תאריך יעד" />
                       {open.targetDate && (
-                        <Text style={s.dateCurrent}>
+                        <CustomText style={s.dateCurrent}>
                           {new Date(open.targetDate).toLocaleDateString("he-IL")} · {countdownLabel(daysUntil(open.targetDate))}
-                        </Text>
+                        </CustomText>
                       )}
                       <View style={s.dateRow}>
                         {[
@@ -638,12 +625,12 @@ export default function DreamsScreen({ navigation }) {
                           { label: "שנה", days: 365 },
                         ].map((opt) => (
                           <TouchableOpacity key={opt.days} style={s.dateChip} onPress={() => setTargetDate(opt.days)} activeOpacity={0.7}>
-                            <Text style={s.dateChipText}>{opt.label}</Text>
+                            <CustomText style={s.dateChipText}>{opt.label}</CustomText>
                           </TouchableOpacity>
                         ))}
                         {open.targetDate && (
                           <TouchableOpacity style={[s.dateChip, { backgroundColor: "#FDEBEB" }]} onPress={() => setTargetDate(null)} activeOpacity={0.7}>
-                            <Text style={[s.dateChipText, { color: RED }]}>נקה</Text>
+                            <CustomText style={[s.dateChipText, { color: RED }]}>נקה</CustomText>
                           </TouchableOpacity>
                         )}
                       </View>
@@ -651,16 +638,16 @@ export default function DreamsScreen({ navigation }) {
                       {/* Milestones */}
                       <SectionTitle icon="check-square" text="אבני דרך" />
                       {(open.milestones || []).length === 0 && (
-                        <Text style={s.hint}>עוד אין אבני דרך — הוסף את הצעד הראשון למטה.</Text>
+                        <CustomText style={s.hint}>עוד אין אבני דרך — הוסף את הצעד הראשון למטה.</CustomText>
                       )}
                       {(open.milestones || []).map((m) => (
                         <TouchableOpacity key={m.id} style={s.msRow} onPress={() => tickMilestone(open.id, m.id, m.done)} activeOpacity={0.7}>
                           <View style={[s.msBox, m.done && { backgroundColor: GOLD, borderColor: GOLD }]}>
                             {m.done && <Icon name="check" size={14} color={WHITE} />}
                           </View>
-                          <Text style={[s.msText, m.done && { color: INK_MUTED, textDecorationLine: "line-through" }]}>
+                          <CustomText style={[s.msText, m.done && { color: INK_MUTED, textDecorationLine: "line-through" }]}>
                             {m.title}
-                          </Text>
+                          </CustomText>
                         </TouchableOpacity>
                       ))}
 
@@ -676,7 +663,7 @@ export default function DreamsScreen({ navigation }) {
                           }}
                           activeOpacity={0.8}
                         >
-                          <Text style={s.msAddBtnText}>＋</Text>
+                          <CustomText style={s.msAddBtnText}>＋</CustomText>
                         </TouchableOpacity>
                         <TextInput
                           style={s.msInput}
@@ -691,7 +678,7 @@ export default function DreamsScreen({ navigation }) {
                       {/* Obstacle mapper — If/Then planning */}
                       <SectionTitle icon="shield" text="מכשולים ופתרונות" />
                       {(open.obstacles || []).length === 0 && (
-                        <Text style={s.hint}>מה עלול לעצור אותך? תכנן מראש את התגובה.</Text>
+                        <CustomText style={s.hint}>מה עלול לעצור אותך? תכנן מראש את התגובה.</CustomText>
                       )}
                       {(open.obstacles || []).map((o) => (
                         <Animated.View key={o.id} layout={FLUID} style={s.obsRow}>
@@ -703,14 +690,14 @@ export default function DreamsScreen({ navigation }) {
                             <Icon name="x" size={13} color={INK_MUTED} />
                           </TouchableOpacity>
                           <View style={{ flex: 1 }}>
-                            <Text style={s.obsIf}>
-                              <Text style={s.obsTag}>אם </Text>
+                            <CustomText style={s.obsIf}>
+                              <CustomText style={s.obsTag}>אם </CustomText>
                               {o.ifText}
-                            </Text>
-                            <Text style={s.obsThen}>
-                              <Text style={[s.obsTag, { color: "#10B981" }]}>אז </Text>
+                            </CustomText>
+                            <CustomText style={s.obsThen}>
+                              <CustomText style={[s.obsTag, { color: "#10B981" }]}>אז </CustomText>
                               {o.thenText}
-                            </Text>
+                            </CustomText>
                           </View>
                         </Animated.View>
                       ))}
@@ -736,7 +723,7 @@ export default function DreamsScreen({ navigation }) {
                           onPress={addObstacleRow}
                           activeOpacity={0.85}
                         >
-                          <Text style={s.obsAddBtnText}>＋ הוסף מכשול ופתרון</Text>
+                          <CustomText style={s.obsAddBtnText}>＋ הוסף מכשול ופתרון</CustomText>
                         </TouchableOpacity>
                       </Animated.View>
 
@@ -745,7 +732,7 @@ export default function DreamsScreen({ navigation }) {
                         onPress={() => { hapticLight(); removeDream(open.id); setOpenId(null); }}
                         activeOpacity={0.7}
                       >
-                        <View style={s.iconLabel}><Icon name="trash-2" size={15} color={RED} /><Text style={s.deleteBtnText}>הסר חלום מהלוח</Text></View>
+                        <View style={s.iconLabel}><Icon name="trash-2" size={15} color={RED} /><CustomText style={s.deleteBtnText}>הסר חלום מהלוח</CustomText></View>
                       </TouchableOpacity>
                     </ScrollView>
                   </>
@@ -763,7 +750,7 @@ export default function DreamsScreen({ navigation }) {
           <View style={s.centerBackdrop}>
             <TouchableWithoutFeedback onPress={() => {}}>
               <View style={s.createCard}>
-                <View style={s.iconLabel}><Icon name="sparkles-outline" size={17} color={BLUE} /><Text style={s.createTitle}>חלום חדש</Text></View>
+                <View style={s.iconLabel}><Icon name="sparkles-outline" size={17} color={BLUE} /><CustomText style={s.createTitle}>חלום חדש</CustomText></View>
                 <TextInput
                   style={s.createInput}
                   value={form.title}
@@ -781,7 +768,7 @@ export default function DreamsScreen({ navigation }) {
                   placeholderTextColor={INK_MUTED}
                   textAlign="center"
                 />
-                <Text style={s.createLabel}>רקע הכרטיס</Text>
+                <CustomText style={s.createLabel}>רקע הכרטיס</CustomText>
                 <View style={s.coverRow}>
                   {DREAM_COVERS.map((c) => (
                     <TouchableOpacity
@@ -796,10 +783,10 @@ export default function DreamsScreen({ navigation }) {
                 </View>
                 <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
                   <TouchableOpacity style={s.cancelBtn} onPress={() => setCreateOpen(false)} activeOpacity={0.7}>
-                    <Text style={s.cancelBtnText}>ביטול</Text>
+                    <CustomText style={s.cancelBtnText}>ביטול</CustomText>
                   </TouchableOpacity>
                   <TouchableOpacity style={[s.saveBtn, !form.title.trim() && { opacity: 0.35 }]} onPress={createDream} activeOpacity={0.85}>
-                    <Text style={s.saveBtnText}>הוסף ללוח</Text>
+                    <CustomText style={s.saveBtnText}>הוסף ללוח</CustomText>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -815,18 +802,18 @@ export default function DreamsScreen({ navigation }) {
             <TouchableWithoutFeedback onPress={() => {}}>
               <View style={[s.sheet, { paddingBottom: insets.bottom + 18 }]}>
                 <View style={s.grabber} />
-                <View style={s.iconLabel}><Icon name="award" size={17} color={GOLD} /><Text style={s.archiveTitle}>היכל ההישגים</Text></View>
+                <View style={s.iconLabel}><Icon name="award" size={17} color={GOLD} /><CustomText style={s.archiveTitle}>היכל ההישגים</CustomText></View>
                 <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
                   {archived.map((d) => (
                     <View key={d.id} style={s.archRow}>
                       <TouchableOpacity style={s.archRestore} onPress={() => restoreDream(d)} activeOpacity={0.7}>
-                        <Text style={s.archRestoreText}>החזר ללוח</Text>
+                        <CustomText style={s.archRestoreText}>החזר ללוח</CustomText>
                       </TouchableOpacity>
                       <View style={{ flex: 1, alignItems: "flex-end" }}>
-                        <Text style={s.archName} numberOfLines={1}>{d.title}</Text>
-                        <Text style={s.archMeta}>
+                        <CustomText style={s.archName} numberOfLines={1}>{d.title}</CustomText>
+                        <CustomText style={s.archMeta}>
                           {(d.milestones || []).length ? `${(d.milestones || []).length} אבני דרך` : shekel(d.saved || 0)} · הושלם
-                        </Text>
+                        </CustomText>
                       </View>
                       <Icon name="award" size={21} color={GOLD} />
                     </View>
@@ -897,30 +884,30 @@ function DreamCard({ dream, height, index, onPress }) {
 
         {paused && !locked && (
           <View style={s.pausedBadge}>
-            <><Icon name="snow-outline" size={11} color={INK_SOFT} /><Text style={s.pausedBadgeText}>מוקפא</Text></>
+            <><Icon name="snow-outline" size={11} color={INK_SOFT} /><CustomText style={s.pausedBadgeText}>מוקפא</CustomText></>
           </View>
         )}
 
         {countdown && !locked && !paused && (
           <View style={[s.countdown, days < 0 && { backgroundColor: "rgba(225,72,72,0.9)" }]}>
-            <Text style={s.countdownText}>{countdown}</Text>
+            <CustomText style={s.countdownText}>{countdown}</CustomText>
           </View>
         )}
 
         {locked ? (
           <View style={s.lockedBody}>
             <Icon name="lock" size={29} color={INK_MUTED} />
-            <Text style={s.lockedTitle}>***</Text>
-            <Text style={s.lockedHint}>חלום נעול</Text>
+            <CustomText style={s.lockedTitle}>***</CustomText>
+            <CustomText style={s.lockedHint}>חלום נעול</CustomText>
           </View>
         ) : (
           <View style={s.cardBody}>
-            <Text style={s.cardTitle} numberOfLines={2}>{dream.title}</Text>
+            <CustomText style={s.cardTitle} numberOfLines={2}>{dream.title}</CustomText>
             <View style={s.cardMetaRow}>
-              <Text style={s.cardPct}>{pct}%</Text>
-              <Text style={s.cardMeta}>
+              <CustomText style={s.cardPct}>{pct}%</CustomText>
+              <CustomText style={s.cardMeta}>
                 {total ? `${done}/${total} אבני דרך` : dream.target ? shekel(dream.target) : "יעד אישי"}
-              </Text>
+              </CustomText>
             </View>
             <ProgressBar pct={pct} height={6} style={{ marginTop: 7 }} />
           </View>

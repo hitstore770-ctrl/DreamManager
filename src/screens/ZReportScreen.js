@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, Share, StyleSheet, TouchableOpacity, View } from "react-native";
 
 import Icon from "../components/Icon";
 import { useBusiness } from "../context/BusinessContext";
@@ -8,6 +8,7 @@ import { shekel, todayKey, uid } from "../utils/posStore";
 import { useSettings } from "../context/SettingsContext";
 import { aggregateDay, buildZReportText, lastCloseTs } from "../utils/zReport";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
+import CustomText from "../components/CustomText";
 
 // דוח משמרת — live daily aggregation of the shared sales ledger. "Closing the
 // register" archives the current shift's stats and (because everything here
@@ -67,56 +68,56 @@ export default function ZReportScreen() {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 12 }}>
         {closedToday && !hasActivity && (
           <View style={s.closedBanner}>
-            <Text style={s.closedBannerText}>המשמרת נסגרה — מכירות חדשות ייספרו למשמרת הבאה</Text>
+            <CustomText style={s.closedBannerText}>המשמרת נסגרה — מכירות חדשות ייספרו למשמרת הבאה</CustomText>
           </View>
         )}
 
         {/* Revenue hero */}
         <View style={s.heroCard}>
-          <Text style={s.heroValue}>{shekel(stats.revenue)}</Text>
-          <Text style={s.heroLabel}>סה״כ הכנסות {closedToday ? "(מאז סגירה אחרונה)" : "היום"}</Text>
+          <CustomText style={s.heroValue}>{shekel(stats.revenue)}</CustomText>
+          <CustomText style={s.heroLabel}>סה״כ הכנסות {closedToday ? "(מאז סגירה אחרונה)" : "היום"}</CustomText>
         </View>
 
         {/* Secondary metrics */}
         <View style={s.metricsRow}>
           <View style={s.metricCard}>
-            <Text style={s.metricValue}>{stats.txCount}</Text>
-            <Text style={s.metricLabel}>עסקאות</Text>
+            <CustomText style={s.metricValue}>{stats.txCount}</CustomText>
+            <CustomText style={s.metricLabel}>עסקאות</CustomText>
           </View>
           <View style={s.metricCard}>
-            <Text style={s.metricValue} numberOfLines={1}>
+            <CustomText style={s.metricValue} numberOfLines={1}>
               {topItem ? topItem.name : "—"}
-            </Text>
-            <Text style={s.metricLabel}>
+            </CustomText>
+            <CustomText style={s.metricLabel}>
               {topItem ? `מוביל · ×${topItem.qty}` : "מוצר מוביל"}
-            </Text>
+            </CustomText>
           </View>
         </View>
 
         {stats.dmgUnits > 0 && (
           <View style={s.dmgRow}>
-            <Text style={s.dmgText}>פחת/נזק במשמרת: {stats.dmgUnits} יח׳</Text>
+            <CustomText style={s.dmgText}>פחת/נזק במשמרת: {stats.dmgUnits} יח׳</CustomText>
           </View>
         )}
 
         {/* Share */}
         <TouchableOpacity style={s.shareBtn} onPress={shareZ} activeOpacity={0.8}>
           <Icon name="share-2" size={17} color={WHITE} />
-          <Text style={s.shareBtnText}>שיתוף דוח Z ל-WhatsApp</Text>
+          <CustomText style={s.shareBtnText}>שיתוף דוח Z ל-WhatsApp</CustomText>
         </TouchableOpacity>
 
         {/* Close history */}
         {history.length > 0 && (
           <View style={{ marginTop: 16 }}>
-            <Text style={s.historyTitle}>סגירות אחרונות</Text>
+            <CustomText style={s.historyTitle}>סגירות אחרונות</CustomText>
             {history.map((c) => (
               <View key={c.id} style={s.historyRow}>
-                <Text style={s.historyValue}>{shekel(c.revenue)}</Text>
-                <Text style={s.historyLabel}>
+                <CustomText style={s.historyValue}>{shekel(c.revenue)}</CustomText>
+                <CustomText style={s.historyLabel}>
                   {new Date(c.ts).toLocaleDateString("he-IL")} ·{" "}
                   {new Date(c.ts).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })} ·{" "}
                   {c.txCount} עסקאות
-                </Text>
+                </CustomText>
               </View>
             ))}
           </View>
@@ -131,7 +132,7 @@ export default function ZReportScreen() {
           activeOpacity={0.85}
         >
           <Icon name="lock" size={18} color={WHITE} />
-          <Text style={s.closeBtnText}>סגור משמרת</Text>
+          <CustomText style={s.closeBtnText}>סגור משמרת</CustomText>
         </TouchableOpacity>
       </View>
     </View>

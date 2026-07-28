@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 
 import Icon from "../../Icon";
 import { hapticLight } from "../../../utils/haptics";
@@ -21,6 +21,7 @@ import {
   s,
   useCalcHaptic,
 } from "../kit";
+import CustomText from "../../../components/CustomText";
 
 // Boarding-school day tools.
 
@@ -92,23 +93,23 @@ export function ZmanimRoutine() {
     <View style={{ gap: 12 }}>
       {/* Hebrew date hero */}
       <View style={s.hebCard}>
-        <Text style={s.hebDate}>{heb.formatted}</Text>
-        <Text style={s.hebSub}>
+        <CustomText style={s.hebDate}>{heb.formatted}</CustomText>
+        <CustomText style={s.hebSub}>
           {hebrewWeekday(now)} · {now.toLocaleDateString("he-IL")} · {JERUSALEM.name}
-        </Text>
+        </CustomText>
       </View>
 
       {/* Next up */}
       <View style={s.nextCard}>
         <View style={s.nextBadge}><Icon name={next.icon} size={20} color={BLUE} /></View>
         <View style={{ flex: 1, alignItems: "flex-end" }}>
-          <Text style={s.nextLabel}>
+          <CustomText style={s.nextLabel}>
             הבא בתור: {next.label}
             {next.tomorrow ? " (מחר)" : ""}
-          </Text>
-          <Text style={s.nextTime}>
+          </CustomText>
+          <CustomText style={s.nextTime}>
             {next.at} · {countdown}
-          </Text>
+          </CustomText>
         </View>
       </View>
 
@@ -122,22 +123,22 @@ export function ZmanimRoutine() {
         ].map((r) => (
           <View key={r.label} style={[s.zTile, r.gold && { backgroundColor: GOLD + "16" }]}>
             <Icon name={r.icon} size={18} color={r.gold ? "#0E7490" : BLUE} />
-            <Text style={[s.zTileTime, r.gold && { color: "#0E7490" }]}>{fmtTime(r.value)}</Text>
-            <Text style={s.zTileLabel}>{r.label}</Text>
+            <CustomText style={[s.zTileTime, r.gold && { color: "#0E7490" }]}>{fmtTime(r.value)}</CustomText>
+            <CustomText style={s.zTileLabel}>{r.label}</CustomText>
           </View>
         ))}
       </View>
 
       {/* Full routine */}
-      <Text style={s.sectionLabel}>סדר היום</Text>
+      <CustomText style={s.sectionLabel}>סדר היום</CustomText>
       {ROUTINE.map((r) => {
         const past = minutesOfDay(r.at) <= nowMinutes;
         const isNext = r.at === next.at && !next.tomorrow;
         return (
           <View key={r.at} style={[s.routineRow, isNext && { backgroundColor: BLUE + "10" }]}>
-            <Text style={[s.routineTime, past && { color: INK_MUTED }, isNext && { color: BLUE }]}>{r.at}</Text>
+            <CustomText style={[s.routineTime, past && { color: INK_MUTED }, isNext && { color: BLUE }]}>{r.at}</CustomText>
             <Icon name={r.icon} size={16} color={isNext ? BLUE : past ? INK_MUTED : INK_SOFT} />
-            <Text
+            <CustomText
               style={[
                 s.routineLabel,
                 past && { color: INK_MUTED, textDecorationLine: "line-through" },
@@ -145,13 +146,13 @@ export function ZmanimRoutine() {
               ]}
             >
               {r.label}
-            </Text>
+            </CustomText>
           </View>
         );
       })}
-      <Text style={s.hint}>
+      <CustomText style={s.hint}>
         זמני היום מחושבים במכשיר לפי מיקום השמש בירושלים. סדר היום קבוע וניתן יהיה לערוך אותו בהמשך.
-      </Text>
+      </CustomText>
     </View>
   );
 }
@@ -217,19 +218,19 @@ export function CalorieDensity() {
             onPress={() => { hapticLight(); setGrams(p.grams); setKcal(p.kcal); }}
             activeOpacity={0.8}
           >
-            <Text style={s.chipText}>{p.label}</Text>
+            <CustomText style={s.chipText}>{p.label}</CustomText>
           </TouchableOpacity>
         ))}
       </View>
 
       {!r.ready ? (
-        <Text style={s.hint}>הזן משקל בגרמים וכמות קלוריות — הערכים מופיעים על האריזה.</Text>
+        <CustomText style={s.hint}>הזן משקל בגרמים וכמות קלוריות — הערכים מופיעים על האריזה.</CustomText>
       ) : (
         <>
           <View style={[c.verdict, { backgroundColor: tone + "12" }]}>
-            <Text testID="density-result" style={[c.verdictValue, { color: tone }]}>{r.density}</Text>
-            <Text style={c.verdictUnit}>קלוריות לגרם</Text>
-            <Text style={[c.verdictLabel, { color: tone }]}>{r.band.label}</Text>
+            <CustomText testID="density-result" style={[c.verdictValue, { color: tone }]}>{r.density}</CustomText>
+            <CustomText style={c.verdictUnit}>קלוריות לגרם</CustomText>
+            <CustomText style={[c.verdictLabel, { color: tone }]}>{r.band.label}</CustomText>
           </View>
 
           <View style={c.scale}>
@@ -255,10 +256,10 @@ export function CalorieDensity() {
             <Stat label="כמה גרם ב-500 קק״ל" value={`${r.gramsFor500} ג׳`} color={tone} />
           </View>
 
-          <Text style={s.hint}>
+          <CustomText style={s.hint}>
             הסולם: מתחת ל-1.5 נחשב נפח גבוה, 1.5 עד 4 בינוני, מעל 4 צפוף בקלוריות. זה מדד שובע ולא
             מדד בריאות — שמן זית צפוף מאוד ועדיין מזון טוב.
-          </Text>
+          </CustomText>
         </>
       )}
     </View>
@@ -321,23 +322,23 @@ export function StudyPace() {
       <Segment options={REST_OPTIONS} value={rest} onChange={setRest} />
 
       {!r.ready ? (
-        <Text style={s.hint}>הזן את היקף החומר ואת מספר הימים שנותרו עד המבחן.</Text>
+        <CustomText style={s.hint}>הזן את היקף החומר ואת מספר הימים שנותרו עד המבחן.</CustomText>
       ) : r.finishedAlready ? (
         <View style={[s.banner, { backgroundColor: GREEN + "16" }]}>
-          <Text style={[s.bannerText, { color: GREEN }]}>סיימת את כל החומר</Text>
-          <Text style={[s.bannerSub, { color: GREEN }]}>נשארו {r.studyDays} ימי לימוד לחזרה ותרגול.</Text>
+          <CustomText style={[s.bannerText, { color: GREEN }]}>סיימת את כל החומר</CustomText>
+          <CustomText style={[s.bannerSub, { color: GREEN }]}>נשארו {r.studyDays} ימי לימוד לחזרה ותרגול.</CustomText>
         </View>
       ) : (
         <>
           <View style={[c.verdict, { backgroundColor: BLUE + "12" }]}>
-            <Text testID="pace-result" style={[c.verdictValue, { color: BLUE }]}>{r.perDayCeil}</Text>
-            <Text style={c.verdictUnit}>ליום, {r.studyDays} ימי לימוד</Text>
+            <CustomText testID="pace-result" style={[c.verdictValue, { color: BLUE }]}>{r.perDayCeil}</CustomText>
+            <CustomText style={c.verdictUnit}>ליום, {r.studyDays} ימי לימוד</CustomText>
           </View>
 
           <View>
             <View style={s.loadMetaRow}>
-              <Text style={s.loadMeta}>{r.pct}%</Text>
-              <Text style={s.loadMeta}>נותרו {r.remaining}</Text>
+              <CustomText style={s.loadMeta}>{r.pct}%</CustomText>
+              <CustomText style={s.loadMeta}>נותרו {r.remaining}</CustomText>
             </View>
             <View style={[s.loadTrack, { marginTop: 6 }]}>
               <View style={[s.loadFill, { width: `${r.pct}%`, backgroundColor: BLUE }]} />
@@ -352,18 +353,18 @@ export function StudyPace() {
 
           {r.heavy && (
             <View style={[s.banner, { backgroundColor: GOLD + "16" }]}>
-              <Text style={[s.bannerText, { color: "#8A6D00" }]}>הקצב צפוף</Text>
-              <Text style={[s.bannerSub, { color: "#8A6D00" }]}>
+              <CustomText style={[s.bannerText, { color: "#8A6D00" }]}>הקצב צפוף</CustomText>
+              <CustomText style={[s.bannerSub, { color: "#8A6D00" }]}>
                 בקצב הזה כל החומר נסגר בפחות משבוע. אם הזמן קצר, שווה לסמן מראש אילו נושאים אפשר
                 ללמוד ברמת היכרות בלבד.
-              </Text>
+              </CustomText>
             </View>
           )}
 
-          <Text style={s.hint}>
+          <CustomText style={s.hint}>
             ימי המנוחה מנוכים ביחס שבועי, לכן המספר מתאים לכל טווח ארוך משבוע. היעד היומי מעוגל
             כלפי מעלה — עדיף להקדים מלפגר.
-          </Text>
+          </CustomText>
         </>
       )}
     </View>

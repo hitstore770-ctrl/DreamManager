@@ -1,17 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  I18nManager,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, FlatList, I18nManager, Image, KeyboardAvoidingView, Platform, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 
@@ -22,6 +10,7 @@ import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import { CARD_SHADOW, TYPE, UI } from "../utils/ui";
 import { askGemini, clearThread, loadThread, parseImageReply, saveThread } from "../utils/aiThread";
+import CustomText from "../components/CustomText";
 
 // A per-item AI co-pilot. One screen, one thread, one item.
 //
@@ -67,7 +56,7 @@ import { askGemini, clearThread, loadThread, parseImageReply, saveThread } from 
 //           })
 //         }
 //       >
-//         <Text>שאל את הקו-פיילוט על החלום הזה</Text>
+//         <CustomText>שאל את הקו-פיילוט על החלום הזה</CustomText>
 //       </Bounce>
 //     );
 //   }
@@ -220,10 +209,10 @@ export default function ContextualAiChatScreen({ route, navigation }) {
           <Icon name={I18nManager.isRTL ? "arrow-right" : "arrow-left"} size={19} color={UI.ink} />
         </Bounce>
         <View style={{ flex: 1 }}>
-          <Text style={s.title} numberOfLines={1}>{title || "קו-פיילוט"}</Text>
-          <Text style={s.subtitle} numberOfLines={1}>
+          <CustomText style={s.title} numberOfLines={1}>{title || "קו-פיילוט"}</CustomText>
+          <CustomText style={s.subtitle} numberOfLines={1}>
             {itemSummary || "שיחה ייעודית לפריט הזה"}
-          </Text>
+          </CustomText>
         </View>
         {messages.length > 0 && (
           <Bounce testID="ai-reset" style={s.iconBtn} scaleTo={0.9} onPress={reset}>
@@ -264,13 +253,13 @@ export default function ContextualAiChatScreen({ route, navigation }) {
                 {loading && (
                   <Animated.View entering={FadeIn.duration(200)} style={[s.bubble, s.modelBubble, s.typing]}>
                     <ActivityIndicator size="small" color={UI.violet} />
-                    <Text style={s.typingText}>חושב...</Text>
+                    <CustomText style={s.typingText}>חושב...</CustomText>
                   </Animated.View>
                 )}
                 {!!error && (
                   <Animated.View entering={FadeIn.duration(200)} style={s.errorCard}>
                     <Icon name="alert-circle" size={16} color={UI.coral} />
-                    <Text style={s.errorText}>{error}</Text>
+                    <CustomText style={s.errorText}>{error}</CustomText>
                   </Animated.View>
                 )}
               </>
@@ -321,9 +310,9 @@ function Bubble({ message, index }) {
     >
       <View style={[s.bubble, mine ? s.userBubble : s.modelBubble]}>
         {!!parsed.text && (
-          <Text style={[s.bubbleText, mine && { color: "#FFFFFF" }]} selectable>
+          <CustomText style={[s.bubbleText, mine && { color: "#FFFFFF" }]} selectable>
             {parsed.text}
-          </Text>
+          </CustomText>
         )}
 
         {parsed.hasImage && (
@@ -331,8 +320,8 @@ function Bubble({ message, index }) {
             {failed ? (
               <View style={s.imageFallback}>
                 <Icon name="wifi-off" size={22} color={UI.inkMuted} />
-                <Text style={s.imageFallbackText}>לא ניתן לטעון את התמונה</Text>
-                <Text style={s.imagePrompt} numberOfLines={2}>{parsed.prompt}</Text>
+                <CustomText style={s.imageFallbackText}>לא ניתן לטעון את התמונה</CustomText>
+                <CustomText style={s.imagePrompt} numberOfLines={2}>{parsed.prompt}</CustomText>
               </View>
             ) : (
               <Image
@@ -356,25 +345,25 @@ function Empty({ configured, onPick }) {
       <View style={s.emptyBadge}>
         <Icon name="message-circle" size={30} color={UI.violet} />
       </View>
-      <Text style={s.emptyTitle}>קו-פיילוט לפריט הזה</Text>
-      <Text style={s.emptyBody}>
+      <CustomText style={s.emptyTitle}>קו-פיילוט לפריט הזה</CustomText>
+      <CustomText style={s.emptyBody}>
         השיחה נשמרת רק לפריט הזה, והנתונים שלו נטענים לכל תשובה. אפשר לחזור לכאן מתי שרוצים והשיחה
         תמשיך מאיפה שהפסקת.
-      </Text>
+      </CustomText>
 
       {!configured && (
         <View style={s.keyWarning}>
           <Icon name="key" size={15} color="#8A6D00" />
-          <Text style={s.keyWarningText}>
+          <CustomText style={s.keyWarningText}>
             עדיין לא הוגדר מפתח Gemini. הדבק מפתח ב-src/config/geminiConfig.js כדי להפעיל את השיחה.
-          </Text>
+          </CustomText>
         </View>
       )}
 
       <View style={s.chips}>
         {SUGGESTIONS.map((q) => (
           <Bounce key={q} style={s.chip} scaleTo={0.95} onPress={() => onPick(q)}>
-            <Text style={s.chipText}>{q}</Text>
+            <CustomText style={s.chipText}>{q}</CustomText>
           </Bounce>
         ))}
       </View>
@@ -388,8 +377,8 @@ function Notice({ icon, tone, title, body }) {
       <View style={[s.noticeBadge, { backgroundColor: tone + "16" }]}>
         <Icon name={icon} size={26} color={tone} />
       </View>
-      <Text style={s.noticeTitle}>{title}</Text>
-      <Text style={s.noticeBody}>{body}</Text>
+      <CustomText style={s.noticeTitle}>{title}</CustomText>
+      <CustomText style={s.noticeBody}>{body}</CustomText>
     </View>
   );
 }

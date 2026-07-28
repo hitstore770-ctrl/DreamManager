@@ -3,6 +3,8 @@
 // All nine tools share this small set of keys so they interoperate (a sale in
 // the POS deducts from the same inventory the Profit Analyzer reads, etc.).
 export const STORAGE_KEYS = {
+  noaShortcuts: "@noa_shortcuts",
+  cashFlow: "@cash_flow_entries",
   posInventory: "@dreammanager/pos-inventory",
   posSales: "@dreammanager/pos-sales",
   posDebts: "@dreammanager/pos-debts",

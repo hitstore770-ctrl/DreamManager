@@ -1,15 +1,5 @@
 import { useMemo, useState } from "react";
-import {
-  I18nManager,
-  Modal,
-  Share,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
-} from "react-native";
+import { I18nManager, Modal, Share, StyleSheet, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import { ScrollView, Swipeable } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -33,6 +23,7 @@ import { checklistToText, makeNote, noteBg } from "../utils/notesStore";
 import { NOTES_FONTS as FONTS, NOTES_SHADOW as SHADOW_SM, NOTES_SHADOW_LG as SHADOW, NOTES_THEME } from "../utils/notesTheme";
 import { RADIUS, RADIUS_SM } from "../utils/theme";
 import { usePersistentState } from "../utils/usePersistentState";
+import CustomText from "../components/CustomText";
 
 // Hub surface: white cards on soft grey, per the Phase 2 spec.
 const BLUE_TITLE = "#7C3AED";
@@ -235,12 +226,12 @@ export default function NotesHubScreen({ navigation }) {
       <View style={[s.header, { paddingTop: insets.top + 12 }]}>
         <View style={s.titleRow}>
           <Icon name="edit-3" size={20} color={BLUE_TITLE} />
-          <Text style={s.title}>פתקים</Text>
+          <CustomText style={s.title}>פתקים</CustomText>
         </View>
         <View style={s.headerActions}>
           <TouchableOpacity style={s.journalBtn} onPress={generateJournal} activeOpacity={0.8}>
             <Icon name="book" size={15} color={GOLD_HDR} />
-            <Text style={s.journalText}>יומן עבודה</Text>
+            <CustomText style={s.journalText}>יומן עבודה</CustomText>
           </TouchableOpacity>
           <TouchableOpacity style={s.iconBtn} onPress={() => setToolbox(true)} activeOpacity={0.7}>
             <Icon name="grid" size={19} color={BLUE_TITLE} />
@@ -269,11 +260,11 @@ export default function NotesHubScreen({ navigation }) {
           contentContainerStyle={s.tagRow}
         >
           <TouchableOpacity style={[s.tag, !activeTag && { backgroundColor: theme.accent }]} onPress={() => setActiveTag(null)}>
-            <Text style={[s.tagText, { color: !activeTag ? "#FFF" : theme.textSecondary }]}>הכל</Text>
+            <CustomText style={[s.tagText, { color: !activeTag ? "#FFF" : theme.textSecondary }]}>הכל</CustomText>
           </TouchableOpacity>
           {allTags.map((t) => (
             <TouchableOpacity key={t} style={[s.tag, activeTag === t && { backgroundColor: theme.accent }]} onPress={() => setActiveTag(t)}>
-              <Text style={[s.tagText, { color: activeTag === t ? "#FFF" : theme.textSecondary }]}>#{t}</Text>
+              <CustomText style={[s.tagText, { color: activeTag === t ? "#FFF" : theme.textSecondary }]}>#{t}</CustomText>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -302,7 +293,7 @@ export default function NotesHubScreen({ navigation }) {
           ))}
         </View>
         {filtered.length === 0 && (
-          <Text style={s.empty}>{query ? "לא נמצאו הערות" : "אין הערות עדיין. הקש על ＋ ליצירת הערה חדשה."}</Text>
+          <CustomText style={s.empty}>{query ? "לא נמצאו הערות" : "אין הערות עדיין. הקש על ＋ ליצירת הערה חדשה."}</CustomText>
         )}
       </ScrollView>
 
@@ -312,7 +303,7 @@ export default function NotesHubScreen({ navigation }) {
         style={s.fab}
         onPress={() => createNote({})}
       >
-        <Text style={s.fabIcon}>+</Text>
+        <CustomText style={s.fabIcon}>+</CustomText>
       </Bounce>
       </Pulse>
 
@@ -322,7 +313,7 @@ export default function NotesHubScreen({ navigation }) {
           {TOOLBOX.map((t) => (
             <TouchableOpacity key={t.key} style={[s.toolCard, { backgroundColor: theme.surfaceAlt }]} onPress={() => runTool(t.key)} activeOpacity={0.85}>
               <Icon name={t.icon} size={26} color={BLUE_TITLE} />
-              <Text style={[s.toolLabel, { color: theme.textPrimary }]}>{t.label}</Text>
+              <CustomText style={[s.toolLabel, { color: theme.textPrimary }]}>{t.label}</CustomText>
             </TouchableOpacity>
           ))}
         </View>
@@ -345,7 +336,7 @@ export default function NotesHubScreen({ navigation }) {
       <Sheet visible={panel !== null} onClose={() => setPanel(null)} theme={theme} title={TOOLBOX.find((t) => t.key === panel)?.label || ""}>
         {panel === "template" && (
           <View style={{ gap: 8 }}>
-            <Text style={s.panelHint}>בחר תבנית מוכנה — תיווצר הערה חדשה:</Text>
+            <CustomText style={s.panelHint}>בחר תבנית מוכנה — תיווצר הערה חדשה:</CustomText>
             {TEMPLATES.map((t) => (
               <ActionRow key={t.key} theme={theme} icon="layers" label={t.label} onPress={() => { setPanel(null); createNote({ title: t.label, body: t.body }); }} />
             ))}
@@ -353,39 +344,39 @@ export default function NotesHubScreen({ navigation }) {
         )}
         {panel === "tags" && (
           <View>
-            <Text style={s.panelHint}>תיוגים קיימים ({allTags.length}). הקש כדי לסנן:</Text>
+            <CustomText style={s.panelHint}>תיוגים קיימים ({allTags.length}). הקש כדי לסנן:</CustomText>
             <View style={[s.grid, { marginTop: 8 }]}>
               {allTags.map((t) => (
                 <TouchableOpacity key={t} style={[s.tag, { margin: 4 }]} onPress={() => { setActiveTag(t); setPanel(null); }}>
-                  <Text style={[s.tagText, { color: theme.textSecondary }]}>#{t}</Text>
+                  <CustomText style={[s.tagText, { color: theme.textSecondary }]}>#{t}</CustomText>
                 </TouchableOpacity>
               ))}
-              {allTags.length === 0 && <Text style={s.panelHint}>אין תיוגים עדיין. הוסף תיוגים להערות דרך העורך (בגרסה הבאה) או צור סיכום עסקי המתייג אוטומטית.</Text>}
+              {allTags.length === 0 && <CustomText style={s.panelHint}>אין תיוגים עדיין. הוסף תיוגים להערות דרך העורך (בגרסה הבאה) או צור סיכום עסקי המתייג אוטומטית.</CustomText>}
             </View>
           </View>
         )}
         {panel === "export" && (
           <View style={{ gap: 8 }}>
-            <Text style={s.panelHint}>ייצוא {filtered.length} ההערות המוצגות:</Text>
+            <CustomText style={s.panelHint}>ייצוא {filtered.length} ההערות המוצגות:</CustomText>
             <ActionRow theme={theme} icon="message-circle" label="שתף כטקסט / וואטסאפ" onPress={exportAll} />
             <ActionRow theme={theme} icon="file-text" label="ייצוא PDF (בקרוב)" muted onPress={() => {}} />
-            <Text style={s.panelHint}>ייצוא PDF מלא ישולב עם expo-print בגרסה הבאה. שיתוף הטקסט פעיל לוואטסאפ ולכל אפליקציה.</Text>
+            <CustomText style={s.panelHint}>ייצוא PDF מלא ישולב עם expo-print בגרסה הבאה. שיתוף הטקסט פעיל לוואטסאפ ולכל אפליקציה.</CustomText>
           </View>
         )}
         {panel === "reminders" && (
           <View>
-            <Text style={s.panelHint}>מנוע התזכורות (מתוכנן):</Text>
+            <CustomText style={s.panelHint}>מנוע התזכורות (מתוכנן):</CustomText>
             {["תזכורת לפי שעה", "תזכורת לפי תאריך עברי", "תזכורת חוזרת", "התראת דחיפה"].map((r) => (
-              <View key={r} style={s.scaffoldRow}><Text style={s.scaffoldText}>{r}</Text><Text style={s.soon}>בקרוב</Text></View>
+              <View key={r} style={s.scaffoldRow}><CustomText style={s.scaffoldText}>{r}</CustomText><CustomText style={s.soon}>בקרוב</CustomText></View>
             ))}
           </View>
         )}
         {panel === "security" && (
           <View>
-            <Text style={s.panelHint}>אבטחת הערות:</Text>
-            <View style={s.scaffoldRow}><Text style={s.scaffoldText}>נעילת הערה + קוד</Text><Text style={[s.soon, { color: theme.success }]}>פעיל</Text></View>
-            <View style={s.scaffoldRow}><Text style={s.scaffoldText}>נעילת PIN לפנקס</Text><Text style={s.soon}>דרך ההגדרות</Text></View>
-            <Text style={s.panelHint}>נעל הערה מתוך העורך (אייקון המנעול) או בלחיצה ארוכה. הערה נעולה מוצגת מטושטשת ודורשת קוד ({LOCK_PIN}) לפתיחה.</Text>
+            <CustomText style={s.panelHint}>אבטחת הערות:</CustomText>
+            <View style={s.scaffoldRow}><CustomText style={s.scaffoldText}>נעילת הערה + קוד</CustomText><CustomText style={[s.soon, { color: theme.success }]}>פעיל</CustomText></View>
+            <View style={s.scaffoldRow}><CustomText style={s.scaffoldText}>נעילת PIN לפנקס</CustomText><CustomText style={s.soon}>דרך ההגדרות</CustomText></View>
+            <CustomText style={s.panelHint}>נעל הערה מתוך העורך (אייקון המנעול) או בלחיצה ארוכה. הערה נעולה מוצגת מטושטשת ודורשת קוד ({LOCK_PIN}) לפתיחה.</CustomText>
           </View>
         )}
       </Sheet>
@@ -419,7 +410,7 @@ function NoteCard({ note, index, theme, styles, onOpen, onLong, onDelete }) {
   const renderRightActions = () => (
     <View style={styles.deleteAction}>
       <Icon name="trash-2" size={20} color="#FFFFFF" />
-      <Text style={styles.deleteLabel}>מחק</Text>
+      <CustomText style={styles.deleteLabel}>מחק</CustomText>
     </View>
   );
 
@@ -440,27 +431,27 @@ function NoteCard({ note, index, theme, styles, onOpen, onLong, onDelete }) {
         >
           <View style={styles.cardTop}>
             {note.pinned && <View style={styles.pin}><Icon name="bookmark" size={13} color={BLUE_TITLE} /></View>}
-            <Text style={[styles.cardTitle, { color: theme.textPrimary }]} numberOfLines={1}>
+            <CustomText style={[styles.cardTitle, { color: theme.textPrimary }]} numberOfLines={1}>
               {note.title || "ללא כותרת"}
-            </Text>
+            </CustomText>
           </View>
-          <Text style={[styles.cardPreview, { color: theme.textSecondary }]} numberOfLines={2}>
+          <CustomText style={[styles.cardPreview, { color: theme.textSecondary }]} numberOfLines={2}>
             {preview}
-          </Text>
+          </CustomText>
           {(note.tags || []).length > 0 && (
             <View style={styles.cardTags}>
               {(note.tags || []).slice(0, 3).map((t) => (
                 <View key={t} style={[styles.tagPill, { backgroundColor: tagColor(t) + "1C" }]}>
-                  <Text style={[styles.tagPillText, { color: tagColor(t) }]}>#{t}</Text>
+                  <CustomText style={[styles.tagPillText, { color: tagColor(t) }]}>#{t}</CustomText>
                 </View>
               ))}
             </View>
           )}
           <View style={styles.cardFoot}>
-            <Text style={styles.readTime}>{fmtUpdated(note.updatedAt)}</Text>
-            <Text style={styles.readTime}>{mins} דק׳</Text>
+            <CustomText style={styles.readTime}>{fmtUpdated(note.updatedAt)}</CustomText>
+            <CustomText style={styles.readTime}>{mins} דק׳</CustomText>
             {note.isChecklist && (
-              <Text style={styles.badge}>{note.checklist.filter((i) => i.done).length}/{note.checklist.length}</Text>
+              <CustomText style={styles.badge}>{note.checklist.filter((i) => i.done).length}/{note.checklist.length}</CustomText>
             )}
           </View>
         </TouchableOpacity>
@@ -478,7 +469,7 @@ function Sheet({ visible, onClose, theme, title, children }) {
           <TouchableWithoutFeedback onPress={() => {}}>
             <View style={{ backgroundColor: theme.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: insets.bottom + 20, maxHeight: "80%" }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <Text style={{ color: theme.textPrimary, fontSize: 18, fontFamily: FONTS.bold, flex: 1, textAlign: "right" }}>{title}</Text>
+                <CustomText style={{ color: theme.textPrimary, fontSize: 18, fontFamily: FONTS.bold, flex: 1, textAlign: "right" }}>{title}</CustomText>
                 <Bounce onPress={onClose} style={{ marginStart: 12 }}><Icon name="x" size={18} color={theme.textMuted} /></Bounce>
               </View>
               <ScrollView showsVerticalScrollIndicator={false}>{children}</ScrollView>
@@ -510,7 +501,7 @@ function ActionRow({ theme, label, icon, onPress, danger, muted }) {
       }}
     >
       <Icon name={icon || "chevron-left"} size={18} color={danger ? theme.danger : theme.accent} />
-      <Text
+      <CustomText
         style={{
           flex: 1,
           color: danger ? theme.danger : theme.textPrimary,
@@ -520,7 +511,7 @@ function ActionRow({ theme, label, icon, onPress, danger, muted }) {
         }}
       >
         {label}
-      </Text>
+      </CustomText>
     </Bounce>
   );
 }

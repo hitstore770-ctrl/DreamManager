@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as Clipboard from "expo-clipboard";
-import { Linking, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Linking, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 
 import Icon from "../../Icon";
 import Slider from "../Slider";
@@ -25,6 +25,7 @@ import {
   Chips,
   useCalcHaptic,
 } from "../kit";
+import CustomText from "../../../components/CustomText";
 
 // General-purpose utilities.
 
@@ -130,7 +131,7 @@ export function PercentDiff() {
     <View style={{ gap: 12 }}>
       <View style={s.row}>
         <View style={{ flex: 1 }}>
-          <Text style={s.fieldLabel}>ערך א׳ (לפני)</Text>
+          <CustomText style={s.fieldLabel}>ערך א׳ (לפני)</CustomText>
           <View style={s.fieldRow}>
             <TextInput
               testID="pct-a"
@@ -145,7 +146,7 @@ export function PercentDiff() {
           </View>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={s.fieldLabel}>ערך ב׳ (אחרי)</Text>
+          <CustomText style={s.fieldLabel}>ערך ב׳ (אחרי)</CustomText>
           <View style={s.fieldRow}>
             <TextInput
               testID="pct-b"
@@ -162,7 +163,7 @@ export function PercentDiff() {
       </View>
 
       {!r.ready ? (
-        <Text style={s.hint}>הזן שני ערכים כדי לראות את הפער באחוזים.</Text>
+        <CustomText style={s.hint}>הזן שני ערכים כדי לראות את הפער באחוזים.</CustomText>
       ) : (
         <>
           <View style={[t.verdict, { backgroundColor: tone + "12" }]}>
@@ -171,12 +172,12 @@ export function PercentDiff() {
               size={22}
               color={tone}
             />
-            <Text testID="pct-result" style={[t.verdictValue, { color: tone }]}>
+            <CustomText testID="pct-result" style={[t.verdictValue, { color: tone }]}>
               {r.change === null ? "—" : `${r.change > 0 ? "+" : ""}${r.change}%`}
-            </Text>
-            <Text style={t.verdictLabel}>
+            </CustomText>
+            <CustomText style={t.verdictLabel}>
               {r.flat ? "אין שינוי" : r.up ? "עלייה מערך א׳ לערך ב׳" : "ירידה מערך א׳ לערך ב׳"}
-            </Text>
+            </CustomText>
           </View>
 
           <View style={s.statRow}>
@@ -186,14 +187,14 @@ export function PercentDiff() {
           </View>
 
           {r.change === null && (
-            <Text style={s.hint}>
+            <CustomText style={s.hint}>
               אחוז שינוי לא מוגדר כשערך א׳ הוא 0 — אין בסיס להשוות אליו. הפער הסימטרי כן מחושב.
-            </Text>
+            </CustomText>
           )}
-          <Text style={s.hint}>
+          <CustomText style={s.hint}>
             אחוז השינוי מחושב מול ערך א׳. הפער הסימטרי מחלק את ההפרש בממוצע השניים — מדד שלא משתנה אם
             מחליפים בין א׳ ל-ב׳, ולכן מתאים להשוואת שני מחירים ללא כיוון.
-          </Text>
+          </CustomText>
         </>
       )}
     </View>
@@ -252,7 +253,7 @@ export function DecisionPicker() {
   return (
     <View style={{ gap: 12 }}>
       <View>
-        <Text style={s.fieldLabel}>אפשרויות — מופרדות בפסיק או בשורה חדשה</Text>
+        <CustomText style={s.fieldLabel}>אפשרויות — מופרדות בפסיק או בשורה חדשה</CustomText>
         <TextInput
           style={t.area}
           value={raw}
@@ -277,7 +278,7 @@ export function DecisionPicker() {
                   isWinner && { backgroundColor: BLUE, borderColor: BLUE },
                 ]}
               >
-                <Text style={[s.chipText, isWinner && { color: WHITE }]}>{o}</Text>
+                <CustomText style={[s.chipText, isWinner && { color: WHITE }]}>{o}</CustomText>
               </View>
             );
           })}
@@ -287,8 +288,8 @@ export function DecisionPicker() {
       {winner && (
         <View style={[t.verdict, { backgroundColor: BLUE + "12" }]}>
           <Icon name={spinning ? "shuffle" : "check-circle"} size={22} color={BLUE} />
-          <Text style={[t.verdictValue, { color: BLUE }]} numberOfLines={2}>{winner}</Text>
-          <Text style={t.verdictLabel}>{spinning ? "מגריל..." : "זו ההחלטה"}</Text>
+          <CustomText style={[t.verdictValue, { color: BLUE }]} numberOfLines={2}>{winner}</CustomText>
+          <CustomText style={t.verdictLabel}>{spinning ? "מגריל..." : "זו ההחלטה"}</CustomText>
         </View>
       )}
 
@@ -307,19 +308,19 @@ export function DecisionPicker() {
 
       {history.length > 0 && (
         <>
-          <Text style={s.sectionLabel}>הגרלות אחרונות</Text>
+          <CustomText style={s.sectionLabel}>הגרלות אחרונות</CustomText>
           {history.map((h, i) => (
             <View key={`${h}-${i}`} style={s.routineRow}>
-              <Text style={s.routineTime}>{i + 1}</Text>
-              <Text style={s.routineLabel}>{h}</Text>
+              <CustomText style={s.routineTime}>{i + 1}</CustomText>
+              <CustomText style={s.routineLabel}>{h}</CustomText>
             </View>
           ))}
         </>
       )}
 
-      <Text style={s.hint}>
+      <CustomText style={s.hint}>
         הבחירה אחידה — לכל אפשרות אותו סיכוי בכל הגרלה, ללא זיכרון של הגרלות קודמות.
-      </Text>
+      </CustomText>
     </View>
   );
 }
@@ -408,7 +409,7 @@ export function WhatsAppDirect() {
       <Segment options={COUNTRIES} value={country} onChange={(v) => { hapticLight(); setCountry(v); }} />
 
       <View>
-        <Text style={s.fieldLabel}>מספר טלפון</Text>
+        <CustomText style={s.fieldLabel}>מספר טלפון</CustomText>
         <View style={s.fieldRow}>
           <TextInput
             testID="wa-number"
@@ -424,7 +425,7 @@ export function WhatsAppDirect() {
       </View>
 
       <View>
-        <Text style={s.fieldLabel}>הודעה פותחת (לא חובה)</Text>
+        <CustomText style={s.fieldLabel}>הודעה פותחת (לא חובה)</CustomText>
         <TextInput
           testID="wa-message"
           style={t.area}
@@ -440,11 +441,11 @@ export function WhatsAppDirect() {
 
       {number ? (
         <View style={[s.banner, { backgroundColor: CARD }]}>
-          <Text testID="wa-resolved" style={[s.bannerText, { color: INK, textAlign: "left" }]}>+{number}</Text>
-          <Text style={[s.bannerSub, { color: INK_MUTED, textAlign: "left" }]}>{url}</Text>
+          <CustomText testID="wa-resolved" style={[s.bannerText, { color: INK, textAlign: "left" }]}>+{number}</CustomText>
+          <CustomText style={[s.bannerSub, { color: INK_MUTED, textAlign: "left" }]}>{url}</CustomText>
         </View>
       ) : (
-        !!raw && <Text style={[s.hint, { color: RED }]}>המספר לא תקין — נדרשות ספרות בלבד.</Text>
+        !!raw && <CustomText style={[s.hint, { color: RED }]}>המספר לא תקין — נדרשות ספרות בלבד.</CustomText>
       )}
 
       <TouchableOpacity
@@ -462,17 +463,17 @@ export function WhatsAppDirect() {
 
       {failed && (
         <View style={[s.banner, { backgroundColor: RED + "14" }]}>
-          <Text style={[s.bannerText, { color: RED }]}>לא הצלחנו לפתוח את וואטסאפ</Text>
-          <Text style={[s.bannerSub, { color: RED }]}>
+          <CustomText style={[s.bannerText, { color: RED }]}>לא הצלחנו לפתוח את וואטסאפ</CustomText>
+          <CustomText style={[s.bannerSub, { color: RED }]}>
             ייתכן שהאפליקציה לא מותקנת. אפשר להעתיק את הקישור ולפתוח אותו בדפדפן.
-          </Text>
+          </CustomText>
         </View>
       )}
 
-      <Text style={s.hint}>
+      <CustomText style={s.hint}>
         הקישור נפתח ישירות בשיחה בלי להוסיף את המספר לאנשי הקשר. אפס מוביל מוחלף בקידומת המדינה — 
         050-1234567 הופך ל-972501234567.
-      </Text>
+      </CustomText>
     </View>
   );
 }
@@ -528,7 +529,7 @@ export function StorageConverter() {
   return (
     <View style={{ gap: 12 }}>
       <View>
-        <Text style={s.fieldLabel}>כמות</Text>
+        <CustomText style={s.fieldLabel}>כמות</CustomText>
         <View style={s.fieldRow}>
           <TextInput
             testID="storage-amount"
@@ -543,9 +544,9 @@ export function StorageConverter() {
         </View>
       </View>
 
-      <Text style={s.fieldLabel}>מיחידה</Text>
+      <CustomText style={s.fieldLabel}>מיחידה</CustomText>
       <Segment options={SIZE_UNITS} value={from} onChange={(v) => { hapticLight(); setFrom(v); }} />
-      <Text style={s.fieldLabel}>ליחידה</Text>
+      <CustomText style={s.fieldLabel}>ליחידה</CustomText>
       <Segment options={SIZE_UNITS} value={to} onChange={(v) => { hapticLight(); setTo(v); }} />
 
       <TouchableOpacity style={[s.actionBtn, { backgroundColor: CARD }]} onPress={swap} activeOpacity={0.85}>
@@ -553,25 +554,25 @@ export function StorageConverter() {
       </TouchableOpacity>
 
       {!r.ready ? (
-        <Text style={s.hint}>הזן כמות כדי להמיר.</Text>
+        <CustomText style={s.hint}>הזן כמות כדי להמיר.</CustomText>
       ) : (
         <>
           <View style={[t.verdict, { backgroundColor: BLUE + "12" }]}>
-            <Text testID="storage-result" style={[t.verdictValue, { color: BLUE }]}>{r.converted}</Text>
-            <Text style={t.verdictLabel}>{to}</Text>
+            <CustomText testID="storage-result" style={[t.verdictValue, { color: BLUE }]}>{r.converted}</CustomText>
+            <CustomText style={t.verdictLabel}>{to}</CustomText>
           </View>
 
           {r.all.map((u) => (
             <View key={u.key} style={s.routineRow}>
-              <Text style={[s.routineTime, u.key === to && { color: BLUE }]}>{u.value}</Text>
-              <Text style={[s.routineLabel, { flex: 1 }]}>{u.key}</Text>
+              <CustomText style={[s.routineTime, u.key === to && { color: BLUE }]}>{u.value}</CustomText>
+              <CustomText style={[s.routineLabel, { flex: 1 }]}>{u.key}</CustomText>
             </View>
           ))}
 
-          <Text style={s.hint}>
+          <CustomText style={s.hint}>
             ההמרה בינארית (1024). יצרני הדיסקים סופרים באלפים, ולכן כונן שנמכר כ-1TB מוצג במערכת
             ההפעלה כ-{r.decimalGap}% פחות — זה ההסבר לפער ולא תקלה.
-          </Text>
+          </CustomText>
         </>
       )}
     </View>
@@ -647,7 +648,7 @@ export function PasswordGenerator() {
   return (
     <View style={{ gap: 12 }}>
       <View style={pw.box}>
-        <Text testID="pw-value" style={pw.value} selectable>{password}</Text>
+        <CustomText testID="pw-value" style={pw.value} selectable>{password}</CustomText>
       </View>
 
       <View style={s.statRow}>
@@ -672,7 +673,7 @@ export function PasswordGenerator() {
           <View style={[s.checkbox, opt.on && { backgroundColor: BLUE, borderColor: BLUE }]}>
             {opt.on && <Icon name="check" size={13} color={WHITE} />}
           </View>
-          <Text style={s.checkLabel}>{opt.label}</Text>
+          <CustomText style={s.checkLabel}>{opt.label}</CustomText>
         </TouchableOpacity>
       ))}
 
@@ -694,10 +695,10 @@ export function PasswordGenerator() {
         </TouchableOpacity>
       </View>
 
-      <Text style={s.hint}>
+      <CustomText style={s.hint}>
         התווים נבחרים מ-crypto.getRandomValues ולא מ-Math.random, שנגזר משעון המערכת. תווים שקל
         להתבלבל ביניהם — l, I, 1, O, 0 — הוצאו מהמאגר כדי שאפשר יהיה להקליד את הסיסמה מהמסך.
-      </Text>
+      </CustomText>
     </View>
   );
 }
@@ -747,7 +748,7 @@ export function WordScrambler() {
   return (
     <View style={{ gap: 12 }}>
       <View>
-        <Text style={s.fieldLabel}>טקסט</Text>
+        <CustomText style={s.fieldLabel}>טקסט</CustomText>
         <TextInput
           testID="scramble-input"
           style={t.area}
@@ -769,12 +770,12 @@ export function WordScrambler() {
         <View style={[s.checkbox, keepEnds && { backgroundColor: BLUE, borderColor: BLUE }]}>
           {keepEnds && <Icon name="check" size={13} color={WHITE} />}
         </View>
-        <Text style={s.checkLabel}>שמור על האות הראשונה והאחרונה</Text>
+        <CustomText style={s.checkLabel}>שמור על האות הראשונה והאחרונה</CustomText>
       </TouchableOpacity>
 
       {!!out && (
         <View style={[t.verdict, { backgroundColor: CARD, paddingHorizontal: 16 }]}>
-          <Text testID="scramble-output" style={sc.output}>{out}</Text>
+          <CustomText testID="scramble-output" style={sc.output}>{out}</CustomText>
         </View>
       )}
 
@@ -801,10 +802,10 @@ export function WordScrambler() {
         </TouchableOpacity>
       </View>
 
-      <Text style={s.hint}>
+      <CustomText style={s.hint}>
         הערבוב הוא Fisher-Yates. מיון עם השוואה אקראית נראה דומה אבל אינו אחיד ומשאיר אותיות קרוב
         למקום המקורי. עם שמירת הקצוות המילה נשארת קריאה למרות הבלגן באמצע.
-      </Text>
+      </CustomText>
     </View>
   );
 }

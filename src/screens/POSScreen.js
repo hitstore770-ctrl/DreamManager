@@ -1,16 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  I18nManager,
-  Modal,
-  ScrollView,
-  Share,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
-} from "react-native";
+import { I18nManager, Modal, ScrollView, Share, StyleSheet, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 
 import Bounce from "../components/Bounce";
 import Icon from "../components/Icon";
@@ -23,6 +12,7 @@ import { playCaching } from "../utils/sound";
 import { usePersistentState } from "../utils/usePersistentState";
 import { buildZReportText, lastCloseTs } from "../utils/zReport";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
+import CustomText from "../components/CustomText";
 
 // ---------------------------------------------------------------------------
 // Smart POS (קופה) — dense, mobile-first checkout optimized for small foldable
@@ -396,7 +386,7 @@ export default function POSScreen() {
             activeOpacity={0.7}
           >
             {confirmClear ? (
-              <Text style={s.trashConfirm}>בטוח?</Text>
+              <CustomText style={s.trashConfirm}>בטוח?</CustomText>
             ) : (
               <Icon name="trash-2" size={18} color={RED} />
             )}
@@ -405,12 +395,12 @@ export default function POSScreen() {
         <View style={{ flex: 1, alignItems: "flex-end" }}>
           <View style={s.headerTitleRow}>
             <Icon name="shopping-cart" size={19} color={BLUE} />
-            <Text style={s.headerTitle}>קופה</Text>
+            <CustomText style={s.headerTitle}>קופה</CustomText>
           </View>
-          <Text style={s.headerSub}>
+          <CustomText style={s.headerSub}>
             {itemCount > 0 ? `${itemCount} פריטים בסל` : "הסל ריק"}
             {orderNote ? " · הערה מצורפת" : ""}
-          </Text>
+          </CustomText>
         </View>
       </View>
 
@@ -429,15 +419,15 @@ export default function POSScreen() {
             activeOpacity={0.75}
           >
             <Icon name={p.icon || "gift-outline"} size={22} color={UI_CYAN} />
-            <Text style={s.productName} numberOfLines={1}>{p.name}</Text>
-            <Text style={[s.productPrice, { color: "#0E7490" }]}>{shekel(p.price)}</Text>
+            <CustomText style={s.productName} numberOfLines={1}>{p.name}</CustomText>
+            <CustomText style={[s.productPrice, { color: "#0E7490" }]}>{shekel(p.price)}</CustomText>
           </Bounce>
         ))}
         {PRODUCTS.map((p) => (
           <Bounce key={p.name} style={s.productChip} onPress={() => addItem(p.name, p.price)}>
             <Icon name={p.icon || "cube-outline"} size={22} color={UI_VIOLET} />
-            <Text style={s.productName} numberOfLines={1}>{p.name}</Text>
-            <Text style={s.productPrice}>{shekel(p.price)}</Text>
+            <CustomText style={s.productName} numberOfLines={1}>{p.name}</CustomText>
+            <CustomText style={s.productPrice}>{shekel(p.price)}</CustomText>
           </Bounce>
         ))}
       </ScrollView>
@@ -450,27 +440,27 @@ export default function POSScreen() {
             <TouchableOpacity style={s.lastTxEdit} onPress={editLastTx} activeOpacity={0.7}>
               <Icon name="edit-2" size={14} color={UI_VIOLET} />
             </TouchableOpacity>
-            <Text style={s.lastTxText}>
-              עסקה אחרונה · {lastTx.time} · <Text style={{ fontFamily: FONTS.bold, color: INK }}>{shekel(lastTx.total)}</Text>
-            </Text>
+            <CustomText style={s.lastTxText}>
+              עסקה אחרונה · {lastTx.time} · <CustomText style={{ fontFamily: FONTS.bold, color: INK }}>{shekel(lastTx.total)}</CustomText>
+            </CustomText>
           </View>
         )}
 
         {expressMode ? (
           <View style={s.keypadWrap}>
             {expressAuto && (
-              <Text style={s.expressNote}>מעל {EXPRESS_THRESHOLD} פריטים — מצב מהיר פעיל</Text>
+              <CustomText style={s.expressNote}>מעל {EXPRESS_THRESHOLD} פריטים — מצב מהיר פעיל</CustomText>
             )}
             {/* Entry display */}
             <View style={s.entryBox}>
-              <Text style={s.entryValue}>{entry ? shekel(parseFloat(entry) || 0) : "₪0"}</Text>
-              <Text style={s.entryHint}>הקלד מחיר והוסף פריט</Text>
+              <CustomText style={s.entryValue}>{entry ? shekel(parseFloat(entry) || 0) : "₪0"}</CustomText>
+              <CustomText style={s.entryHint}>הקלד מחיר והוסף פריט</CustomText>
             </View>
             {/* Numeric pad */}
             <View style={s.keyGrid}>
               {["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"].map((k) => (
                 <TouchableOpacity key={k} style={s.key} onPress={() => keyTap(k)} activeOpacity={0.6}>
-                  <Text style={s.keyText}>{k}</Text>
+                  <CustomText style={s.keyText}>{k}</CustomText>
                 </TouchableOpacity>
               ))}
             </View>
@@ -479,7 +469,7 @@ export default function POSScreen() {
               onPress={appendExpressItem}
               activeOpacity={0.8}
             >
-              <Text style={s.appendBtnText}>＋ הוסף פריט {entry ? `· ${shekel(parseFloat(entry) || 0)}` : ""}</Text>
+              <CustomText style={s.appendBtnText}>＋ הוסף פריט {entry ? `· ${shekel(parseFloat(entry) || 0)}` : ""}</CustomText>
             </TouchableOpacity>
           </View>
         ) : (
@@ -490,7 +480,7 @@ export default function POSScreen() {
             {cart.length === 0 ? (
               <View style={s.empty}>
                 <Icon name="shopping-bag" size={34} color={INK_MUTED} />
-                <Text style={s.emptyText}>הסל ריק — הקש על מוצר להוספה</Text>
+                <CustomText style={s.emptyText}>הסל ריק — הקש על מוצר להוספה</CustomText>
               </View>
             ) : (
               cart.map((item) => (
@@ -503,24 +493,24 @@ export default function POSScreen() {
                       onPress={() => bumpQty(item.id, -1)}
                       activeOpacity={0.6}
                     >
-                      <Text style={s.stepBtnText}>−</Text>
+                      <CustomText style={s.stepBtnText}>−</CustomText>
                     </TouchableOpacity>
-                    <Text style={s.qty}>{item.qty}</Text>
+                    <CustomText style={s.qty}>{item.qty}</CustomText>
                     <TouchableOpacity
                       style={s.stepBtn}
                       hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
                       onPress={() => bumpQty(item.id, 1)}
                       activeOpacity={0.6}
                     >
-                      <Text style={s.stepBtnText}>＋</Text>
+                      <CustomText style={s.stepBtnText}>＋</CustomText>
                     </TouchableOpacity>
                   </View>
                   {/* Line total */}
-                  <Text style={s.lineTotal}>{shekel(item.price * item.qty)}</Text>
+                  <CustomText style={s.lineTotal}>{shekel(item.price * item.qty)}</CustomText>
                   {/* Name + unit price (right) */}
                   <View style={{ flex: 1, alignItems: "flex-end" }}>
-                    <Text style={s.itemName} numberOfLines={1}>{item.name}</Text>
-                    <Text style={s.itemUnit}>{shekel(item.price)} ליח׳</Text>
+                    <CustomText style={s.itemName} numberOfLines={1}>{item.name}</CustomText>
+                    <CustomText style={s.itemUnit}>{shekel(item.price)} ליח׳</CustomText>
                   </View>
                 </View>
               ))
@@ -533,9 +523,9 @@ export default function POSScreen() {
       {undoCart && (
         <View style={s.undoBar}>
           <TouchableOpacity style={s.undoBtn} onPress={undoClear} activeOpacity={0.7}>
-            <Text style={s.undoBtnText}>ביטול</Text>
+            <CustomText style={s.undoBtnText}>ביטול</CustomText>
           </TouchableOpacity>
-          <Text style={s.undoText}>הסל נוקה</Text>
+          <CustomText style={s.undoText}>הסל נוקה</CustomText>
         </View>
       )}
 
@@ -544,10 +534,10 @@ export default function POSScreen() {
         <View style={s.cashRow}>
           {[200, 100, 50].map((amt) => (
             <TouchableOpacity key={amt} style={s.cashChip} onPress={() => openCash(amt)} activeOpacity={0.7}>
-              <Text style={s.cashChipText}>₪{amt}</Text>
+              <CustomText style={s.cashChipText}>₪{amt}</CustomText>
             </TouchableOpacity>
           ))}
-          <Text style={s.cashLabel}>מזומן:</Text>
+          <CustomText style={s.cashLabel}>מזומן:</CustomText>
         </View>
       )}
 
@@ -555,15 +545,15 @@ export default function POSScreen() {
       <View style={s.chargeBar}>
         <Bounce style={[s.chargeBtn, !cart.length && { opacity: 0.35 }]} onPress={() => checkout()}>
           <Icon name="credit-card" size={20} color={WHITE} />
-          <Text style={s.chargeBtnText}>חיוב</Text>
+          <CustomText style={s.chargeBtnText}>חיוב</CustomText>
         </Bounce>
         <View style={s.totalBlock}>
-          <Text style={s.totalLabel}>
+          <CustomText style={s.totalLabel}>
             {discountAmount > 0
               ? `הנחה ${discountPct > 0 ? `${discountPct}%` : "קבועה"} · ‎-${shekel(discountAmount)}`
               : "סה״כ לתשלום"}
-          </Text>
-          <Text style={s.totalValue}>{shekel(payable)}</Text>
+          </CustomText>
+          <CustomText style={s.totalValue}>{shekel(payable)}</CustomText>
         </View>
       </View>
 
@@ -573,10 +563,10 @@ export default function POSScreen() {
           <View style={s.cashBackdrop}>
             <TouchableWithoutFeedback onPress={() => {}}>
               <View style={s.cashCard}>
-                <Text style={s.cashTitle}>מחשבון עודף</Text>
+                <CustomText style={s.cashTitle}>מחשבון עודף</CustomText>
                 <View style={s.cashPayRow}>
-                  <Text style={s.cashPayValue}>{shekel(payable)}</Text>
-                  <Text style={s.cashPayLabel}>לתשלום</Text>
+                  <CustomText style={s.cashPayValue}>{shekel(payable)}</CustomText>
+                  <CustomText style={s.cashPayLabel}>לתשלום</CustomText>
                 </View>
                 <TextInput
                   style={s.cashInput}
@@ -590,22 +580,22 @@ export default function POSScreen() {
                 <View style={s.cashAddRow}>
                   {[50, 100, 200].map((amt) => (
                     <TouchableOpacity key={amt} style={s.cashAddChip} onPress={() => addCash(amt)} activeOpacity={0.7}>
-                      <Text style={s.cashAddChipText}>+₪{amt}</Text>
+                      <CustomText style={s.cashAddChipText}>+₪{amt}</CustomText>
                     </TouchableOpacity>
                   ))}
                 </View>
                 {/* The headline number: exact change, impossible to misread */}
                 <View style={[s.changeBox, { backgroundColor: change >= 0 ? GREEN + "1A" : RED_SOFT }]}>
-                  <Text style={[s.changeValue, { color: change >= 0 ? "#10B981" : RED }]}>
+                  <CustomText style={[s.changeValue, { color: change >= 0 ? "#10B981" : RED }]}>
                     {change >= 0 ? shekel(Math.round(change * 100) / 100) : shekel(Math.round(-change * 100) / 100)}
-                  </Text>
-                  <Text style={[s.changeLabel, { color: change >= 0 ? "#10B981" : RED }]}>
+                  </CustomText>
+                  <CustomText style={[s.changeLabel, { color: change >= 0 ? "#10B981" : RED }]}>
                     {change >= 0 ? "עודף להחזרה" : "חסר לתשלום"}
-                  </Text>
+                  </CustomText>
                 </View>
                 <View style={{ flexDirection: "row", gap: 10 }}>
                   <TouchableOpacity style={s.cashClose} onPress={() => setCashOpen(false)} activeOpacity={0.7}>
-                    <Text style={s.cashCloseText}>סגור</Text>
+                    <CustomText style={s.cashCloseText}>סגור</CustomText>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[s.cashCharge, change < 0 && { opacity: 0.35 }]}
@@ -613,7 +603,7 @@ export default function POSScreen() {
                     activeOpacity={0.85}
                   >
                     <Icon name="credit-card" size={19} color={WHITE} />
-            <Text style={s.cashChargeText}>חיוב וסיום</Text>
+            <CustomText style={s.cashChargeText}>חיוב וסיום</CustomText>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -666,7 +656,7 @@ export default function POSScreen() {
                   onPress={() => applyDiscount(p)}
                   activeOpacity={0.7}
                 >
-                  <Text style={[s.discountChipText, discountPct === p && { color: WHITE }]}>{p}%</Text>
+                  <CustomText style={[s.discountChipText, discountPct === p && { color: WHITE }]}>{p}%</CustomText>
                 </TouchableOpacity>
               ))}
             </View>
@@ -677,7 +667,7 @@ export default function POSScreen() {
                 onPress={applyFixDiscount}
                 activeOpacity={0.8}
               >
-                <Text style={s.fixApplyText}>החל ₪</Text>
+                <CustomText style={s.fixApplyText}>החל ₪</CustomText>
               </TouchableOpacity>
               <TextInput
                 style={s.fixInput}
@@ -698,8 +688,8 @@ export default function POSScreen() {
           <>
             {[2, 3, 4].map((n) => (
               <View key={n} style={s.splitRow}>
-                <Text style={s.splitValue}>{shekel(Math.ceil((payable / n) * 100) / 100)}</Text>
-                <Text style={s.splitLabel}>{n} משלמים · כל אחד</Text>
+                <CustomText style={s.splitValue}>{shekel(Math.ceil((payable / n) * 100) / 100)}</CustomText>
+                <CustomText style={s.splitLabel}>{n} משלמים · כל אחד</CustomText>
               </View>
             ))}
             <SheetRow emoji="‹" label="חזרה" onPress={() => setSheetView("menu")} />
@@ -725,7 +715,7 @@ export default function POSScreen() {
         {sheetView === "defect" && (
           <>
             {cart.length === 0 ? (
-              <Text style={s.defectEmpty}>הסל ריק — אין פריטים לסימון</Text>
+              <CustomText style={s.defectEmpty}>הסל ריק — אין פריטים לסימון</CustomText>
             ) : (
               cart.map((line) => (
                 <SheetRow

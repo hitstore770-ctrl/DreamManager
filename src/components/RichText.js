@@ -1,8 +1,9 @@
-import { I18nManager, StyleSheet, Text, View } from "react-native";
+import { I18nManager, StyleSheet, View } from "react-native";
 
 import { parseInline } from "../utils/markdownLite";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import { UI } from "../utils/ui";
+import CustomText from "../components/CustomText";
 
 // Block-level Markdown for chat replies.
 //
@@ -22,9 +23,9 @@ const ROW = I18nManager.isRTL ? "row" : "row-reverse";
 function Inline({ text, style }) {
   const segs = parseInline(text);
   return (
-    <Text style={style} selectable>
+    <CustomText style={style} selectable>
       {segs.map((seg, i) => (
-        <Text
+        <CustomText
           key={i}
           style={[
             seg.bold && st.bold,
@@ -34,9 +35,9 @@ function Inline({ text, style }) {
           ]}
         >
           {seg.text}
-        </Text>
+        </CustomText>
       ))}
-    </Text>
+    </CustomText>
   );
 }
 
@@ -105,7 +106,7 @@ export default function RichText({ text, color = UI.ink, size = 15 }) {
         if (b.kind === "li") {
           return (
             <View key={b.key} style={st.liRow}>
-              <Text style={[st.marker, { color, fontSize: size - 1 }]}>{b.marker || "•"}</Text>
+              <CustomText style={[st.marker, { color, fontSize: size - 1 }]}>{b.marker || "•"}</CustomText>
               <Inline text={b.text} style={[st.base, st.liText, { color, fontSize: size }]} />
             </View>
           );

@@ -1,4 +1,4 @@
-import { I18nManager, ScrollView, StyleSheet, Text, View } from "react-native";
+import { I18nManager, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
@@ -12,6 +12,7 @@ import { hapticLight } from "../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import { shekel } from "../utils/posStore";
 import { BEVEL, GRAD, TYPE, UI, tint } from "../utils/ui";
+import CustomText from "../components/CustomText";
 
 // הכסף שלי — the rightmost zone. Two doors: counting the till, and the savings
 // area. Everything money-shaped in the app is reachable from here.
@@ -38,8 +39,8 @@ export default function MyMoneyHubScreen({ navigation }) {
       >
         <View style={s.header}>
           <View style={{ flex: 1 }}>
-            <Text style={s.title}>הכסף שלי</Text>
-            <Text style={s.subtitle}>הכול במקום אחד</Text>
+            <CustomText style={s.title}>הכסף שלי</CustomText>
+            <CustomText style={s.subtitle}>הכול במקום אחד</CustomText>
           </View>
           <View style={s.headerBadge}>
             <Icon name="trending-up" size={20} color={UI.violet} />
@@ -58,8 +59,8 @@ export default function MyMoneyHubScreen({ navigation }) {
                 </View>
               </View>
 
-              <Text style={s.heroLabel}>סה״כ ברשותי</Text>
-              <Text testID="money-networth" style={s.heroValue}>{shekel(netWorth)}</Text>
+              <CustomText style={s.heroLabel}>סה״כ ברשותי</CustomText>
+              <CustomText testID="money-networth" style={s.heroValue}>{shekel(netWorth)}</CustomText>
               <View style={s.heroRow}>
                 <Slice label="קופה" value={piggy} />
                 <Slice label="ארנק" value={wallet} />
@@ -92,7 +93,7 @@ export default function MyMoneyHubScreen({ navigation }) {
           onPress={() => go("SavingsHub")}
         />
 
-        <Text style={s.sectionHead}>עוד מהעסק</Text>
+        <CustomText style={s.sectionHead}>עוד מהעסק</CustomText>
         <View style={s.shortcuts}>
           {SHORTCUTS.map((sc, i) => (
             <Animated.View key={sc.key} entering={FadeInDown.delay(220 + i * 50).springify().damping(14)}>
@@ -103,8 +104,8 @@ export default function MyMoneyHubScreen({ navigation }) {
                       <Icon name={sc.icon} size={19} color={UI.violet} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={s.shortcutLabel}>{sc.label}</Text>
-                      <Text style={s.shortcutHint}>{sc.hint}</Text>
+                      <CustomText style={s.shortcutLabel}>{sc.label}</CustomText>
+                      <CustomText style={s.shortcutHint}>{sc.hint}</CustomText>
                     </View>
                     <Icon name={I18nManager.isRTL ? "chevron-left" : "chevron-right"} size={17} color={UI.inkMuted} />
                   </View>
@@ -126,8 +127,8 @@ function Door({ testID, delay, grad, halo, icon, title, hint, onPress }) {
           <View style={s.door}>
             <Icon name="chevron-left" size={20} color="rgba(255,255,255,0.85)" />
             <View style={{ flex: 1 }}>
-              <Text style={s.doorTitle}>{title}</Text>
-              <Text style={s.doorHint}>{hint}</Text>
+              <CustomText style={s.doorTitle}>{title}</CustomText>
+              <CustomText style={s.doorHint}>{hint}</CustomText>
             </View>
             <View style={s.doorBadge}>
               <Icon name={icon} size={26} color="#FFFFFF" />
@@ -142,8 +143,8 @@ function Door({ testID, delay, grad, halo, icon, title, hint, onPress }) {
 function Slice({ label, value }) {
   return (
     <View style={s.slice}>
-      <Text style={s.sliceValue}>{shekel(value)}</Text>
-      <Text style={s.sliceLabel}>{label}</Text>
+      <CustomText style={s.sliceValue}>{shekel(value)}</CustomText>
+      <CustomText style={s.sliceLabel}>{label}</CustomText>
     </View>
   );
 }

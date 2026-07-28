@@ -1,4 +1,4 @@
-import { I18nManager, StyleSheet, Text, View } from "react-native";
+import { I18nManager, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Bounce from "./Bounce";
@@ -7,6 +7,7 @@ import { Card } from "./Paper";
 import { hapticLight } from "../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import { UI, glow } from "../utils/ui";
+import CustomText from "../components/CustomText";
 
 // A floating "back" for screens that used to be tabs and are now pushed.
 //
@@ -33,7 +34,7 @@ export function BackFab({ navigation, label = "חזרה" }) {
         <Card style={st.glow} radius={22}>
           <View style={st.inner}>
             <Icon name={I18nManager.isRTL ? "arrow-right" : "arrow-left"} size={17} color={UI.ink} />
-            <Text style={st.label}>{label}</Text>
+            <CustomText style={st.label}>{label}</CustomText>
           </View>
         </Card>
       </Bounce>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 
 import Icon from "../../Icon";
 import { hapticLight, hapticSuccess, hapticWarning } from "../../../utils/haptics";
@@ -19,6 +19,7 @@ import {
   s,
   useCalcHaptic,
 } from "../kit";
+import CustomText from "../../../components/CustomText";
 
 // Clocks and calendars: a timer, a zone converter and a date counter.
 
@@ -103,11 +104,11 @@ export function PomodoroTimer() {
       />
 
       <View style={[t.clockCard, done && { backgroundColor: GREEN + "12" }]}>
-        <Text style={[t.clock, done && { color: GREEN }, running && { color: BLUE }]}>{mmss(left)}</Text>
-        <Text style={t.clockSub}>
+        <CustomText style={[t.clock, done && { color: GREEN }, running && { color: BLUE }]}>{mmss(left)}</CustomText>
+        <CustomText style={t.clockSub}>
           {done ? "הסבב הושלם" : running ? "רץ" : "מוכן"}
           {rounds > 0 ? ` · ${rounds} סבבים היום` : ""}
-        </Text>
+        </CustomText>
         <View style={t.track}>
           <View
             style={[t.fill, { width: `${pct}%`, backgroundColor: done ? GREEN : BLUE }]}
@@ -135,10 +136,10 @@ export function PomodoroTimer() {
         </TouchableOpacity>
       </View>
 
-      <Text style={s.hint}>
+      <CustomText style={s.hint}>
         הספירה מבוססת על שעון המכשיר ולא על מונה פנימי, כך שהזמן נשאר מדויק גם אם המסך כבה או שעברת
         לאפליקציה אחרת באמצע הסבב.
-      </Text>
+      </CustomText>
     </View>
   );
 }
@@ -241,7 +242,7 @@ export function TimezoneConverter() {
       {!useNow && (
         <View style={s.row}>
           <View style={{ flex: 1 }}>
-            <Text style={s.fieldLabel}>שעה (בישראל)</Text>
+            <CustomText style={s.fieldLabel}>שעה (בישראל)</CustomText>
             <View style={s.fieldRow}>
               <TextInput
                 testID="tz-hh"
@@ -257,7 +258,7 @@ export function TimezoneConverter() {
             </View>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={s.fieldLabel}>דקות</Text>
+            <CustomText style={s.fieldLabel}>דקות</CustomText>
             <View style={s.fieldRow}>
               <TextInput
                 testID="tz-mm"
@@ -278,9 +279,9 @@ export function TimezoneConverter() {
       {!supported ? (
         <View style={[t.verdict, { backgroundColor: CARD }]}>
           <Icon name="alert-triangle" size={22} color={GOLD} />
-          <Text style={t.verdictLabel}>
+          <CustomText style={t.verdictLabel}>
             הבילד הזה לא כולל נתוני אזורי זמן, ולכן אי אפשר להציג המרה אמינה.
-          </Text>
+          </CustomText>
         </View>
       ) : (
         rows.map((z) => {
@@ -289,15 +290,15 @@ export function TimezoneConverter() {
           return (
             <View key={z.id} style={[u.zoneRow, home && { backgroundColor: BLUE + "10" }]}>
               <View style={{ alignItems: "flex-start" }}>
-                <Text testID={`tz-${z.id}`} style={[u.zoneTime, home && { color: BLUE }]}>{z.time}</Text>
-                <Text style={u.zoneDay}>{z.day}</Text>
+                <CustomText testID={`tz-${z.id}`} style={[u.zoneTime, home && { color: BLUE }]}>{z.time}</CustomText>
+                <CustomText style={u.zoneDay}>{z.day}</CustomText>
               </View>
               <View style={{ flex: 1, alignItems: "flex-end" }}>
-                <Text style={u.zoneCity}>{z.city}</Text>
-                <Text style={u.zoneMeta}>
+                <CustomText style={u.zoneCity}>{z.city}</CustomText>
+                <CustomText style={u.zoneMeta}>
                   {z.abbr}
                   {diff !== null && !home ? ` · ${diff > 0 ? "+" : ""}${diff} שעות מישראל` : ""}
-                </Text>
+                </CustomText>
               </View>
               <Icon name={z.icon} size={16} color={home ? BLUE : INK_MUTED} />
             </View>
@@ -305,10 +306,10 @@ export function TimezoneConverter() {
         })
       )}
 
-      <Text style={s.hint}>
+      <CustomText style={s.hint}>
         ההמרה משתמשת באזורי זמן ולא בהיסטים קבועים, כך שהיא נכונה גם בשעון קיץ. הקיצור לצד כל עיר
         (IST/IDT, EST/EDT, GMT/BST) משתנה לפי התאריך.
-      </Text>
+      </CustomText>
     </View>
   );
 }
@@ -423,7 +424,7 @@ export function AgeInDays() {
   return (
     <View style={{ gap: 12 }}>
       <View>
-        <Text style={s.fieldLabel}>תאריך לידה</Text>
+        <CustomText style={s.fieldLabel}>תאריך לידה</CustomText>
         <View style={s.fieldRow}>
           <TextInput
             testID="age-date"
@@ -439,14 +440,14 @@ export function AgeInDays() {
         </View>
       </View>
 
-      {r.invalid && <Text style={[s.hint, { color: RED }]}>תאריך לא תקין — הפורמט הוא YYYY-MM-DD.</Text>}
-      {r.future && <Text style={[s.hint, { color: RED }]}>התאריך בעתיד.</Text>}
+      {r.invalid && <CustomText style={[s.hint, { color: RED }]}>תאריך לא תקין — הפורמט הוא YYYY-MM-DD.</CustomText>}
+      {r.future && <CustomText style={[s.hint, { color: RED }]}>התאריך בעתיד.</CustomText>}
 
       {r.ready && (
         <>
           <View style={[t.verdict, { backgroundColor: BLUE + "12" }]}>
-            <Text testID="age-days" style={[t.verdictValue, { color: BLUE }]}>{r.days}</Text>
-            <Text style={t.verdictLabel}>ימים</Text>
+            <CustomText testID="age-days" style={[t.verdictValue, { color: BLUE }]}>{r.days}</CustomText>
+            <CustomText style={t.verdictLabel}>ימים</CustomText>
           </View>
 
           <View style={s.statRow}>
@@ -460,20 +461,20 @@ export function AgeInDays() {
           </View>
 
           <View style={[s.banner, { backgroundColor: CARD }]}>
-            <Text style={[s.bannerText, { color: INK }]}>
+            <CustomText style={[s.bannerText, { color: INK }]}>
               {r.toBirthday === 0 ? "יום הולדת היום" : `עוד ${r.toBirthday} ימים ליום ההולדת`}
-            </Text>
-            <Text style={[s.bannerSub, { color: INK_SOFT }]}>
+            </CustomText>
+            <CustomText style={[s.bannerSub, { color: INK_SOFT }]}>
               נולדת ביום {r.born} · היום ה-{r.nextRound} יגיע בעוד {r.nextRound - r.days} ימים.
-            </Text>
+            </CustomText>
           </View>
         </>
       )}
 
-      <Text style={s.hint}>
+      <CustomText style={s.hint}>
         הספירה בימי לוח מלאים ולא בשעות, כך שהמעבר לשעון קיץ לא מזיז את התוצאה. תאריך שלא קיים —
         למשל 31 בפברואר — נדחה ולא מתגלגל לחודש הבא.
-      </Text>
+      </CustomText>
     </View>
   );
 }

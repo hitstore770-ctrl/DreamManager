@@ -1,21 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Clipboard from "expo-clipboard";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Alert,
-  I18nManager,
-  Linking,
-  Modal,
-  Platform,
-  ScrollView,
-  Share,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, I18nManager, Linking, Modal, Platform, ScrollView, Share, StyleSheet, Switch, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown, FadeInUp, LinearTransition } from "react-native-reanimated";
 
@@ -36,6 +22,7 @@ import { withTimeout } from "../utils/network";
 import { IMPLEMENTED, TOOL_COUNT } from "../utils/toolsCatalog";
 import { buildSalesCsv } from "../utils/zReport";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
+import CustomText from "../components/CustomText";
 
 // הגדרות — an iOS-style grouped settings list on the 770JLM Light Modern
 // surface. Tapping the version line seven times in a row unlocks a developer
@@ -572,15 +559,15 @@ export default function SettingsScreen() {
         <View style={{ flex: 1 }}>
           <View style={s.titleRow}>
             <Icon name="settings" size={20} color={BLUE} />
-            <Text style={s.title}>הגדרות</Text>
+            <CustomText style={s.title}>הגדרות</CustomText>
           </View>
-          <Text style={s.subtitle}>
+          <CustomText style={s.subtitle}>
             {settings.userName ? `שלום, ${settings.userName}` : "העדפות, גיבוי ומערכת"}
-          </Text>
+          </CustomText>
         </View>
         {settings.devMode && (
           <Animated.View entering={FadeInDown.duration(220)} style={s.devPill}>
-            <><Icon name="tool" size={11} color="#7A5B00" /><Text style={s.devPillText}>DEV</Text></>
+            <><Icon name="tool" size={11} color="#7A5B00" /><CustomText style={s.devPillText}>DEV</CustomText></>
           </Animated.View>
         )}
       </View>
@@ -653,7 +640,7 @@ export default function SettingsScreen() {
         <Section index={1}>
         <Group title="פרופיל אישי" icon="user">
           <View style={s.fieldRow}>
-            <Text style={s.rowLabel}>שם משתמש</Text>
+            <CustomText style={s.rowLabel}>שם משתמש</CustomText>
             <TextInput
               style={s.nameInput}
               value={name}
@@ -674,7 +661,7 @@ export default function SettingsScreen() {
         <Group title="הגדרות עסק וקופה" icon="shopping-bag">
           <View style={s.stackRow}>
             <StackLabel icon="folder" text="סביבת עבודה" />
-            <Text style={s.rowHint}>{WORKSPACES.find((w) => w.key === settings.workspace)?.hint}</Text>
+            <CustomText style={s.rowHint}>{WORKSPACES.find((w) => w.key === settings.workspace)?.hint}</CustomText>
             <Segment
               options={WORKSPACES.map((w) => ({ key: w.key, label: w.label }))}
               value={settings.workspace}
@@ -702,8 +689,8 @@ export default function SettingsScreen() {
           <View style={[s.row, compact && s.rowCompact, bounds]}>
             <Icon name="file-text" size={18} color={INK_SOFT} style={s.rowIcon} />
             <View style={{ flex: 1 }}>
-              <Text style={s.rowLabel}>מע״מ ברירת מחדל</Text>
-              <Text style={s.rowHint}>משמש את מחשבוני התמחור והייבוא (%)</Text>
+              <CustomText style={s.rowLabel}>מע״מ ברירת מחדל</CustomText>
+              <CustomText style={s.rowHint}>משמש את מחשבוני התמחור והייבוא (%)</CustomText>
             </View>
             <TextInput
               testID="vat-input"
@@ -744,7 +731,7 @@ export default function SettingsScreen() {
           <Divider />
           <View style={[s.stackRow, bounds]}>
             <StackLabel icon="dollar-sign" text="סמל מטבע" />
-            <Text style={s.rowHint}>מוחל על כל הסכומים באפליקציה</Text>
+            <CustomText style={s.rowHint}>מוחל על כל הסכומים באפליקציה</CustomText>
             <Segment
               options={CURRENCIES}
               value={settings.currency}
@@ -755,9 +742,9 @@ export default function SettingsScreen() {
           <Divider />
           <View style={[s.stackRow, bounds, !hapticsOn && { opacity: 0.45 }]}>
             <StackLabel icon="radio" text="עוצמת רטט" />
-            <Text style={s.rowHint}>
+            <CustomText style={s.rowHint}>
               {hapticsOn ? "חוזק המשוב בכל לחיצה באפליקציה" : "מושבת — הפעל ״משוב הפטי״ בקבוצת מערכת"}
-            </Text>
+            </CustomText>
             <Segment
               options={HAPTIC_LEVELS}
               value={hapticsOn ? settings.haptics : settings.hapticsLevel}
@@ -803,11 +790,11 @@ export default function SettingsScreen() {
         <Group title="תצוגה" icon="droplet">
           <View style={[s.stackRow, bounds]}>
             <StackLabel icon="moon" text="ערכת נושא" />
-            <Text style={s.rowHint}>
+            <CustomText style={s.rowHint}>
               {settings.themeMode === "light"
                 ? "בהיר — 770JLM Light"
                 : "נשמר להעדפות; המסכים עדיין נצבעים בהיר"}
-            </Text>
+            </CustomText>
             <Segment
               options={THEME_MODES}
               value={settings.themeMode}
@@ -834,7 +821,7 @@ export default function SettingsScreen() {
         <Group title="גיבוי, נתונים ופרטיות" icon="save">
           <View style={s.stackRow}>
             <View style={s.storageHead}>
-              <Text style={s.storageTotal}>{fmtBytes(storage.total)}</Text>
+              <CustomText style={s.storageTotal}>{fmtBytes(storage.total)}</CustomText>
               <StackLabel icon="hard-drive" text="נפח בשימוש" />
             </View>
             {storage.rows.slice(0, 4).map((r) => {
@@ -842,8 +829,8 @@ export default function SettingsScreen() {
               return (
                 <View key={r.key} style={{ marginTop: 10 }}>
                   <View style={s.storageRow}>
-                    <Text style={s.storageBytes}>{fmtBytes(r.bytes)}</Text>
-                    <Text style={s.storageKey} numberOfLines={1}>{r.key}</Text>
+                    <CustomText style={s.storageBytes}>{fmtBytes(r.bytes)}</CustomText>
+                    <CustomText style={s.storageKey} numberOfLines={1}>{r.key}</CustomText>
                   </View>
                   <View style={s.barBg}>
                     <View style={[s.barFill, { width: `${pct}%` }]} />
@@ -851,7 +838,7 @@ export default function SettingsScreen() {
                 </View>
               );
             })}
-            {storage.rows.length === 0 && <Text style={s.rowHint}>אין עדיין נתונים מקומיים.</Text>}
+            {storage.rows.length === 0 && <CustomText style={s.rowHint}>אין עדיין נתונים מקומיים.</CustomText>}
           </View>
           <ActionRow label="ייצוא גיבוי" hint="שיתוף כל הנתונים כקובץ JSON" icon="share-2" bounds={bounds} compact={compact} onPress={exportBackup} />
           <ActionRow label="העתק גיבוי ללוח" icon="copy" bounds={bounds} compact={compact} onPress={copyBackup} />
@@ -881,12 +868,12 @@ export default function SettingsScreen() {
         <Section index={6}>
         <Group title="אזור סכנה" icon="alert-triangle" accent={RED}>
           <View style={s.dangerWrap}>
-            <Text style={s.dangerText}>
+            <CustomText style={s.dangerText}>
               מחיקה מוחלטת של כל המכירות, המלאי, ההקפות, הפתקים, החלומות וההעדפות מהמכשיר, וחזרה
               להגדרות היצרן.
-            </Text>
+            </CustomText>
             <Bounce testID="factory-reset" style={[s.dangerBtn, bounds]} onPress={factoryReset}>
-              <Text style={s.dangerBtnText}>איפוס אפליקציה מוחלט</Text>
+              <CustomText style={s.dangerBtnText}>איפוס אפליקציה מוחלט</CustomText>
             </Bounce>
           </View>
         </Group>
@@ -948,13 +935,13 @@ export default function SettingsScreen() {
           onPress={onVersionPress}
           activeOpacity={0.6}
         >
-          <Text style={s.versionText}>{APP_VERSION}</Text>
+          <CustomText style={s.versionText}>{APP_VERSION}</CustomText>
         </TouchableOpacity>
       </ScrollView>
 
       {toast && (
         <Animated.View entering={FadeInUp.duration(200)} style={[s.toast, { bottom: insets.bottom + 90 }]}>
-          <Text style={s.toastText}>{toast}</Text>
+          <CustomText style={s.toastText}>{toast}</CustomText>
         </Animated.View>
       )}
 
@@ -976,28 +963,28 @@ export default function SettingsScreen() {
       <Modal visible={!!confirmMode} transparent animationType="fade" onRequestClose={() => setConfirmMode(null)}>
         <View style={s.backdrop}>
           <View style={s.dialog}>
-            <Text style={s.dialogTitle}>
+            <CustomText style={s.dialogTitle}>
               {confirmMode === "factory" ? "איפוס אפליקציה מוחלט" : "מחיקת AsyncStorage עמוקה"}
-            </Text>
-            <Text style={s.dialogBody}>
+            </CustomText>
+            <CustomText style={s.dialogBody}>
               {confirmMode === "factory"
                 ? "כל הנתונים המקומיים וההגדרות יימחקו לצמיתות וההגדרות יחזרו לברירת המחדל. אין דרך לשחזר בלי גיבוי."
                 : "כל מפתחות האחסון של האפליקציה יימחקו. ההגדרות יישארו בזיכרון עד להפעלה מחדש."}
-            </Text>
+            </CustomText>
             <TouchableOpacity
               testID="confirm-destructive"
               style={[s.dialogBtn, { backgroundColor: RED }]}
               onPress={() => runWipe(confirmMode === "factory")}
               activeOpacity={0.85}
             >
-              <Text style={s.dialogBtnText}>{confirmMode === "factory" ? "אפס הכל" : "כן, מחק הכל"}</Text>
+              <CustomText style={s.dialogBtnText}>{confirmMode === "factory" ? "אפס הכל" : "כן, מחק הכל"}</CustomText>
             </TouchableOpacity>
             <TouchableOpacity
               style={[s.dialogBtn, { backgroundColor: BG }]}
               onPress={() => setConfirmMode(null)}
               activeOpacity={0.85}
             >
-              <Text style={[s.dialogBtnText, { color: INK_SOFT }]}>ביטול</Text>
+              <CustomText style={[s.dialogBtnText, { color: INK_SOFT }]}>ביטול</CustomText>
             </TouchableOpacity>
           </View>
         </View>
@@ -1024,7 +1011,7 @@ function Group({ title, icon, accent, children, bounds }) {
     <View style={[s.group, bounds]}>
       <View style={s.groupHead}>
         {!!icon && <Icon name={icon} size={14} color={accent || INK_MUTED} />}
-        <Text style={[s.groupTitle, accent && { color: accent }]}>{title}</Text>
+        <CustomText style={[s.groupTitle, accent && { color: accent }]}>{title}</CustomText>
       </View>
       <View style={[s.groupCard, accent && { borderWidth: 1, borderColor: accent + "55" }]}>{children}</View>
     </View>
@@ -1036,7 +1023,7 @@ function StackLabel({ icon, text }) {
   return (
     <View style={s.stackLabelRow}>
       <Icon name={icon} size={16} color={INK_SOFT} />
-      <Text style={s.rowLabel}>{text}</Text>
+      <CustomText style={s.rowLabel}>{text}</CustomText>
     </View>
   );
 }
@@ -1051,8 +1038,8 @@ function InfoRow({ label, value, icon, last, bounds, compact }) {
     <>
       <View style={[s.row, compact && s.rowCompact, bounds]}>
         <Icon name={icon || "circle"} size={18} color={INK_SOFT} style={s.rowIcon} />
-        <Text style={s.rowLabel}>{label}</Text>
-        <Text style={s.rowValue} numberOfLines={1}>{value}</Text>
+        <CustomText style={s.rowLabel}>{label}</CustomText>
+        <CustomText style={s.rowValue} numberOfLines={1}>{value}</CustomText>
       </View>
       <Divider last={last} />
     </>
@@ -1065,8 +1052,8 @@ function SwitchRow({ label, hint, icon, value, onValueChange, disabled, last, bo
       <View style={[s.row, compact && s.rowCompact, bounds, disabled && { opacity: 0.45 }]}>
         <Icon name={icon || "circle"} size={18} color={INK_SOFT} style={s.rowIcon} />
         <View style={{ flex: 1 }}>
-          <Text style={s.rowLabel}>{label}</Text>
-          {!!hint && <Text style={s.rowHint}>{hint}</Text>}
+          <CustomText style={s.rowLabel}>{label}</CustomText>
+          {!!hint && <CustomText style={s.rowHint}>{hint}</CustomText>}
         </View>
         <Switch
           value={value}
@@ -1091,15 +1078,15 @@ function ActionRow({ label, hint, icon, onPress, danger, actionLabel, last, boun
       <Bounce style={[s.row, compact && s.rowCompact, bounds]} onPress={onPress} scaleTo={0.97}>
         <Icon name={icon || "circle"} size={18} color={danger ? RED : INK_SOFT} style={s.rowIcon} />
         <View style={{ flex: 1 }}>
-          <Text style={[s.rowLabel, danger && { color: RED }]}>{label}</Text>
-          {!!hint && <Text style={s.rowHint}>{hint}</Text>}
+          <CustomText style={[s.rowLabel, danger && { color: RED }]}>{label}</CustomText>
+          {!!hint && <CustomText style={s.rowHint}>{hint}</CustomText>}
         </View>
         {actionLabel ? (
           <View style={[s.actionPill, danger && { backgroundColor: RED + "18" }]}>
-            <Text style={[s.actionPillText, danger && { color: RED }]}>{actionLabel}</Text>
+            <CustomText style={[s.actionPillText, danger && { color: RED }]}>{actionLabel}</CustomText>
           </View>
         ) : (
-          <Text style={s.chevron}>‹</Text>
+          <CustomText style={s.chevron}>‹</CustomText>
         )}
       </Bounce>
       <Divider last={last} />
@@ -1117,7 +1104,7 @@ function Segment({ options, value, onChange, disabled, bounds }) {
           style={[s.segmentBtn, bounds, value === o.key && { backgroundColor: BLUE }]}
           onPress={() => !disabled && onChange(o.key)}
         >
-          <Text style={[s.segmentText, value === o.key && { color: WHITE }]}>{o.label}</Text>
+          <CustomText style={[s.segmentText, value === o.key && { color: WHITE }]}>{o.label}</CustomText>
         </Bounce>
       ))}
     </View>

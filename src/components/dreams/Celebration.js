@@ -1,10 +1,11 @@
 import { useEffect } from "react";
-import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Modal, StyleSheet, TouchableOpacity, View } from "react-native";
 import Animated, { FadeIn, FadeOut, ZoomIn } from "react-native-reanimated";
 
 import Icon from "../Icon";
 import { hapticSuccess } from "../../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
+import CustomText from "../../components/CustomText";
 
 // Celebration for a completed dream. No confetti library (they're heavy and
 // unreliable in the web preview) — instead a gold screen flash, a scaling
@@ -50,15 +51,15 @@ export default function Celebration({ visible, dream, onArchive, onClose }) {
 
         <Animated.View entering={ZoomIn.duration(420)} style={s.card}>
           <Icon name="award" size={54} color={GOLD} style={s.trophy} />
-          <Text style={s.title}>הגשמת את החלום!</Text>
-          <Text style={s.dreamTitle} numberOfLines={2}>{dream?.title}</Text>
-          <Text style={s.sub}>כל אבני הדרך הושלמו — מגיע לך</Text>
+          <CustomText style={s.title}>הגשמת את החלום!</CustomText>
+          <CustomText style={s.dreamTitle} numberOfLines={2}>{dream?.title}</CustomText>
+          <CustomText style={s.sub}>כל אבני הדרך הושלמו — מגיע לך</CustomText>
 
           <TouchableOpacity style={s.archiveBtn} onPress={onArchive} activeOpacity={0.85}>
-            <View style={s.btnFace}><Icon name="archive" size={15} color={WHITE} /><Text style={s.archiveBtnText}>העבר להיכל ההישגים</Text></View>
+            <View style={s.btnFace}><Icon name="archive" size={15} color={WHITE} /><CustomText style={s.archiveBtnText}>העבר להיכל ההישגים</CustomText></View>
           </TouchableOpacity>
           <TouchableOpacity style={s.keepBtn} onPress={onClose} activeOpacity={0.7}>
-            <Text style={s.keepBtnText}>השאר על הלוח</Text>
+            <CustomText style={s.keepBtnText}>השאר על הלוח</CustomText>
           </TouchableOpacity>
         </Animated.View>
       </Animated.View>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import Icon from "../../Icon";
 import { NOTES_FONTS as FONTS } from "../../../utils/notesTheme";
@@ -21,6 +21,7 @@ import {
   s,
   useCalcHaptic,
 } from "../kit";
+import CustomText from "../../../components/CustomText";
 
 // Vending-machine and transit tools.
 
@@ -69,10 +70,10 @@ export function VendingRoi() {
 
       {r.impossible ? (
         <View style={[s.banner, { backgroundColor: RED + "14" }]}>
-          <Text style={[s.bannerText, { color: RED }]}>אין החזר השקעה בנתונים האלה</Text>
-          <Text style={[s.bannerSub, { color: RED }]}>
+          <CustomText style={[s.bannerText, { color: RED }]}>אין החזר השקעה בנתונים האלה</CustomText>
+          <CustomText style={[s.bannerSub, { color: RED }]}>
             הרווח היומי ({shekel(Math.round(r.netDaily * 100) / 100)}) לא מכסה את העלויות הקבועות.
-          </Text>
+          </CustomText>
         </View>
       ) : (
         <>
@@ -90,10 +91,10 @@ export function VendingRoi() {
               color={r.yearOne >= 0 ? GREEN : RED}
             />
           </View>
-          <Text style={s.hint}>
+          <CustomText style={s.hint}>
             העלויות החודשיות (חשמל, דמי מיקום) מחולקות ל-30.4 ימים ומופחתות מהרווח היומי, כך שההחזר משקף
             רווח נטו אמיתי.
-          </Text>
+          </CustomText>
         </>
       )}
     </View>
@@ -139,13 +140,13 @@ export function TransitLoadCalc() {
       <Chips options={[600, 800, 1000, 1200, 1500]} onPick={(v) => setPayload(String(v))} active={payload} />
 
       {!r.ready ? (
-        <Text style={s.hint}>הזן מטען מותר ומשקל ארגז כדי לחשב.</Text>
+        <CustomText style={s.hint}>הזן מטען מותר ומשקל ארגז כדי לחשב.</CustomText>
       ) : r.boxes === 0 ? (
         <View style={[s.banner, { backgroundColor: RED + "14" }]}>
-          <Text style={[s.bannerText, { color: RED }]}>אפילו ארגז אחד חורג מהמטען המותר</Text>
-          <Text style={[s.bannerSub, { color: RED }]}>
+          <CustomText style={[s.bannerText, { color: RED }]}>אפילו ארגז אחד חורג מהמטען המותר</CustomText>
+          <CustomText style={[s.bannerSub, { color: RED }]}>
             משקל הארגז ({boxWeight} ק״ג) גדול מהמטען המותר ({payload} ק״ג).
-          </Text>
+          </CustomText>
         </View>
       ) : (
         <>
@@ -165,18 +166,18 @@ export function TransitLoadCalc() {
             />
           </View>
           <View style={s.loadMetaRow}>
-            <Text style={[s.loadMeta, r.over && { color: RED }]}>
+            <CustomText style={[s.loadMeta, r.over && { color: RED }]}>
               {r.loadedKg} ק״ג · {r.pct}% מהמטען
-            </Text>
-            <Text style={s.loadMeta}>
+            </CustomText>
+            <CustomText style={s.loadMeta}>
               {r.over ? "חריגה ממשקל חוקי" : `נשארו עוד ${r.left} ארגזים`}
-            </Text>
+            </CustomText>
           </View>
 
-          <Text style={s.hint}>
+          <CustomText style={s.hint}>
             המטען המותר הוא ההפרש בין המשקל הכולל המותר לבין משקל הרכב העצמי — מופיע ברישיון הרכב. שים לב
             שנוסעים וציוד קבוע נחשבים גם הם על חשבון אותו מטען.
-          </Text>
+          </CustomText>
         </>
       )}
     </View>
@@ -268,13 +269,13 @@ export function OhmsLaw() {
       {mode !== "ir" && <Chips options={VOLT_PRESETS} onPick={(v) => setVolts(String(v))} active={volts} />}
 
       {!r.ready ? (
-        <Text style={s.hint}>הזן את שני הערכים הידועים כדי לפתור את השאר.</Text>
+        <CustomText style={s.hint}>הזן את שני הערכים הידועים כדי לפתור את השאר.</CustomText>
       ) : r.undef ? (
         <View style={[s.banner, { backgroundColor: GOLD + "16" }]}>
-          <Text style={[s.bannerText, { color: "#8A6D00" }]}>אין פתרון בערכים האלה</Text>
-          <Text style={[s.bannerSub, { color: "#8A6D00" }]}>
+          <CustomText style={[s.bannerText, { color: "#8A6D00" }]}>אין פתרון בערכים האלה</CustomText>
+          <CustomText style={[s.bannerSub, { color: "#8A6D00" }]}>
             חלוקה באפס — זרם אפס פירושו מעגל פתוח, והתנגדות אפס פירושה קצר. שנה את אחד הערכים.
-          </Text>
+          </CustomText>
         </View>
       ) : (
         <>
@@ -289,16 +290,16 @@ export function OhmsLaw() {
           </View>
 
           <View style={[s.banner, { backgroundColor: CARD }]}>
-            <Text style={[s.bannerText, { color: INK }]}>נגד מומלץ: {r.suggestedRating}W ומעלה</Text>
-            <Text style={[s.bannerSub, { color: INK_SOFT }]}>
+            <CustomText style={[s.bannerText, { color: INK }]}>נגד מומלץ: {r.suggestedRating}W ומעלה</CustomText>
+            <CustomText style={[s.bannerSub, { color: INK_SOFT }]}>
               פי שניים מההספק המחושב ({r.watts}W). רכיב שעובד קרוב לדירוג שלו מתחמם ומתקצר את חייו.
-            </Text>
+            </CustomText>
           </View>
 
-          <Text style={s.hint}>
+          <CustomText style={s.hint}>
             V = I × R, ו-P = V × I. שים לב שהחישוב נכון לזרם ישר (DC) — ברשת 230V יש גם היגב והפרש
             פאזה, וההספק בפועל נמוך מהמכפלה הפשוטה.
-          </Text>
+          </CustomText>
         </>
       )}
     </View>
@@ -351,20 +352,20 @@ export function InventoryForecast() {
       </View>
 
       {!r.ready ? (
-        <Text style={s.hint}>הזן מלאי נוכחי וקצב מכירות יומי ממוצע.</Text>
+        <CustomText style={s.hint}>הזן מלאי נוכחי וקצב מכירות יומי ממוצע.</CustomText>
       ) : r.idle ? (
         <View style={[s.banner, { backgroundColor: CARD }]}>
-          <Text style={[s.bannerText, { color: INK }]}>אין מכירות — המלאי לא יתרוקן</Text>
-          <Text style={[s.bannerSub, { color: INK_SOFT }]}>
+          <CustomText style={[s.bannerText, { color: INK }]}>אין מכירות — המלאי לא יתרוקן</CustomText>
+          <CustomText style={[s.bannerSub, { color: INK_SOFT }]}>
             בקצב אפס אין תאריך התרוקנות. אם המכונה באמת לא מוכרת, הבעיה היא במיקום או במחיר ולא במלאי.
-          </Text>
+          </CustomText>
         </View>
       ) : (
         <>
           <View style={[iv.verdict, { backgroundColor: tone + "12" }]}>
-            <Text testID="fc-days" style={[iv.verdictValue, { color: tone }]}>{r.days}</Text>
-            <Text style={iv.verdictUnit}>ימים עד שהמכונה מתרוקנת</Text>
-            <Text style={iv.verdictSub}>צפי התרוקנות: {r.emptyOn}</Text>
+            <CustomText testID="fc-days" style={[iv.verdictValue, { color: tone }]}>{r.days}</CustomText>
+            <CustomText style={iv.verdictUnit}>ימים עד שהמכונה מתרוקנת</CustomText>
+            <CustomText style={iv.verdictSub}>צפי התרוקנות: {r.emptyOn}</CustomText>
           </View>
 
           <View style={s.statRow}>
@@ -378,18 +379,18 @@ export function InventoryForecast() {
 
           {r.urgent && (
             <View style={[s.banner, { backgroundColor: RED + "14" }]}>
-              <Text style={[s.bannerText, { color: RED }]}>צריך לצאת למילוי עכשיו</Text>
-              <Text style={[s.bannerSub, { color: RED }]}>
+              <CustomText style={[s.bannerText, { color: RED }]}>צריך לצאת למילוי עכשיו</CustomText>
+              <CustomText style={[s.bannerSub, { color: RED }]}>
                 המלאי מספיק ל-{r.days} ימים ולוקח {leadDays} ימים להגיע. כל דחייה מכאן היא ימים שבהם
                 המכונה עומדת ריקה.
-              </Text>
+              </CustomText>
             </View>
           )}
 
-          <Text style={s.hint}>
+          <CustomText style={s.hint}>
             החיזוי מניח קצב מכירה קבוע. סופי שבוע, חופשות ומזג אוויר חם משנים אותו — שווה לעדכן את
             הקצב אחרי כל סבב.
-          </Text>
+          </CustomText>
         </>
       )}
     </View>
@@ -460,21 +461,21 @@ export function ChangeBreakdown() {
       <Chips options={[5, 10, 20, 50, 100]} onPick={(v) => setPaidIls(String(v))} active={paidIls} />
 
       {!r.ready ? (
-        <Text style={s.hint}>הזן את מחיר הפריט ואת הסכום שהוכנס.</Text>
+        <CustomText style={s.hint}>הזן את מחיר הפריט ואת הסכום שהוכנס.</CustomText>
       ) : r.short !== null ? (
         <View style={[s.banner, { backgroundColor: RED + "14" }]}>
-          <Text style={[s.bannerText, { color: RED }]}>הסכום שהוכנס נמוך מהמחיר</Text>
-          <Text style={[s.bannerSub, { color: RED }]}>חסרים {shekel(r.short)} להשלמת הקנייה.</Text>
+          <CustomText style={[s.bannerText, { color: RED }]}>הסכום שהוכנס נמוך מהמחיר</CustomText>
+          <CustomText style={[s.bannerSub, { color: RED }]}>חסרים {shekel(r.short)} להשלמת הקנייה.</CustomText>
         </View>
       ) : r.exact ? (
         <View style={[s.banner, { backgroundColor: GREEN + "16" }]}>
-          <Text style={[s.bannerText, { color: GREEN }]}>סכום מדויק — אין עודף</Text>
+          <CustomText style={[s.bannerText, { color: GREEN }]}>סכום מדויק — אין עודף</CustomText>
         </View>
       ) : (
         <>
           <View style={[iv.verdict, { backgroundColor: BLUE + "12" }]}>
-            <Text testID="chg-total" style={[iv.verdictValue, { color: BLUE }]}>{shekel(r.due)}</Text>
-            <Text style={iv.verdictUnit}>עודף להחזרה · {r.pieces} מטבעות</Text>
+            <CustomText testID="chg-total" style={[iv.verdictValue, { color: BLUE }]}>{shekel(r.due)}</CustomText>
+            <CustomText style={iv.verdictUnit}>עודף להחזרה · {r.pieces} מטבעות</CustomText>
           </View>
 
           {r.coins.map((c) => (
@@ -482,11 +483,11 @@ export function ChangeBreakdown() {
               key={c.agorot}
               style={[s.routineRow, !c.count && { opacity: 0.35 }]}
             >
-              <Text testID={`chg-coin-${c.agorot}`} style={[s.routineTime, c.count > 0 && { color: BLUE }]}>
+              <CustomText testID={`chg-coin-${c.agorot}`} style={[s.routineTime, c.count > 0 && { color: BLUE }]}>
                 {c.count}
-              </Text>
+              </CustomText>
               <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
-                <Text style={s.routineLabel}>{c.label}</Text>
+                <CustomText style={s.routineLabel}>{c.label}</CustomText>
                 <Icon name="circle" size={14} color={c.count > 0 ? BLUE : INK_MUTED} />
               </View>
             </View>
@@ -494,13 +495,13 @@ export function ChangeBreakdown() {
 
           {r.unpayable > 0 && (
             <View style={[s.banner, { backgroundColor: GOLD + "16" }]}>
-              <Text style={[s.bannerText, { color: "#8A6D00" }]}>
+              <CustomText style={[s.bannerText, { color: "#8A6D00" }]}>
                 {shekel(r.unpayable)} לא ניתנים להחזרה
-              </Text>
-              <Text style={[s.bannerSub, { color: "#8A6D00" }]}>
+              </CustomText>
+              <CustomText style={[s.bannerSub, { color: "#8A6D00" }]}>
                 המטבע הקטן ביותר במחזור הוא 10 אגורות. שווה לתמחר בכפולות של 10 אגורות כדי שלא ייווצר
                 שארית כזו.
-              </Text>
+              </CustomText>
             </View>
           )}
         </>
@@ -552,8 +553,8 @@ export function PowerLoad() {
   return (
     <View style={{ gap: 12 }}>
       <View style={[iv.verdict, { backgroundColor: BLUE + "12" }]}>
-        <Text testID="power-amps" style={[iv.verdictValue, { color: BLUE }]}>{r.amps}A</Text>
-        <Text style={iv.verdictUnit}>{r.totalMa} mA · {r.watts}W ב-{volts}V</Text>
+        <CustomText testID="power-amps" style={[iv.verdictValue, { color: BLUE }]}>{r.amps}A</CustomText>
+        <CustomText style={iv.verdictUnit}>{r.totalMa} mA · {r.watts}W ב-{volts}V</CustomText>
       </View>
 
       {COMPONENTS.map((c) => (
@@ -572,12 +573,12 @@ export function PowerLoad() {
       <Chips options={[5, 12, 24]} onPick={(val) => setVolts(String(val))} active={volts} />
 
       <View style={[s.banner, { backgroundColor: GREEN + "14" }]}>
-        <Text testID="power-recommend" style={[s.bannerText, { color: GREEN }]}>
+        <CustomText testID="power-recommend" style={[s.bannerText, { color: GREEN }]}>
           ספק מומלץ: {volts}V {r.recommendedA}A ({r.recommendedW}W)
-        </Text>
-        <Text style={[s.bannerSub, { color: GREEN }]}>
+        </CustomText>
+        <CustomText style={[s.bannerSub, { color: GREEN }]}>
           30% מרווח מעל הצריכה המחושבת. ספק שעובד על המקסימום שלו מתחמם ונשרף מוקדם.
-        </Text>
+        </CustomText>
       </View>
 
       <View style={s.statRow}>
@@ -585,10 +586,10 @@ export function PowerLoad() {
         <Stat label="הצריכה שלו" value={`${r.heaviest.value} mA`} color={GOLD} />
       </View>
 
-      <Text style={s.hint}>
+      <CustomText style={s.hint}>
         המנועים מושכים זרם התנעה גבוה בהרבה מהרצף — אם המכונה מפילה את הספק ברגע ההגשה, זו הסיבה
         הראשונה לבדוק, גם אם החישוב כאן נראה תקין.
-      </Text>
+      </CustomText>
     </View>
   );
 }

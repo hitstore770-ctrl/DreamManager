@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import * as Clipboard from "expo-clipboard";
-import { Linking, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Linking, Share, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 
 import Icon from "../../Icon";
 import { hapticLight, hapticSuccess, hapticWarning } from "../../../utils/haptics";
@@ -25,6 +25,7 @@ import {
   s,
   useCalcHaptic,
 } from "../kit";
+import CustomText from "../../../components/CustomText";
 
 // Money tools: splitting, VAT, cash handling.
 
@@ -112,7 +113,7 @@ export function DormSplitter() {
       <Stepper label="מספר שותפים לחדר" value={people} onChange={setPeople} min={1} max={20} suffix="שותפים" />
 
       <View>
-        <Text style={s.fieldLabel}>על מה ההוצאה</Text>
+        <CustomText style={s.fieldLabel}>על מה ההוצאה</CustomText>
         <TextInput
           style={s.textField}
           value={label}
@@ -131,7 +132,7 @@ export function DormSplitter() {
         <View style={[s.checkbox, roundUp && { backgroundColor: BLUE, borderColor: BLUE }]}>
           {roundUp && <Icon name="check" size={13} color={WHITE} />}
         </View>
-        <Text style={s.checkLabel}>עגל לשקל שלם (קל יותר להעביר)</Text>
+        <CustomText style={s.checkLabel}>עגל לשקל שלם (קל יותר להעביר)</CustomText>
       </TouchableOpacity>
 
       {r.ready ? (
@@ -142,9 +143,9 @@ export function DormSplitter() {
             <Stat label="שותפים" value={r.n} />
           </View>
           {roundUp && r.extra > 0 && (
-            <Text style={s.hint}>
+            <CustomText style={s.hint}>
               העיגול אוסף {shekel(r.extra)} מעל החשבון — שאר העודף נשאר אצל מי שאסף.
-            </Text>
+            </CustomText>
           )}
 
           <TouchableOpacity style={[s.bigBtn, { backgroundColor: "#25D366" }]} onPress={sendWhatsApp} activeOpacity={0.85}>
@@ -163,11 +164,11 @@ export function DormSplitter() {
             />
           </TouchableOpacity>
           <View style={s.msgPreview}>
-            <Text style={s.msgPreviewText}>{message}</Text>
+            <CustomText style={s.msgPreviewText}>{message}</CustomText>
           </View>
         </>
       ) : (
-        <Text style={s.hint}>הזן סכום כדי לחשב חלוקה.</Text>
+        <CustomText style={s.hint}>הזן סכום כדי לחשב חלוקה.</CustomText>
       )}
     </View>
   );
@@ -240,8 +241,8 @@ export function TillCounter() {
   return (
     <View style={{ gap: 12 }}>
       <View style={f.totalCard}>
-        <Text testID="till-total" style={f.totalValue}>{shekel(r.total)}</Text>
-        <Text style={f.totalLabel}>סה״כ בקופה · {r.pieces} פריטים</Text>
+        <CustomText testID="till-total" style={f.totalValue}>{shekel(r.total)}</CustomText>
+        <CustomText style={f.totalLabel}>סה״כ בקופה · {r.pieces} פריטים</CustomText>
       </View>
 
       {DENOMS.map((d) => {
@@ -249,7 +250,7 @@ export function TillCounter() {
         const line = ((parseInt(qty, 10) || 0) * d.agorot) / 100;
         return (
           <View key={d.agorot} style={f.denomRow}>
-            <Text style={[f.denomLine, !line && { color: INK_MUTED }]}>{shekel(line)}</Text>
+            <CustomText style={[f.denomLine, !line && { color: INK_MUTED }]}>{shekel(line)}</CustomText>
             <TouchableOpacity style={f.stepBtn} onPress={() => bump(d.agorot, -1)} activeOpacity={0.7}>
               <Icon name="minus" size={15} color={BLUE} />
             </TouchableOpacity>
@@ -268,7 +269,7 @@ export function TillCounter() {
             </TouchableOpacity>
             <View style={f.denomTag}>
               <Icon name={d.kind === "coin" ? "circle" : "credit-card"} size={13} color={INK_SOFT} />
-              <Text style={f.denomLabel}>{d.label}</Text>
+              <CustomText style={f.denomLabel}>{d.label}</CustomText>
             </View>
           </View>
         );
@@ -283,16 +284,16 @@ export function TillCounter() {
 
       {r.variance !== null && (
         <View style={[s.banner, { backgroundColor: varianceTone + "14" }]}>
-          <Text style={[s.bannerText, { color: varianceTone }]}>
+          <CustomText style={[s.bannerText, { color: varianceTone }]}>
             {r.variance === 0
               ? "הקופה מאוזנת"
               : r.variance > 0
                 ? `עודף ${shekel(r.variance)}`
                 : `חוסר ${shekel(Math.abs(r.variance))}`}
-          </Text>
-          <Text style={[s.bannerSub, { color: varianceTone }]}>
+          </CustomText>
+          <CustomText style={[s.bannerSub, { color: varianceTone }]}>
             ספירה בפועל {shekel(r.total)} מול צפי {shekel(parseFloat(expected) || 0)}.
-          </Text>
+          </CustomText>
         </View>
       )}
 
@@ -304,9 +305,9 @@ export function TillCounter() {
         <BtnLabel icon="rotate-ccw" text="אפס ספירה" color={INK_SOFT} style={[s.actionText, { color: INK_SOFT }]} />
       </TouchableOpacity>
 
-      <Text style={s.hint}>
+      <CustomText style={s.hint}>
         הסכומים נצברים באגורות ומחולקים ב-100 רק בתצוגה, כדי שהסך לא יצבור שגיאות עיגול על ספירה ארוכה.
-      </Text>
+      </CustomText>
     </View>
   );
 }
@@ -393,8 +394,8 @@ export function LicenseTracker() {
   return (
     <View style={{ gap: 12 }}>
       <View style={f.totalCard}>
-        <Text testID="licence-total" style={f.totalValue}>{shekel(r.spent)}</Text>
-        <Text style={f.totalLabel}>הוצאת עד כה · {done || 0} שיעורים</Text>
+        <CustomText testID="licence-total" style={f.totalValue}>{shekel(r.spent)}</CustomText>
+        <CustomText style={f.totalLabel}>הוצאת עד כה · {done || 0} שיעורים</CustomText>
       </View>
 
       <View style={s.row}>
@@ -405,10 +406,10 @@ export function LicenseTracker() {
 
       <View>
         <View style={s.loadMetaRow}>
-          <Text style={s.loadMeta}>{r.pct}%</Text>
-          <Text style={s.loadMeta}>
+          <CustomText style={s.loadMeta}>{r.pct}%</CustomText>
+          <CustomText style={s.loadMeta}>
             {r.over ? "מעל היעד שהוגדר" : `נותרו ${r.remainingLessons} שיעורים`}
-          </Text>
+          </CustomText>
         </View>
         <View style={[s.loadTrack, { marginTop: 6 }]}>
           <View
@@ -418,7 +419,7 @@ export function LicenseTracker() {
         </View>
       </View>
 
-      <Text style={s.sectionLabel}>אגרות ותשלומים חד-פעמיים</Text>
+      <CustomText style={s.sectionLabel}>אגרות ותשלומים חד-פעמיים</CustomText>
       {LICENCE_FEES.map((fee) => (
         <Field
           key={fee.key}
@@ -440,10 +441,10 @@ export function LicenseTracker() {
         <Stat label="עלות כוללת צפויה" value={shekel(r.projected)} color={BLUE} big />
       </View>
 
-      <Text style={s.hint}>
+      <CustomText style={s.hint}>
         כל גשה נוספת לטסט מוסיפה את אגרת המבחן ואת השכרת הרכב בלבד — אגרת התיאוריה והנפקת הרישיון
         משולמות פעם אחת. הסכומים הם ברירת מחדל וניתן לעדכן כל אחד מהם.
-      </Text>
+      </CustomText>
     </View>
   );
 }
@@ -510,12 +511,12 @@ export function LoanCalc() {
       <Chips options={[12, 24, 36, 48, 60]} onPick={(val) => setMonths(String(val))} active={months} />
 
       {!r.ready ? (
-        <Text style={s.hint}>הזן סכום, ריבית שנתית ומספר חודשים.</Text>
+        <CustomText style={s.hint}>הזן סכום, ריבית שנתית ומספר חודשים.</CustomText>
       ) : (
         <>
           <View style={[m.verdict, { backgroundColor: BLUE + "12" }]}>
-            <Text testID="loan-payment" style={[m.verdictValue, { color: BLUE }]}>{shekel(r.payment)}</Text>
-            <Text style={m.verdictLabel}>תשלום חודשי</Text>
+            <CustomText testID="loan-payment" style={[m.verdictValue, { color: BLUE }]}>{shekel(r.payment)}</CustomText>
+            <CustomText style={m.verdictLabel}>תשלום חודשי</CustomText>
           </View>
 
           <View style={s.statRow}>
@@ -526,24 +527,24 @@ export function LoanCalc() {
 
           {r.zeroRate && (
             <View style={[s.banner, { backgroundColor: GREEN + "14" }]}>
-              <Text style={[s.bannerText, { color: GREEN }]}>ללא ריבית — חלוקה שווה</Text>
+              <CustomText style={[s.bannerText, { color: GREEN }]}>ללא ריבית — חלוקה שווה</CustomText>
             </View>
           )}
 
-          <Text style={s.sectionLabel}>לוח סילוקין — שנה ראשונה</Text>
+          <CustomText style={s.sectionLabel}>לוח סילוקין — שנה ראשונה</CustomText>
           {r.schedule.map((row) => (
             <View key={row.m} style={s.routineRow}>
-              <Text style={s.routineTime}>{shekel(row.balance)}</Text>
-              <Text style={[s.routineLabel, { flex: 1 }]}>
+              <CustomText style={s.routineTime}>{shekel(row.balance)}</CustomText>
+              <CustomText style={[s.routineLabel, { flex: 1 }]}>
                 חודש {row.m} · קרן {shekel(row.principal)} · ריבית {shekel(row.interest)}
-              </Text>
+              </CustomText>
             </View>
           ))}
 
-          <Text style={s.hint}>
+          <CustomText style={s.hint}>
             החישוב הוא שפיצר — תשלום חודשי קבוע שבתחילתו רובו ריבית. הריבית כאן נומינלית וקבועה;
             הלוואה צמודת מדד או בריבית משתנה תעלה יותר, ועמלות פתיחה אינן כלולות.
-          </Text>
+          </CustomText>
         </>
       )}
     </View>
@@ -601,16 +602,16 @@ export function BillSplitTip() {
         <View style={[s.checkbox, roundUp && { backgroundColor: BLUE, borderColor: BLUE }]}>
           {roundUp && <Icon name="check" size={13} color={WHITE} />}
         </View>
-        <Text style={s.checkLabel}>עגל כל תשלום לשקל שלם</Text>
+        <CustomText style={s.checkLabel}>עגל כל תשלום לשקל שלם</CustomText>
       </TouchableOpacity>
 
       {!r.ready ? (
-        <Text style={s.hint}>הזן את סכום החשבון ואחוז טיפ.</Text>
+        <CustomText style={s.hint}>הזן את סכום החשבון ואחוז טיפ.</CustomText>
       ) : (
         <>
           <View style={[m.verdict, { backgroundColor: BLUE + "12" }]}>
-            <Text testID="tip-per" style={[m.verdictValue, { color: BLUE }]}>{shekel(r.per)}</Text>
-            <Text style={m.verdictLabel}>לכל אחד · {r.heads} סועדים</Text>
+            <CustomText testID="tip-per" style={[m.verdictValue, { color: BLUE }]}>{shekel(r.per)}</CustomText>
+            <CustomText style={m.verdictLabel}>לכל אחד · {r.heads} סועדים</CustomText>
           </View>
 
           <View style={s.statRow}>
@@ -621,14 +622,14 @@ export function BillSplitTip() {
 
           {r.noPeople && (
             <View style={[s.banner, { backgroundColor: GOLD + "16" }]}>
-              <Text style={[s.bannerText, { color: "#8A6D00" }]}>מספר סועדים לא תקין — חושב לאדם אחד</Text>
+              <CustomText style={[s.bannerText, { color: "#8A6D00" }]}>מספר סועדים לא תקין — חושב לאדם אחד</CustomText>
             </View>
           )}
 
           {roundUp && r.extra > 0 && (
-            <Text style={s.hint}>
+            <CustomText style={s.hint}>
               העיגול אוסף {shekel(r.extra)} מעל החשבון — שווה להשאיר את העודף כתוספת לטיפ.
-            </Text>
+            </CustomText>
           )}
         </>
       )}
@@ -693,19 +694,19 @@ export function RoasCalc() {
       <Field testID="roas-margin" label="מתח רווח על המוצר" value={margin} onChange={setMargin} placeholder="40" suffix="%" />
 
       {!r.ready ? (
-        <Text style={s.hint}>הזן כמה הוצאת על הפרסום וכמה הכנסת ממנו.</Text>
+        <CustomText style={s.hint}>הזן כמה הוצאת על הפרסום וכמה הכנסת ממנו.</CustomText>
       ) : r.noSpend ? (
         <View style={[s.banner, { backgroundColor: GOLD + "16" }]}>
-          <Text style={[s.bannerText, { color: "#8A6D00" }]}>ללא הוצאה אין מה למדוד</Text>
-          <Text style={[s.bannerSub, { color: "#8A6D00" }]}>
+          <CustomText style={[s.bannerText, { color: "#8A6D00" }]}>ללא הוצאה אין מה למדוד</CustomText>
+          <CustomText style={[s.bannerSub, { color: "#8A6D00" }]}>
             ROAS הוא יחס בין הכנסה להוצאה. כשההוצאה אפס היחס אינו מוגדר.
-          </Text>
+          </CustomText>
         </View>
       ) : (
         <>
           <View style={[m.verdict, { backgroundColor: tone + "12" }]}>
-            <Text testID="roas-result" style={[m.verdictValue, { color: tone }]}>×{r.roas}</Text>
-            <Text style={m.verdictLabel}>{r.pct}% החזר על ההוצאה</Text>
+            <CustomText testID="roas-result" style={[m.verdictValue, { color: tone }]}>×{r.roas}</CustomText>
+            <CustomText style={m.verdictLabel}>{r.pct}% החזר על ההוצאה</CustomText>
           </View>
 
           <View style={s.statRow}>
@@ -715,20 +716,20 @@ export function RoasCalc() {
           </View>
 
           <View style={[s.banner, { backgroundColor: tone + "14" }]}>
-            <Text style={[s.bannerText, { color: tone }]}>
+            <CustomText style={[s.bannerText, { color: tone }]}>
               {r.profitable ? "הקמפיין רווחי" : "הקמפיין מפסיד כסף"}
-            </Text>
-            <Text style={[s.bannerSub, { color: tone }]}>
+            </CustomText>
+            <CustomText style={[s.bannerSub, { color: tone }]}>
               {r.profitable
                 ? `אחרי עלות הסחורה נשארו ${shekel(r.netProfit)}. אפשר להגדיל תקציב כל עוד ה-ROAS נשאר מעל ×${r.breakEven}.`
                 : `ההכנסה נראית גבוהה מההוצאה, אבל אחרי עלות הסחורה נשאר ${shekel(r.netProfit)}. צריך ROAS של ×${r.breakEven} לפחות רק כדי לא להפסיד.`}
-            </Text>
+            </CustomText>
           </View>
 
-          <Text style={s.hint}>
+          <CustomText style={s.hint}>
             ROAS לבדו מטעה: מכירה של 4,200 ₪ במתח רווח של {margin}% מכניסה לכיס פחות מהמספר הגולמי.
             נקודת האיזון היא 1 חלקי מתח הרווח.
-          </Text>
+          </CustomText>
         </>
       )}
     </View>
@@ -783,19 +784,19 @@ export function RuleOf72() {
       <Chips options={[3, 5, 8, 10, 12]} onPick={(v) => setRate(String(v))} active={rate} />
 
       {!r.ready ? (
-        <Text style={s.hint}>הזן תשואה שנתית משוערת באחוזים.</Text>
+        <CustomText style={s.hint}>הזן תשואה שנתית משוערת באחוזים.</CustomText>
       ) : r.noGrowth ? (
         <View style={[s.banner, { backgroundColor: GOLD + "16" }]}>
-          <Text style={[s.bannerText, { color: "#8A6D00" }]}>בלי תשואה הכסף לא מכפיל את עצמו</Text>
-          <Text style={[s.bannerSub, { color: "#8A6D00" }]}>
+          <CustomText style={[s.bannerText, { color: "#8A6D00" }]}>בלי תשואה הכסף לא מכפיל את עצמו</CustomText>
+          <CustomText style={[s.bannerSub, { color: "#8A6D00" }]}>
             כלל ה-72 מחלק ב-אחוז התשואה, ולכן דורש תשואה גדולה מאפס.
-          </Text>
+          </CustomText>
         </View>
       ) : (
         <>
           <View style={[m.verdict, { backgroundColor: BLUE + "12" }]}>
-            <Text testID="r72-years" style={[m.verdictValue, { color: BLUE }]}>{r.approx}</Text>
-            <Text style={m.verdictLabel}>שנים עד להכפלת הסכום</Text>
+            <CustomText testID="r72-years" style={[m.verdictValue, { color: BLUE }]}>{r.approx}</CustomText>
+            <CustomText style={m.verdictLabel}>שנים עד להכפלת הסכום</CustomText>
           </View>
 
           <View style={s.statRow}>
@@ -806,22 +807,22 @@ export function RuleOf72() {
 
           {r.principal > 0 && (
             <>
-              <Text style={s.sectionLabel}>מסלול ההכפלות</Text>
+              <CustomText style={s.sectionLabel}>מסלול ההכפלות</CustomText>
               {r.table.map((row) => (
                 <View key={row.doublings} style={s.routineRow}>
-                  <Text style={s.routineTime}>{shekel(row.value)}</Text>
-                  <Text style={[s.routineLabel, { flex: 1 }]}>
+                  <CustomText style={s.routineTime}>{shekel(row.value)}</CustomText>
+                  <CustomText style={[s.routineLabel, { flex: 1 }]}>
                     אחרי {row.years} שנים · הכפלה {row.doublings}
-                  </Text>
+                  </CustomText>
                 </View>
               ))}
             </>
           )}
 
-          <Text style={s.hint}>
+          <CustomText style={s.hint}>
             כלל ה-72 הוא קיצור דרך לחישוב בראש והוא מדויק בעיקר בטווח 6% עד 10%. כאן מוצג גם החישוב
             המדויק — ln(2) חלקי ln(1+תשואה) — כדי שהפער יהיה גלוי.
-          </Text>
+          </CustomText>
         </>
       )}
     </View>
@@ -869,19 +870,19 @@ export function QuickTip() {
               onPress={() => { hapticLight(); setPct(step); }}
               activeOpacity={0.85}
             >
-              <Text style={[qt.stepText, active && { color: WHITE }]}>{step}%</Text>
+              <CustomText style={[qt.stepText, active && { color: WHITE }]}>{step}%</CustomText>
             </TouchableOpacity>
           );
         })}
       </View>
 
       {!r.ready ? (
-        <Text style={s.hint}>הזן את סכום החשבון ובחר אחוז טיפ.</Text>
+        <CustomText style={s.hint}>הזן את סכום החשבון ובחר אחוז טיפ.</CustomText>
       ) : (
         <>
           <View style={[m.verdict, { backgroundColor: BLUE + "12" }]}>
-            <Text testID="qt-total" style={[m.verdictValue, { color: BLUE }]}>{shekel(r.total)}</Text>
-            <Text style={m.verdictLabel}>סה״כ לתשלום</Text>
+            <CustomText testID="qt-total" style={[m.verdictValue, { color: BLUE }]}>{shekel(r.total)}</CustomText>
+            <CustomText style={m.verdictLabel}>סה״כ לתשלום</CustomText>
           </View>
 
           <View style={s.statRow}>
@@ -890,10 +891,10 @@ export function QuickTip() {
             <Stat label="הטיפ בעיגול" value={shekel(r.roundedTip)} color={GOLD} />
           </View>
 
-          <Text style={s.hint}>
+          <CustomText style={s.hint}>
             עיגול הסכום הסופי כלפי מעלה נותן טיפ של {shekel(r.roundedTip)} — לרוב הדרך הכי מהירה לסגור
             חשבון בלי לחשב עודף.
-          </Text>
+          </CustomText>
         </>
       )}
     </View>

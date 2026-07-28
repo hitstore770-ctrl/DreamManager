@@ -1,20 +1,12 @@
 import { useMemo, useState } from "react";
-import {
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
-} from "react-native";
+import { Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 
 import Icon from "../components/Icon";
 import { useBusiness } from "../context/BusinessContext";
 import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
 import { shekel, uid } from "../utils/posStore";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
+import CustomText from "../components/CustomText";
 
 // הקפות — fast credit-tab ledger for regulars. Legacy data shape kept
 // ({id, name, owed, paid}; balance = owed − paid) so tabs recorded by the old
@@ -101,17 +93,17 @@ export default function DebtsScreen() {
     <View style={{ flex: 1, backgroundColor: WHITE }}>
       {/* Outstanding total */}
       <View style={s.summary}>
-        <Text style={[s.summaryValue, { color: totalOutstanding > 0 ? RED : GREEN_DARK }]}>
+        <CustomText style={[s.summaryValue, { color: totalOutstanding > 0 ? RED : GREEN_DARK }]}>
           {shekel(totalOutstanding)}
-        </Text>
-        <Text style={s.summaryLabel}>סה״כ חובות פתוחים</Text>
+        </CustomText>
+        <CustomText style={s.summaryLabel}>סה״כ חובות פתוחים</CustomText>
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 14, paddingBottom: 110 }}>
         {sorted.length === 0 ? (
           <View style={s.empty}>
             <Icon name="book-open" size={34} color="#9CA3AF" />
-            <Text style={s.emptyText}>אין לקוחות בהקפה — הוסף עם ה-＋ למטה</Text>
+            <CustomText style={s.emptyText}>אין לקוחות בהקפה — הוסף עם ה-＋ למטה</CustomText>
           </View>
         ) : (
           sorted.map((d) => {
@@ -119,14 +111,14 @@ export default function DebtsScreen() {
             return (
               <TouchableOpacity key={d.id} style={s.row} onPress={() => openCustomer(d)} activeOpacity={0.7}>
                 <View style={{ alignItems: "flex-start" }}>
-                  <Text style={[s.balance, { color: bal > 0 ? RED : GREEN_DARK }]}>
+                  <CustomText style={[s.balance, { color: bal > 0 ? RED : GREEN_DARK }]}>
                     {bal > 0 ? shekel(bal) : "מאופס"}
-                  </Text>
-                  {bal > 0 && <Text style={s.balanceCap}>חוב פתוח</Text>}
+                  </CustomText>
+                  {bal > 0 && <CustomText style={s.balanceCap}>חוב פתוח</CustomText>}
                 </View>
                 <View style={{ flex: 1, alignItems: "flex-end" }}>
-                  <Text style={s.name}>{d.name}</Text>
-                  <Text style={s.nameSub}>סה״כ נרשם {shekel(d.owed || 0)} · שולם {shekel(d.paid || 0)}</Text>
+                  <CustomText style={s.name}>{d.name}</CustomText>
+                  <CustomText style={s.nameSub}>סה״כ נרשם {shekel(d.owed || 0)} · שולם {shekel(d.paid || 0)}</CustomText>
                 </View>
                 <View style={[s.avatar, { backgroundColor: bal > 0 ? RED + "14" : GREEN_DARK + "14" }]}>
                   <Icon name={bal > 0 ? "alert-circle" : "check-circle"} size={19} color={bal > 0 ? RED : GREEN} />
@@ -139,7 +131,7 @@ export default function DebtsScreen() {
 
       {/* Floating add — pinned low for thumb reach on tall screens */}
       <TouchableOpacity style={s.fab} onPress={() => { hapticLight(); setCreateOpen(true); }} activeOpacity={0.85}>
-        <Text style={s.fabPlus}>＋</Text>
+        <CustomText style={s.fabPlus}>＋</CustomText>
       </TouchableOpacity>
 
       {/* Fast-action modal: add debt / settle */}
@@ -148,12 +140,12 @@ export default function DebtsScreen() {
           <View style={s.backdrop}>
             <TouchableWithoutFeedback onPress={() => {}}>
               <View style={s.card}>
-                <Text style={s.cardTitle}>{selected?.name}</Text>
+                <CustomText style={s.cardTitle}>{selected?.name}</CustomText>
                 <View style={s.cardBalRow}>
-                  <Text style={[s.cardBalValue, { color: balanceOf(selected || {}) > 0 ? RED : GREEN_DARK }]}>
+                  <CustomText style={[s.cardBalValue, { color: balanceOf(selected || {}) > 0 ? RED : GREEN_DARK }]}>
                     {shekel(balanceOf(selected || {}))}
-                  </Text>
-                  <Text style={s.cardBalLabel}>יתרת חוב</Text>
+                  </CustomText>
+                  <CustomText style={s.cardBalLabel}>יתרת חוב</CustomText>
                 </View>
                 <TextInput
                   style={s.amountInput}
@@ -171,7 +163,7 @@ export default function DebtsScreen() {
                     activeOpacity={0.8}
                   >
                     <Icon name="check" size={17} color={WHITE} />
-              <Text style={s.actionBtnText}>תשלום חוב</Text>
+              <CustomText style={s.actionBtnText}>תשלום חוב</CustomText>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[s.actionBtn, { backgroundColor: BLUE }, !(parseFloat(amount) > 0) && { opacity: 0.35 }]}
@@ -179,14 +171,14 @@ export default function DebtsScreen() {
                     activeOpacity={0.8}
                   >
                     <Icon name="plus" size={17} color={WHITE} />
-              <Text style={s.actionBtnText}>הוסף חוב</Text>
+              <CustomText style={s.actionBtnText}>הוסף חוב</CustomText>
                   </TouchableOpacity>
                 </View>
-                <Text style={s.hint}>תשלום ללא סכום מאפס את כל החוב · עם סכום — תשלום חלקי</Text>
+                <CustomText style={s.hint}>תשלום ללא סכום מאפס את כל החוב · עם סכום — תשלום חלקי</CustomText>
                 {balanceOf(selected || {}) === 0 && (
                   <TouchableOpacity style={s.removeBtn} onPress={removeCustomer} activeOpacity={0.7}>
                     <Icon name="trash-2" size={15} color={RED} />
-            <Text style={s.removeBtnText}>מחק לקוח</Text>
+            <CustomText style={s.removeBtnText}>מחק לקוח</CustomText>
                   </TouchableOpacity>
                 )}
               </View>
@@ -201,7 +193,7 @@ export default function DebtsScreen() {
           <View style={s.backdrop}>
             <TouchableWithoutFeedback onPress={() => {}}>
               <View style={s.card}>
-                <Text style={s.cardTitle}>לקוח חדש בהקפה</Text>
+                <CustomText style={s.cardTitle}>לקוח חדש בהקפה</CustomText>
                 <TextInput
                   style={[s.amountInput, { fontSize: 16 }]}
                   value={newName}
@@ -224,7 +216,7 @@ export default function DebtsScreen() {
                   onPress={createCustomer}
                   activeOpacity={0.8}
                 >
-                  <Text style={s.actionBtnText}>שמור לקוח</Text>
+                  <CustomText style={s.actionBtnText}>שמור לקוח</CustomText>
                 </TouchableOpacity>
               </View>
             </TouchableWithoutFeedback>

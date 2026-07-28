@@ -1,15 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  I18nManager,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, FlatList, I18nManager, KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 
@@ -18,10 +8,13 @@ import Icon from "../components/Icon";
 import RichText from "../components/RichText";
 import { NOA_TOOLS, callGeminiWithTools, isGeminiConfigured } from "../config/geminiConfig";
 import { NOA_MAX_OUTPUT_TOKENS, NOA_NAME, buildNoaPrompt } from "../config/noaPersona";
+import { isWhisperConfigured, transcribe } from "../config/whisperConfig";
+import { DEFAULT_SHORTCUTS, suggestShortcuts } from "../utils/noaShortcuts";
 import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import { Canvas } from "../components/Paper";
 import { BEVEL, CARD_SHADOW, TYPE, UI, tint } from "../utils/ui";
+import CustomText from "../components/CustomText";
 
 // Zone 1 — Noa, the assistant. Every bubble is a small sheet of paper, quick
 // actions above the input, and a GPS fix taken quietly in the background.
@@ -59,8 +52,9 @@ function systemPrompt(place) {
   });
 }
 
-export default function LiveAiScreen() {
+export default function LiveAiScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const [pendingImage, setPendingImage] = useState(null);
 
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState("");
@@ -69,8 +63,15 @@ export default function LiveAiScreen() {
   const [place, setPlace] = useState(null);
   const [locState, setLocState] = useState("idle");
 
+  // Quick actions are re-derived after every exchange, so they follow the
+  // conversation instead of sitting there as four fixed buttons.
+  const [shortcuts, setShortcuts] = useState(DEFAULT_SHORTCUTS);
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+
   const listRef = useRef(null);
   const abortRef = useRef(null);
+  const recorderRef = useRef(null);
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
@@ -150,6 +151,14 @@ export default function LiveAiScreen() {
           return;
         }
         hapticSuccess();
+
+        // Detached on purpose: the shortcuts are a nicety, and the chat must
+        // never wait on — or fail because of — a second request.
+        const turn = [...next, { role: "model", text: reply }];
+        suggestShortcuts(turn, shortcuts)
+          .then((fresh) => { if (fresh) setShortcuts(fresh); })
+          .catch(() => {});
+
         // res.model is the id that *answered*, which is not always the id at
         // the head of the list — the fallback chain may have moved on. The
         // badge reports that, so it can never claim a model that was not used.
@@ -170,8 +179,73 @@ export default function LiveAiScreen() {
         setError("אין חיבור לרשת. בדוק את האינטרנט ונסה שוב.");
       }
     },
-    [draft, loading, messages, place]
+    [draft, loading, messages, place, shortcuts]
   );
+
+  // Hold to talk. expo-audio records, Whisper transcribes, and the text lands
+  // in the composer rather than sending itself — a mis-heard word should be
+  // fixable before it is asked.
+  const startRecording = useCallback(async () => {
+    if (recording || transcribing) return;
+    if (!isWhisperConfigured) {
+      setError("לא הוגדר מפתח OpenAI. הוסף EXPO_PUBLIC_OPENAI_API_KEY לקובץ .env.");
+      return;
+    }
+    try {
+      const Audio = await import("expo-audio");
+      const granted = await Audio.requestRecordingPermissionsAsync?.();
+      if (granted && granted.granted === false) {
+        setError("צריך הרשאת מיקרופון כדי להקליט.");
+        return;
+      }
+      hapticLight();
+      const recorder = new Audio.AudioRecorder(Audio.RecordingPresets?.HIGH_QUALITY);
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+      recorderRef.current = recorder;
+      setRecording(true);
+    } catch {
+      setError("לא הצלחתי להתחיל הקלטה במכשיר הזה.");
+    }
+  }, [recording, transcribing]);
+
+  const stopRecording = useCallback(async () => {
+    const recorder = recorderRef.current;
+    if (!recorder) return;
+    setRecording(false);
+    setTranscribing(true);
+    try {
+      await recorder.stop();
+      const uri = recorder.uri;
+      recorderRef.current = null;
+      const res = await transcribe(uri);
+      if (res.ok) {
+        hapticSuccess();
+        setDraft((d) => (d ? `${d} ${res.text}` : res.text));
+      } else if (res.error) {
+        hapticWarning();
+        setError(res.error);
+      }
+    } catch {
+      hapticWarning();
+      setError("התמלול נכשל.");
+    } finally {
+      setTranscribing(false);
+    }
+  }, []);
+
+  const openCamera = useCallback(() => {
+    hapticLight();
+    navigation?.navigate("VisionCamera", {
+      onCaptured: (photo) => {
+        // The image is handed to the next turn as context. Recognition itself
+        // is the Vision API's job and is not wired yet — see the note in the
+        // final report rather than a fake result here.
+        setDraft((d) => (d ? `${d} [תמונה צורפה]` : "תסתכלי על התמונה הזו ותגידי לי מה זה. [תמונה צורפה]"));
+        setPendingImage(photo?.base64 ? { base64: photo.base64 } : null);
+      },
+    });
+  }, [navigation]);
 
   useEffect(() => {
     if (!messages.length) return;
@@ -184,8 +258,8 @@ export default function LiveAiScreen() {
       {/* Header */}
       <View style={s.header}>
         <View style={{ flex: 1 }}>
-          <Text style={s.title}>נועה</Text>
-          <Text style={s.subtitle} numberOfLines={1}>
+          <CustomText style={s.title}>נועה</CustomText>
+          <CustomText style={s.subtitle} numberOfLines={1}>
             {locState === "ok" && place
               ? `מיקום ${place.lat.toFixed(3)}, ${place.lon.toFixed(3)}`
               : locState === "asking"
@@ -193,7 +267,7 @@ export default function LiveAiScreen() {
                 : locState === "denied"
                   ? "ללא מיקום — כתוב מאיפה אתה יוצא"
                   : "סגנית מנהל תפעול"}
-          </Text>
+          </CustomText>
         </View>
         <Bounce
           testID="live-locate"
@@ -230,9 +304,9 @@ export default function LiveAiScreen() {
               <View style={{ maxWidth: "88%" }}>
                 <View style={[s.bubble, item.role === "user" ? s.userBubble : s.modelBubble]}>
                   {item.role === "user" ? (
-                    <Text style={[s.bubbleText, { color: "#FFFFFF" }]} selectable>
+                    <CustomText style={[s.bubbleText, { color: "#FFFFFF" }]} selectable>
                       {item.text}
-                    </Text>
+                    </CustomText>
                   ) : (
                     // Noa is instructed to write Markdown, so her replies have
                     // to be rendered as Markdown — otherwise the persona makes
@@ -242,13 +316,13 @@ export default function LiveAiScreen() {
                 </View>
                 {item.role === "model" && !!item.model && (
                   <View style={s.badgeRow}>
-                    <Text testID={`model-badge-${item.id}`} style={s.badge}>
+                    <CustomText testID={`model-badge-${item.id}`} style={s.badge}>
                       {NOA_NAME} • {item.model}
-                    </Text>
+                    </CustomText>
                     {!!item.tools?.length && (
                       <View testID={`tool-chip-${item.id}`} style={s.toolChip}>
                         <Icon name="database" size={9} color={UI.cyan} />
-                        <Text style={s.toolChipText}>{item.tools.join(" · ")}</Text>
+                        <CustomText style={s.toolChipText}>{item.tools.join(" · ")}</CustomText>
                       </View>
                     )}
                   </View>
@@ -261,17 +335,17 @@ export default function LiveAiScreen() {
               <View style={s.emptyGlass}>
                 <Icon name="navigation" size={30} color={UI.violet} />
               </View>
-              <Text style={s.emptyTitle}>מה על הפרק?</Text>
-              <Text style={s.emptyBody}>
+              <CustomText style={s.emptyTitle}>מה על הפרק?</CustomText>
+              <CustomText style={s.emptyBody}>
 נועה — סגנית מנהל התפעול שלך. לוגיסטיקה, מספרים, תכנון. המיקום הנוכחי נשלח יחד עם
                 השאלה, כדי שהיא לא תצטרך לשאול איפה אתה.
-              </Text>
+              </CustomText>
               {!isGeminiConfigured && (
                 <View style={s.keyWarning}>
                   <Icon name="key" size={15} color="#8A6D00" />
-                  <Text style={s.keyWarningText}>
+                  <CustomText style={s.keyWarningText}>
                     אין מפתח Gemini. הוסף EXPO_PUBLIC_GEMINI_API_KEY לקובץ .env.
-                  </Text>
+                  </CustomText>
                 </View>
               )}
             </Animated.View>
@@ -281,37 +355,39 @@ export default function LiveAiScreen() {
               {loading && (
                 <Animated.View entering={FadeIn.duration(200)} style={[s.bubble, s.modelBubble, s.typing]}>
                   <ActivityIndicator size="small" color={UI.violet} />
-                  <Text style={s.typingText}>בודק מסלולים...</Text>
+                  <CustomText style={s.typingText}>בודק מסלולים...</CustomText>
                 </Animated.View>
               )}
               {!!error && (
                 <Animated.View entering={FadeIn.duration(200)} style={s.errorCard}>
                   <Icon name="alert-circle" size={16} color={UI.coral} />
-                  <Text style={s.errorText}>{error}</Text>
+                  <CustomText style={s.errorText}>{error}</CustomText>
                 </Animated.View>
               )}
             </>
           }
         />
 
-        {/* Quick actions sit directly above the input, as specified. */}
+        {/* Three buttons, re-derived after every exchange. They sit directly
+            above the input so the next move is under the thumb already on the
+            keyboard. */}
         <View style={s.quickWrap}>
           <FlatList
             horizontal
             inverted={I18nManager.isRTL}
-            data={QUICK}
-            keyExtractor={(q) => q.key}
+            data={shortcuts}
+            keyExtractor={(q, i) => `${q.label}-${i}`}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={s.quickRow}
-            renderItem={({ item }) => (
+            renderItem={({ item, index }) => (
               <Bounce
-                testID={`live-${item.key}`}
+                testID={`live-shortcut-${index}`}
                 style={s.quickChip}
                 scaleTo={0.94}
-                onPress={() => send(item.q)}
+                onPress={() => (item.action === "scan" ? openCamera() : send(item.prompt))}
               >
-                <Icon name={item.icon} size={15} color={UI.violet} />
-                <Text style={s.quickText}>{item.label}</Text>
+                <Icon name={item.action === "scan" ? "camera" : "zap"} size={15} color={UI.violet} />
+                <CustomText style={s.quickText}>{item.label}</CustomText>
               </Bounce>
             )}
           />
@@ -332,11 +408,30 @@ export default function LiveAiScreen() {
             style={s.input}
             value={draft}
             onChangeText={setDraft}
-            placeholder="שאל על מסלול, קו או זמן..."
+            placeholder={recording ? "מקליט..." : "כתוב, דבר, או צלם..."}
             placeholderTextColor={UI.inkMuted}
             multiline
             textAlign="right"
           />
+          {/* Hold to talk — press and hold rather than a toggle, so letting go
+              is always the way out and a forgotten recording cannot run on. */}
+          <Bounce
+            testID="live-mic"
+            style={[s.iconBtn, recording && s.iconBtnHot]}
+            scaleTo={0.9}
+            onPressIn={startRecording}
+            onPressOut={stopRecording}
+            disabled={transcribing}
+          >
+            {transcribing ? (
+              <ActivityIndicator size="small" color={UI.violet} />
+            ) : (
+              <Icon name="mic" size={18} color={recording ? "#FFFFFF" : UI.inkSoft} />
+            )}
+          </Bounce>
+          <Bounce testID="live-camera" style={s.iconBtn} scaleTo={0.9} onPress={openCamera}>
+            <Icon name="camera" size={18} color={pendingImage ? UI.violet : UI.inkSoft} />
+          </Bounce>
         </View>
       </KeyboardAvoidingView>
     </Canvas>
@@ -485,6 +580,16 @@ const s = StyleSheet.create({
     color: UI.ink,
     ...(Platform.OS === "web" ? { outlineStyle: "none", outlineWidth: 0 } : {}),
   },
+  iconBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 15,
+    backgroundColor: UI.surfaceAlt,
+    alignItems: "center",
+    justifyContent: "center",
+    ...BEVEL,
+  },
+  iconBtnHot: { backgroundColor: UI.coral },
   sendBtn: {
     width: 48,
     height: 48,

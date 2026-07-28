@@ -1,11 +1,12 @@
 import { useEffect, useMemo } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from "react-native-reanimated";
 
 import Icon from "../components/Icon";
 import { useBusiness } from "../context/BusinessContext";
 import { monthKey, shekel, todayKey } from "../utils/posStore";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
+import CustomText from "../components/CustomText";
 
 // לוח בקרה — minimal analytics over the shared sales ledger. The 7-day chart
 // is raw Views + reanimated (no chart library): each bar's height animates
@@ -101,35 +102,35 @@ export default function BizDashboardScreen() {
     >
       {/* Monthly revenue hero */}
       <View style={s.heroCard}>
-        <Text style={s.heroValue}>{shekel(monthly.revenue)}</Text>
-        <Text style={s.heroLabel}>סה״כ פדיון החודש</Text>
+        <CustomText style={s.heroValue}>{shekel(monthly.revenue)}</CustomText>
+        <CustomText style={s.heroLabel}>סה״כ פדיון החודש</CustomText>
       </View>
 
       {/* Best seller + cash/credit */}
       <View style={s.statsRow}>
         <View style={s.statCard}>
-          <Text style={s.statValue} numberOfLines={1}>
+          <CustomText style={s.statValue} numberOfLines={1}>
             {monthly.best ? monthly.best[0] : "—"}
-          </Text>
-          <Text style={s.statLabel}>
+          </CustomText>
+          <CustomText style={s.statLabel}>
             {monthly.best ? `הכי נמכר · ×${monthly.best[1]}` : "הכי נמכר"}
-          </Text>
+          </CustomText>
         </View>
         <View style={s.statCard}>
-          <Text style={s.statValue}>
+          <CustomText style={s.statValue}>
             {cashPct === null ? "—" : `${cashPct}% / ${100 - cashPct}%`}
-          </Text>
-          <Text style={s.statLabel}>מזומן / אשראי</Text>
+          </CustomText>
+          <CustomText style={s.statLabel}>מזומן / אשראי</CustomText>
         </View>
       </View>
 
       {/* 7-day revenue chart */}
       <View style={s.chartCard}>
-        <Text style={s.chartTitle}>פדיון 7 ימים אחרונים</Text>
+        <CustomText style={s.chartTitle}>פדיון 7 ימים אחרונים</CustomText>
         <View style={s.chartArea}>
           {days.map((d, i) => (
             <View key={d.key} style={s.barCol}>
-              <Text style={s.barValue}>{d.revenue > 0 ? Math.round(d.revenue) : ""}</Text>
+              <CustomText style={s.barValue}>{d.revenue > 0 ? Math.round(d.revenue) : ""}</CustomText>
               <View style={s.barTrack}>
                 <Bar
                   heightPx={Math.max(d.revenue > 0 ? 6 : 2, (d.revenue / maxRevenue) * CHART_H)}
@@ -137,8 +138,8 @@ export default function BizDashboardScreen() {
                   isToday={d.isToday}
                 />
               </View>
-              <Text style={[s.barDay, d.isToday && { color: BLUE, fontFamily: FONTS.bold }]}>{d.letter}</Text>
-              <Text style={s.barDate}>{d.date}</Text>
+              <CustomText style={[s.barDay, d.isToday && { color: BLUE, fontFamily: FONTS.bold }]}>{d.letter}</CustomText>
+              <CustomText style={s.barDate}>{d.date}</CustomText>
             </View>
           ))}
         </View>

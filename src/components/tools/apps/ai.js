@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as Clipboard from "expo-clipboard";
 import * as Speech from "expo-speech";
-import { Image, Platform, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Image, Platform, Share, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 
 import Icon from "../../Icon";
 import { hapticLight, hapticSuccess, hapticWarning } from "../../../utils/haptics";
@@ -22,6 +22,7 @@ import {
   WHITE,
   s,
 } from "../kit";
+import CustomText from "../../../components/CustomText";
 
 // Tools that reach outside the device: a hosted image model and the platform
 // speech engine.
@@ -96,8 +97,8 @@ export function AiImageGenerator() {
             <View style={ai.placeholderBadge}>
               <Icon name="image" size={30} color={BLUE} />
             </View>
-            <Text style={ai.placeholderTitle}>התמונה תופיע כאן</Text>
-            <Text style={ai.placeholderHint}>כתוב תיאור באנגלית ולחץ על צור תמונה</Text>
+            <CustomText style={ai.placeholderTitle}>התמונה תופיע כאן</CustomText>
+            <CustomText style={ai.placeholderHint}>כתוב תיאור באנגלית ולחץ על צור תמונה</CustomText>
           </View>
         )}
 
@@ -106,8 +107,8 @@ export function AiImageGenerator() {
             <View style={ai.placeholderBadge}>
               <Icon name="loader" size={30} color={BLUE} />
             </View>
-            <Text style={ai.placeholderTitle}>מייצר תמונה...</Text>
-            <Text style={ai.placeholderHint}>יצירה ראשונה יכולה לקחת עד דקה</Text>
+            <CustomText style={ai.placeholderTitle}>מייצר תמונה...</CustomText>
+            <CustomText style={ai.placeholderHint}>יצירה ראשונה יכולה לקחת עד דקה</CustomText>
           </View>
         )}
 
@@ -116,8 +117,8 @@ export function AiImageGenerator() {
             <View style={[ai.placeholderBadge, { backgroundColor: RED + "16" }]}>
               <Icon name="wifi-off" size={28} color={RED} />
             </View>
-            <Text style={[ai.placeholderTitle, { color: RED }]}>לא הצלחנו להביא את התמונה</Text>
-            <Text style={ai.placeholderHint}>בדוק חיבור לאינטרנט ונסה שוב</Text>
+            <CustomText style={[ai.placeholderTitle, { color: RED }]}>לא הצלחנו להביא את התמונה</CustomText>
+            <CustomText style={ai.placeholderHint}>בדוק חיבור לאינטרנט ונסה שוב</CustomText>
           </View>
         )}
 
@@ -136,7 +137,7 @@ export function AiImageGenerator() {
       </View>
 
       <View>
-        <Text style={s.fieldLabel}>תיאור התמונה — באנגלית</Text>
+        <CustomText style={s.fieldLabel}>תיאור התמונה — באנגלית</CustomText>
         <TextInput
           testID="ai-prompt"
           style={ai.input}
@@ -159,12 +160,12 @@ export function AiImageGenerator() {
             onPress={() => { hapticLight(); setPrompt(idea); }}
             activeOpacity={0.8}
           >
-            <Text style={s.chipText}>{idea.split(",")[0].slice(0, 22)}</Text>
+            <CustomText style={s.chipText}>{idea.split(",")[0].slice(0, 22)}</CustomText>
           </TouchableOpacity>
         ))}
       </View>
 
-      <Text style={s.fieldLabel}>גודל</Text>
+      <CustomText style={s.fieldLabel}>גודל</CustomText>
       <Segment options={IMAGE_SIZES} value={size} onChange={(v) => { hapticLight(); setSize(v); }} />
 
       <TouchableOpacity
@@ -186,9 +187,9 @@ export function AiImageGenerator() {
           it opens fine in a browser. */}
       {!!url && (
         <View style={[s.banner, { backgroundColor: CARD }]}>
-          <Text testID="ai-url" style={[s.bannerSub, { color: INK_SOFT, textAlign: "left" }]} numberOfLines={3}>
+          <CustomText testID="ai-url" style={[s.bannerSub, { color: INK_SOFT, textAlign: "left" }]} numberOfLines={3}>
             {url}
-          </Text>
+          </CustomText>
         </View>
       )}
 
@@ -207,10 +208,10 @@ export function AiImageGenerator() {
         </View>
       )}
 
-      <Text style={s.hint}>
+      <CustomText style={s.hint}>
         התמונות נוצרות בשירות pollinations.ai, שהוא חינמי ואינו דורש מפתח. התיאור נשלח לשרת שלהם, ולכן
         אין להזין בו מידע רגיש. כל יצירה מקבלת seed חדש, אחרת אותו תיאור היה מחזיר את אותה תמונה.
-      </Text>
+      </CustomText>
     </View>
   );
 }
@@ -277,7 +278,7 @@ export function TextToSpeech() {
   return (
     <View style={{ gap: 12 }}>
       <View>
-        <Text style={s.fieldLabel}>טקסט להקראה</Text>
+        <CustomText style={s.fieldLabel}>טקסט להקראה</CustomText>
         <TextInput
           testID="tts-text"
           style={ai.input}
@@ -291,9 +292,9 @@ export function TextToSpeech() {
         />
       </View>
 
-      <Text style={s.fieldLabel}>שפה</Text>
+      <CustomText style={s.fieldLabel}>שפה</CustomText>
       <Segment options={VOICE_LANGS} value={lang} onChange={(v) => { hapticLight(); setLang(v); }} />
-      <Text style={s.fieldLabel}>קצב</Text>
+      <CustomText style={s.fieldLabel}>קצב</CustomText>
       <Segment options={RATES} value={rate} onChange={(v) => { hapticLight(); setRate(v); }} />
 
       <View style={s.row}>
@@ -327,18 +328,18 @@ export function TextToSpeech() {
 
       {unsupported && (
         <View style={[s.banner, { backgroundColor: GOLD + "16" }]}>
-          <Text style={[s.bannerText, { color: "#8A6D00" }]}>ההקראה לא זמינה כאן</Text>
-          <Text style={[s.bannerSub, { color: "#8A6D00" }]}>
+          <CustomText style={[s.bannerText, { color: "#8A6D00" }]}>ההקראה לא זמינה כאן</CustomText>
+          <CustomText style={[s.bannerSub, { color: "#8A6D00" }]}>
             המכשיר או הדפדפן לא מספק מנוע דיבור לשפה שנבחרה. נסה שפה אחרת או הפעל מהאפליקציה.
-          </Text>
+          </CustomText>
         </View>
       )}
 
-      <Text style={s.hint}>
+      <CustomText style={s.hint}>
         ההקראה משתמשת במנוע הדיבור של המכשיר, בלי אינטרנט ובלי שליחת הטקסט לשרת. איכות הקול בעברית
         תלויה בקולות המותקנים במכשיר
         {Platform.OS === "web" ? " ובדפדפן" : ""}.
-      </Text>
+      </CustomText>
     </View>
   );
 }

@@ -1,9 +1,10 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 import Icon from "../Icon";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
 import { TOOL_APPS } from "./registry";
 import { CARD, INK, INK_MUTED, INK_SOFT } from "./kit";
+import CustomText from "../../components/CustomText";
 
 // Resolves a catalogue tool id to its implementation and renders it inside the
 // hub's bottom sheet, owning the scroll container and keyboard-dismiss
@@ -39,8 +40,8 @@ function NotBuilt({ name }) {
       <View style={s.badge}>
         <Icon name="tool" size={26} color={INK_MUTED} />
       </View>
-      <Text style={s.title}>{name || "הכלי"} עדיין לא נבנה</Text>
-      <Text style={s.sub}>הכלי מופיע בקטלוג אבל אין מאחוריו קוד עדיין. הוא ייפתח ברגע שייבנה.</Text>
+      <CustomText style={s.title}>{name || "הכלי"} עדיין לא נבנה</CustomText>
+      <CustomText style={s.sub}>הכלי מופיע בקטלוג אבל אין מאחוריו קוד עדיין. הוא ייפתח ברגע שייבנה.</CustomText>
     </View>
   );
 }

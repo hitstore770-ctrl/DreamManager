@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { I18nManager, Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import { I18nManager, Image, ScrollView, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
@@ -15,6 +15,7 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import { checklistToText, makeNote } from "../utils/notesStore";
 import { shekel } from "../utils/posStore";
 import { BEVEL, CARD_SHADOW, GRAD, PASTEL, TYPE, UI, glow, pastelFor, tint } from "../utils/ui";
+import CustomText from "../components/CustomText";
 
 // חלומות ופתקים — one hub, two pinboards.
 //
@@ -118,12 +119,12 @@ function DreamCard({ dream, index, onOpen, onAsk }) {
                 <Icon name="check" size={12} color="#FFFFFF" />
               </View>
             )}
-            <Text style={s.coverTitle} numberOfLines={2}>{dream.title || "חלום"}</Text>
+            <CustomText style={s.coverTitle} numberOfLines={2}>{dream.title || "חלום"}</CustomText>
           </View>
 
           <View style={s.cardBody}>
             <View style={s.trackRow}>
-              <Text style={[s.pct, done && { color: UI.green }]}>{pct}%</Text>
+              <CustomText style={[s.pct, done && { color: UI.green }]}>{pct}%</CustomText>
               <View style={s.track}>
                 <View
                   testID={`dream-bar-${dream.id}`}
@@ -132,23 +133,23 @@ function DreamCard({ dream, index, onOpen, onAsk }) {
               </View>
             </View>
 
-            <Text style={s.money}>
-              {shekel(saved)} <Text style={s.moneyOf}>מתוך {shekel(target)}</Text>
-            </Text>
+            <CustomText style={s.money}>
+              {shekel(saved)} <CustomText style={s.moneyOf}>מתוך {shekel(target)}</CustomText>
+            </CustomText>
 
             <View style={s.metaRow}>
               {milestones.length > 0 && (
                 <View style={s.metaChip}>
                   <Icon name="check-circle" size={11} color={UI.inkMuted} />
-                  <Text style={s.metaText}>{doneCount}/{milestones.length}</Text>
+                  <CustomText style={s.metaText}>{doneCount}/{milestones.length}</CustomText>
                 </View>
               )}
               {left !== null && (
                 <View style={s.metaChip}>
                   <Icon name="clock" size={11} color={left < 0 ? UI.coral : UI.inkMuted} />
-                  <Text style={[s.metaText, left < 0 && { color: UI.coral }]}>
+                  <CustomText style={[s.metaText, left < 0 && { color: UI.coral }]}>
                     {left < 0 ? `באיחור ${-left}י׳` : `${left} ימים`}
-                  </Text>
+                  </CustomText>
                 </View>
               )}
             </View>
@@ -160,7 +161,7 @@ function DreamCard({ dream, index, onOpen, onAsk }) {
               onPress={() => onAsk(dream)}
             >
               <Icon name="message-circle" size={13} color={UI.violet} />
-              <Text style={s.aiText}>קו-פיילוט</Text>
+              <CustomText style={s.aiText}>קו-פיילוט</CustomText>
             </Bounce>
           </View>
         </Card>
@@ -202,29 +203,29 @@ function NoteCard({ note, index, onOpen }) {
             <View style={s.noteHead}>
               {note.pinned && <Icon name="bookmark" size={13} color={stock.ink} />}
               {note.locked && <Icon name="lock" size={12} color={stock.ink} />}
-              <Text style={[s.noteTitle, { color: stock.ink }]} numberOfLines={2}>
+              <CustomText style={[s.noteTitle, { color: stock.ink }]} numberOfLines={2}>
                 {note.title || "ללא כותרת"}
-              </Text>
+              </CustomText>
             </View>
 
-            <Text
+            <CustomText
               style={[s.notePreview, { color: stock.ink }, note.locked && s.noteLocked]}
               numberOfLines={6}
             >
               {preview}
-            </Text>
+            </CustomText>
 
             {tags.length > 0 && (
               <View style={s.tagRow}>
                 {tags.map((t) => (
                   <View key={t} style={[s.tag, { backgroundColor: "rgba(255,255,255,0.7)" }]}>
-                    <Text style={[s.tagText, { color: tagTone(t) }]}>#{t}</Text>
+                    <CustomText style={[s.tagText, { color: tagTone(t) }]}>#{t}</CustomText>
                   </View>
                 ))}
               </View>
             )}
 
-            <Text style={[s.noteTime, { color: stock.ink }]}>{fmtUpdated(note.updatedAt)}</Text>
+            <CustomText style={[s.noteTime, { color: stock.ink }]}>{fmtUpdated(note.updatedAt)}</CustomText>
           </View>
         </Note>
       </Bounce>
@@ -289,10 +290,10 @@ export default function DreamsNotesHubScreen({ navigation }) {
       <View style={{ paddingTop: insets.top + 12 }}>
         <View style={s.header}>
           <View style={{ flex: 1 }}>
-            <Text style={s.title}>{isDreams ? "חלומות" : "פתקים"}</Text>
-            <Text style={s.subtitle}>
+            <CustomText style={s.title}>{isDreams ? "חלומות" : "פתקים"}</CustomText>
+            <CustomText style={s.subtitle}>
               {isDreams ? `${dreamList.length} יעדים על הלוח` : `${noteList.length} פתקים`}
-            </Text>
+            </CustomText>
           </View>
           <Bounce
             testID="hub-primary"
@@ -328,7 +329,7 @@ export default function DreamsNotesHubScreen({ navigation }) {
                   onPress={() => { hapticLight(); setMode(seg.key); }}
                 >
                   <Icon name={seg.icon} size={15} color={on ? UI.violet : UI.inkMuted} />
-                  <Text style={[s.segText, on && s.segTextOn]}>{seg.label}</Text>
+                  <CustomText style={[s.segText, on && s.segTextOn]}>{seg.label}</CustomText>
                 </Bounce>
               );
             })}
@@ -385,8 +386,8 @@ function Empty({ icon, text, hint }) {
         <FoldedCorner tone={PASTEL.butter} size={18} />
         <Icon name={icon} size={26} color={PASTEL.butter.ink} />
       </Note>
-      <Text style={s.emptyText}>{text}</Text>
-      <Text style={s.emptyHint}>{hint}</Text>
+      <CustomText style={s.emptyText}>{text}</CustomText>
+      <CustomText style={s.emptyHint}>{hint}</CustomText>
     </View>
   );
 }

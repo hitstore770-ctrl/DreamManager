@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 
 import { hapticLight } from "../../../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../../../utils/notesTheme";
@@ -19,6 +19,7 @@ import {
   s,
   useCalcHaptic,
 } from "../kit";
+import CustomText from "../../../components/CustomText";
 
 // Video production tools.
 
@@ -66,14 +67,14 @@ export function VideoSizeEstimator() {
         <Field label="קצב פריימים" value={fps} onChange={setFps} placeholder="30" suffix="fps" />
       </View>
 
-      <Text style={s.fieldLabel}>רזולוציה</Text>
+      <CustomText style={s.fieldLabel}>רזולוציה</CustomText>
       <Segment
         options={Object.entries(RES_BITRATE).map(([key, v]) => ({ key, label: v.label }))}
         value={res}
         onChange={setRes}
       />
 
-      <Text style={s.fieldLabel}>קודק</Text>
+      <CustomText style={s.fieldLabel}>קודק</CustomText>
       <Segment
         options={[
           { key: "h264", label: "H.264" },
@@ -88,9 +89,9 @@ export function VideoSizeEstimator() {
         <Stat label="קצב סיביות" value={`${r.mbps} Mbps`} />
         <Stat label="לכל דקה" value={`${r.perMinute} MB`} />
       </View>
-      <Text style={s.hint}>
+      <CustomText style={s.hint}>
         הערכה לייצוא H.264/H.265 סטנדרטי. 60 fps מוסיף ~50% ולא כפול, ו-H.265 חוסך כ-40% באותה איכות.
-      </Text>
+      </CustomText>
     </View>
   );
 }
@@ -134,20 +135,20 @@ export function SlowMoFps() {
       <Chips options={[30, 60, 120, 240]} onPick={(v) => setRecorded(String(v))} active={recorded} />
 
       {!r.ready ? (
-        <Text style={s.hint}>הזן את שני קצבי הפריימים כדי לחשב.</Text>
+        <CustomText style={s.hint}>הזן את שני קצבי הפריימים כדי לחשב.</CustomText>
       ) : r.short ? (
         <View style={[s.banner, { backgroundColor: RED + "14" }]}>
-          <Text style={[s.bannerText, { color: RED }]}>ההקלטה איטית מהטיימליין</Text>
-          <Text style={[s.bannerSub, { color: RED }]}>
+          <CustomText style={[s.bannerText, { color: RED }]}>ההקלטה איטית מהטיימליין</CustomText>
+          <CustomText style={[s.bannerSub, { color: RED }]}>
             הקלטת {recorded}fps לטיימליין {timeline}fps — כל האטה תגמגם, כי חסרים פריימים אמיתיים.
-          </Text>
+          </CustomText>
         </View>
       ) : r.equal ? (
         <View style={[s.banner, { backgroundColor: GOLD + "16" }]}>
-          <Text style={[s.bannerText, { color: "#0E7490" }]}>אין מרווח להאטה (100%)</Text>
-          <Text style={[s.bannerSub, { color: "#0E7490" }]}>
+          <CustomText style={[s.bannerText, { color: "#0E7490" }]}>אין מרווח להאטה (100%)</CustomText>
+          <CustomText style={[s.bannerSub, { color: "#0E7490" }]}>
             קצב ההקלטה זהה לטיימליין. כדי להאט צריך להקליד בקצב גבוה יותר.
-          </Text>
+          </CustomText>
         </View>
       ) : (
         <>
@@ -158,29 +159,29 @@ export function SlowMoFps() {
           <View style={s.row}>
             <Field label="אורך הקטע המקורי" value={clip} onChange={setClip} placeholder="10" suffix="שנ׳" />
             <View style={{ flex: 1 }}>
-              <Text style={s.fieldLabel}>אורך אחרי האטה מלאה</Text>
+              <CustomText style={s.fieldLabel}>אורך אחרי האטה מלאה</CustomText>
               <View style={[s.fieldRow, { justifyContent: "center" }]}>
-                <Text style={s.resultInline}>{r.stretched} שנ׳</Text>
+                <CustomText style={s.resultInline}>{r.stretched} שנ׳</CustomText>
               </View>
             </View>
           </View>
 
-          <Text style={s.sectionLabel}>מהירויות נפוצות</Text>
+          <CustomText style={s.sectionLabel}>מהירויות נפוצות</CustomText>
           {[100, 75, 50, 40, 25].map((speed) => {
             const smooth = speed >= r.slowest;
             return (
               <View key={speed} style={s.routineRow}>
-                <Text style={[s.routineTime, { color: smooth ? GREEN : RED }]}>
+                <CustomText style={[s.routineTime, { color: smooth ? GREEN : RED }]}>
                   {smooth ? "חלק" : "מגמגם"}
-                </Text>
-                <Text style={s.routineLabel}>{speed}% מהמהירות</Text>
+                </CustomText>
+                <CustomText style={s.routineLabel}>{speed}% מהמהירות</CustomText>
               </View>
             );
           })}
-          <Text style={s.hint}>
+          <CustomText style={s.hint}>
             כל פריים בטיימליין חייב פריים מוקלט משלו. ב-{recorded}fps על טיימליין {timeline}fps יש מרווח
             להאטה עד {r.slowest}% — מתחת לזה העורך ישכפל פריימים והתנועה תיראה קפואה.
-          </Text>
+          </CustomText>
         </>
       )}
     </View>
@@ -237,7 +238,7 @@ export function DroneFlightTime() {
       <Segment options={RESERVES} value={reserve} onChange={setReserve} />
 
       {!r.ready ? (
-        <Text style={s.hint}>הזן קיבולת סוללה וצריכת זרם ממוצעת כדי לחשב.</Text>
+        <CustomText style={s.hint}>הזן קיבולת סוללה וצריכת זרם ממוצעת כדי לחשב.</CustomText>
       ) : (
         <>
           <View style={s.statRow}>
@@ -248,18 +249,18 @@ export function DroneFlightTime() {
 
           {r.cRate > 15 && (
             <View style={[s.banner, { backgroundColor: RED + "14" }]}>
-              <Text style={[s.bannerText, { color: RED }]}>צריכה גבוהה ביחס לסוללה</Text>
-              <Text style={[s.bannerSub, { color: RED }]}>
+              <CustomText style={[s.bannerText, { color: RED }]}>צריכה גבוהה ביחס לסוללה</CustomText>
+              <CustomText style={[s.bannerSub, { color: RED }]}>
                 {r.cRate}C — רוב סוללות הליפו לרחפנים מדורגות ל-10C עד 15C ברציפות. בדוק את דירוג
                 הפריקה של הסוללה לפני טיסה כזו.
-              </Text>
+              </CustomText>
             </View>
           )}
 
-          <Text style={s.hint}>
+          <CustomText style={s.hint}>
             החישוב הוא (mAh ÷ 1000) ÷ אמפר × 60. הוא מניח צריכה קבועה — ריחוף שקט מתקרב למספר הזה,
             אבל טיפוסים, רוח ותמרונים מושכים הרבה יותר, ולכן טיסה אמיתית תמיד קצרה מהתחזית.
-          </Text>
+          </CustomText>
         </>
       )}
     </View>
@@ -308,7 +309,7 @@ export function TimelapseCalc() {
       <Chips options={[24, 25, 30, 60]} onPick={(v) => setFps(String(v))} active={fps} />
 
       {!r.ready ? (
-        <Text style={s.hint}>הזן אורך אירוע, אורך סרטון רצוי וקצב פריימים.</Text>
+        <CustomText style={s.hint}>הזן אורך אירוע, אורך סרטון רצוי וקצב פריימים.</CustomText>
       ) : (
         <>
           <View style={s.statRow}>
@@ -319,11 +320,11 @@ export function TimelapseCalc() {
 
           {r.tooFast && (
             <View style={[s.banner, { backgroundColor: RED + "14" }]}>
-              <Text style={[s.bannerText, { color: RED }]}>המרווח קצר מדי</Text>
-              <Text style={[s.bannerSub, { color: RED }]}>
+              <CustomText style={[s.bannerText, { color: RED }]}>המרווח קצר מדי</CustomText>
+              <CustomText style={[s.bannerSub, { color: RED }]}>
                 {r.interval} שניות בין פריימים — רוב המצלמות לא מספיקות לכתוב פריים אחד לפני הבא.
                 הארך את האירוע, קצר את הסרטון או צלם בווידאו רגיל והאץ בעריכה.
-              </Text>
+              </CustomText>
             </View>
           )}
 
@@ -332,10 +333,10 @@ export function TimelapseCalc() {
             <Stat label="פריימים לדקת אירוע" value={Math.round(r.frames / (parseFloat(eventMinutes) || 1))} />
           </View>
 
-          <Text style={s.hint}>
+          <CustomText style={s.hint}>
             מספר הפריימים הוא אורך הסרטון × fps, והמרווח הוא משך האירוע חלקי מספר הפריימים. הערכת
             הנפח מניחה כ-20MB לפריים RAW בחיישן גדול.
-          </Text>
+          </CustomText>
         </>
       )}
     </View>
@@ -436,22 +437,22 @@ export function AspectRatio() {
             onPress={() => { hapticLight(); setW(p.w); setH(p.h); }}
             activeOpacity={0.8}
           >
-            <Text style={s.chipText}>{p.label}</Text>
+            <CustomText style={s.chipText}>{p.label}</CustomText>
           </TouchableOpacity>
         ))}
       </View>
 
       {!r.ready ? (
-        <Text style={s.hint}>הזן רוחב וגובה בפיקסלים.</Text>
+        <CustomText style={s.hint}>הזן רוחב וגובה בפיקסלים.</CustomText>
       ) : (
         <>
           <View style={[ar.verdict, { backgroundColor: BLUE + "12" }]}>
-            <Text testID="ar-result" style={[ar.ratio, { color: BLUE }]}>
+            <CustomText testID="ar-result" style={[ar.ratio, { color: BLUE }]}>
               {r.messy ? r.nearest.name.split(" ")[0] : `${r.rw}:${r.rh}`}
-            </Text>
-            <Text style={ar.verdictLabel}>
+            </CustomText>
+            <CustomText style={ar.verdictLabel}>
               {r.messy ? `היחס המדויק אינו סטנדרטי — הקרוב ביותר` : r.nearest.name}
-            </Text>
+            </CustomText>
           </View>
 
           {/* A box drawn at the real proportions, so the shape is visible. */}
@@ -464,7 +465,7 @@ export function AspectRatio() {
                   : { width: 200, height: 200 / r.decimal },
               ]}
             >
-              <Text style={ar.boxText}>{r.messy ? `${r.decimal}` : `${r.rw}:${r.rh}`}</Text>
+              <CustomText style={ar.boxText}>{r.messy ? `${r.decimal}` : `${r.rw}:${r.rh}`}</CustomText>
             </View>
           </View>
 
@@ -477,16 +478,16 @@ export function AspectRatio() {
           <Field testID="ar-target" label="רוחב יעד — לחישוב גובה תואם" value={targetW} onChange={setTargetW} placeholder="1080" suffix="px" />
           {r.scaled !== null && (
             <View style={[s.banner, { backgroundColor: GREEN + "14" }]}>
-              <Text testID="ar-scaled" style={[s.bannerText, { color: GREEN }]}>
+              <CustomText testID="ar-scaled" style={[s.bannerText, { color: GREEN }]}>
                 {targetW} × {r.scaled} שומר על אותו יחס
-              </Text>
+              </CustomText>
             </View>
           )}
 
-          <Text style={s.hint}>
+          <CustomText style={s.hint}>
             היחס מצומצם במחלק המשותף הגדול ביותר. כשהתוצאה יוצאת עם מספרים גדולים מדי מכדי להיות
             שימושית, מוצג במקומה היחס הסטנדרטי הקרוב.
-          </Text>
+          </CustomText>
         </>
       )}
     </View>

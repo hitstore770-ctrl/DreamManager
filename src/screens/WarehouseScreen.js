@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ScrollView, Share, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 
 import Icon from "../components/Icon";
 import ToolsSheet, { SheetRow, ToolsFab } from "../components/business/ToolsSheet";
@@ -8,6 +8,7 @@ import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
 import { CATEGORIES, LOW_STOCK, applyDamage, catOf, shekel, uid } from "../utils/posStore";
 import { buildZReportText, lastCloseTs } from "../utils/zReport";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
+import CustomText from "../components/CustomText";
 
 // המחסן — the master inventory. Rows are dense but every touch target is a
 // full-size button: +10 restock, low-stock red flag under LOW_STOCK units,
@@ -89,7 +90,7 @@ export default function WarehouseScreen({ onGoToPos }) {
           <TouchableOpacity style={s.defectClose} onPress={() => { hapticLight(); setDefectMode(false); }} activeOpacity={0.7}>
             <Icon name="x" size={17} color={RED} />
           </TouchableOpacity>
-          <Text style={s.defectText}>מצב פחת פעיל — הקש על מוצר לרישום נזק</Text>
+          <CustomText style={s.defectText}>מצב פחת פעיל — הקש על מוצר לרישום נזק</CustomText>
         </View>
       )}
 
@@ -142,22 +143,22 @@ export default function WarehouseScreen({ onGoToPos }) {
                   onPress={() => { hapticLight(); setForm((f) => ({ ...f, category: c.key })); }}
                   activeOpacity={0.7}
                 >
-                  <Text style={[s.catChipText, form.category === c.key && { color: WHITE }]}>{c.label}</Text>
+                  <CustomText style={[s.catChipText, form.category === c.key && { color: WHITE }]}>{c.label}</CustomText>
                 </TouchableOpacity>
               ))}
             </View>
             <View style={{ flexDirection: "row", gap: 8 }}>
               <TouchableOpacity style={[s.formBtn, { backgroundColor: CARD }]} onPress={() => setShowForm(false)} activeOpacity={0.7}>
-                <Text style={[s.formBtnText, { color: INK_MUTED }]}>ביטול</Text>
+                <CustomText style={[s.formBtnText, { color: INK_MUTED }]}>ביטול</CustomText>
               </TouchableOpacity>
               <TouchableOpacity style={[s.formBtn, { backgroundColor: BLUE, flex: 2 }]} onPress={addProduct} activeOpacity={0.8}>
-                <Text style={[s.formBtnText, { color: WHITE }]}>שמור מוצר</Text>
+                <CustomText style={[s.formBtnText, { color: WHITE }]}>שמור מוצר</CustomText>
               </TouchableOpacity>
             </View>
           </View>
         ) : (
           <TouchableOpacity style={s.addBtn} onPress={() => { hapticLight(); setShowForm(true); }} activeOpacity={0.75}>
-            <Text style={s.addBtnText}>＋ מוצר חדש</Text>
+            <CustomText style={s.addBtnText}>＋ מוצר חדש</CustomText>
           </TouchableOpacity>
         )}
 
@@ -165,7 +166,7 @@ export default function WarehouseScreen({ onGoToPos }) {
         {inventory.length === 0 ? (
           <View style={s.empty}>
             <Icon name="package" size={34} color="#9CA3AF" />
-            <Text style={s.emptyText}>המחסן ריק — הוסף מוצר ראשון</Text>
+            <CustomText style={s.emptyText}>המחסן ריק — הוסף מוצר ראשון</CustomText>
           </View>
         ) : (
           inventory.map((item) => {
@@ -180,23 +181,23 @@ export default function WarehouseScreen({ onGoToPos }) {
               >
                 {/* +10 quick restock */}
                 <TouchableOpacity style={s.restockBtn} onPress={() => restock(item.id)} activeOpacity={0.7}>
-                  <Text style={s.restockText}>+10</Text>
+                  <CustomText style={s.restockText}>+10</CustomText>
                 </TouchableOpacity>
 
                 {/* Stock count */}
                 <View style={{ alignItems: "center", minWidth: 52 }}>
-                  <Text style={[s.stockNum, low && { color: RED }]}>{item.qty || 0}</Text>
-                  <Text style={[s.stockCap, low && { color: RED, fontFamily: FONTS.bold }]}>
+                  <CustomText style={[s.stockNum, low && { color: RED }]}>{item.qty || 0}</CustomText>
+                  <CustomText style={[s.stockCap, low && { color: RED, fontFamily: FONTS.bold }]}>
                     {low ? "מלאי נמוך!" : "במלאי"}
-                  </Text>
+                  </CustomText>
                 </View>
 
                 {/* Name + prices */}
                 <View style={{ flex: 1, alignItems: "flex-end" }}>
-                  <Text style={[s.itemName, low && { color: RED }]} numberOfLines={1}>{item.name}</Text>
-                  <Text style={s.itemPrices}>
+                  <CustomText style={[s.itemName, low && { color: RED }]} numberOfLines={1}>{item.name}</CustomText>
+                  <CustomText style={s.itemPrices}>
                     עלות {shekel(item.cost || 0)} · מכירה {shekel(item.price || 0)}
-                  </Text>
+                  </CustomText>
                 </View>
 
                 {/* Category color tag */}

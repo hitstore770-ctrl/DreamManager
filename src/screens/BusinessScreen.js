@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { I18nManager, ScrollView, StyleSheet, Text, View } from "react-native";
+import { I18nManager, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeIn } from "react-native-reanimated";
 
@@ -20,6 +20,7 @@ import PromosScreen from "./PromosScreen";
 import SuppliersScreen from "./SuppliersScreen";
 import WarehouseScreen from "./WarehouseScreen";
 import ZReportScreen from "./ZReportScreen";
+import CustomText from "../components/CustomText";
 
 // "העסק שלי" — a pill sub-navigation over nine business modules, all live.
 // The last of them holds the three tools that moved here out of the Tools hub.
@@ -86,7 +87,7 @@ function BusinessShell() {
               }}
             >
               <Icon name={m.icon} size={15} color={active ? "#FFFFFF" : UI.inkSoft} />
-              <Text style={[s.pillText, active && { color: "#FFFFFF" }]}>{m.label}</Text>
+              <CustomText style={[s.pillText, active && { color: "#FFFFFF" }]}>{m.label}</CustomText>
             </Bounce>
           );
         })}

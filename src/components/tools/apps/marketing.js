@@ -1,6 +1,6 @@
 import { useState } from "react";
 import * as Clipboard from "expo-clipboard";
-import { Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Share, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 
 import QRCode from "react-native-qrcode-svg";
 
@@ -22,6 +22,7 @@ import {
   WHITE,
   s,
 } from "../kit";
+import CustomText from "../../../components/CustomText";
 
 // Customer-facing output: codes and links you hand to someone else.
 
@@ -86,13 +87,13 @@ export function QrGenerator() {
         ) : (
           <View style={[qr.quiet, qr.empty]}>
             <Icon name="grid" size={34} color={INK_MUTED} />
-            <Text style={qr.emptyText}>הזן טקסט או כתובת</Text>
+            <CustomText style={qr.emptyText}>הזן טקסט או כתובת</CustomText>
           </View>
         )}
       </View>
 
       <View>
-        <Text style={s.fieldLabel}>תוכן הקוד</Text>
+        <CustomText style={s.fieldLabel}>תוכן הקוד</CustomText>
         <TextInput
           testID="qr-input"
           style={qr.input}
@@ -116,12 +117,12 @@ export function QrGenerator() {
             onPress={() => { hapticLight(); setText(preset.value); setCopied(false); }}
             activeOpacity={0.8}
           >
-            <Text style={s.chipText}>{preset.label}</Text>
+            <CustomText style={s.chipText}>{preset.label}</CustomText>
           </TouchableOpacity>
         ))}
       </View>
 
-      <Text style={s.fieldLabel}>רמת תיקון שגיאות</Text>
+      <CustomText style={s.fieldLabel}>רמת תיקון שגיאות</CustomText>
       <Segment options={QR_LEVELS} value={level} onChange={(v) => { hapticLight(); setLevel(v); }} />
 
       <View style={s.row}>
@@ -142,10 +143,10 @@ export function QrGenerator() {
         <Stat label="רמת תיקון" value={level} />
       </View>
 
-      <Text style={s.hint}>
+      <CustomText style={s.hint}>
         הקוד אמיתי וניתן לסריקה. רמה גבוהה יותר שורדת יותר נזק והתלכלכות אבל דורשת יותר מודולים, לכן
         לקוד שמודבק על מכונה עדיף H ולקישור ארוך עדיף L.
-      </Text>
+      </CustomText>
     </View>
   );
 }

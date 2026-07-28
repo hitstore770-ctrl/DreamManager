@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { I18nManager, ScrollView, StyleSheet, Text, View } from "react-native";
+import { I18nManager, ScrollView, StyleSheet, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 
 import Bounce from "../components/Bounce";
@@ -10,6 +10,7 @@ import { hapticLight } from "../utils/haptics";
 import { FLUID, listEntry } from "../utils/motion";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import { CARD_SHADOW, TYPE, UI } from "../utils/ui";
+import CustomText from "../components/CustomText";
 
 // כלים עסקיים — the three tools that belong to running the business rather
 // than to general utility, moved out of the Tools hub and in beside the
@@ -77,8 +78,8 @@ export default function BizToolsScreen() {
                 color={UI.inkMuted}
               />
               <View style={{ flex: 1 }}>
-                <Text style={s.label}>{tool.label}</Text>
-                <Text style={s.hint}>{tool.hint}</Text>
+                <CustomText style={s.label}>{tool.label}</CustomText>
+                <CustomText style={s.hint}>{tool.hint}</CustomText>
               </View>
               <View style={[s.badge, isOpen && { backgroundColor: UI.violet }]}>
                 <Icon name={tool.icon} size={19} color={isOpen ? "#FFFFFF" : UI.violet} />
@@ -94,9 +95,9 @@ export default function BizToolsScreen() {
         );
       })}
 
-      <Text style={s.footer}>
+      <CustomText style={s.footer}>
         הכלים האלה עברו לכאן מטאב הכלים, כדי שכל מה שקשור לניהול העסק יישב במקום אחד.
-      </Text>
+      </CustomText>
     </ScrollView>
   );
 }

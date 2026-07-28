@@ -1,9 +1,10 @@
 import { memo } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle, Defs, Ellipse, G, LinearGradient as SvgGrad, Path, Stop } from "react-native-svg";
 
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
+import CustomText from "../../components/CustomText";
 
 // A banknote, built the way a banknote is printed.
 //
@@ -186,17 +187,17 @@ function Banknote({ value = 100, width = 168, height = 92, style }) {
 
       {/* Intaglio numeral: dark impression under, light face over. */}
       <View style={[s.valueBlock, { right: undefined, left: 10 * scale, top: 8 * scale }]}>
-        <Text style={[s.valueShadow, { fontSize: 30 * scale, color: spec.deep }]}>{value}</Text>
-        <Text style={[s.value, { fontSize: 30 * scale }]}>{value}</Text>
-        <Text style={[s.currency, { fontSize: 14 * scale }]}>₪</Text>
+        <CustomText style={[s.valueShadow, { fontSize: 30 * scale, color: spec.deep }]}>{value}</CustomText>
+        <CustomText style={[s.value, { fontSize: 30 * scale }]}>{value}</CustomText>
+        <CustomText style={[s.currency, { fontSize: 14 * scale }]}>₪</CustomText>
       </View>
 
-      <Text style={[s.issuer, { fontSize: 8.5 * scale, left: 11 * scale, bottom: 19 * scale }]}>
+      <CustomText style={[s.issuer, { fontSize: 8.5 * scale, left: 11 * scale, bottom: 19 * scale }]}>
         בנק ישראל
-      </Text>
-      <Text style={[s.face, { fontSize: 9.5 * scale, left: 11 * scale, bottom: 7 * scale }]}>
+      </CustomText>
+      <CustomText style={[s.face, { fontSize: 9.5 * scale, left: 11 * scale, bottom: 7 * scale }]}>
         {spec.face}
-      </Text>
+      </CustomText>
 
       {/* Microtext: at this size the individual glyphs are not legible on real
           money either — what the eye reads is the ruled texture. */}
@@ -206,9 +207,9 @@ function Banknote({ value = 100, width = 168, height = 92, style }) {
         ))}
       </View>
 
-      <Text style={[s.serial, { fontSize: 6.5 * scale, top: 7 * scale, right: 9 * scale }]}>
+      <CustomText style={[s.serial, { fontSize: 6.5 * scale, top: 7 * scale, right: 9 * scale }]}>
         {serialFor(value)}
-      </Text>
+      </CustomText>
 
       {/* Paper curvature: light along the top fold, shade into the bottom. */}
       <LinearGradient

@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
-import { PanResponder, StyleSheet, Text, View } from "react-native";
+import { PanResponder, StyleSheet, View } from "react-native";
 
 import { hapticLight } from "../../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
+import CustomText from "../../components/CustomText";
 
 // A slider built on React Native's own PanResponder — no slider package is
 // installed and adding a native one risks the build, so this stays pure RN.
@@ -54,8 +55,8 @@ export default function Slider({ label, value, min = 0, max = 100, step = 1, onC
   return (
     <View style={s.wrap}>
       <View style={s.head}>
-        <Text style={s.value}>{format ? format(value) : value}</Text>
-        <Text style={s.label}>{label}</Text>
+        <CustomText style={s.value}>{format ? format(value) : value}</CustomText>
+        <CustomText style={s.label}>{label}</CustomText>
       </View>
       <View
         testID={`slider-${label}`}

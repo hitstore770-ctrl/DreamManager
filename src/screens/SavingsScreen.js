@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { I18nManager, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { I18nManager, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   Easing,
@@ -21,6 +21,7 @@ import { shekel } from "../utils/posStore";
 import { STORAGE_KEYS } from "../utils/storageKeys";
 import { CARD_SHADOW, TYPE, UI } from "../utils/ui";
 import { usePersistentState } from "../utils/usePersistentState";
+import CustomText from "../components/CustomText";
 
 // אזור החיסכון — a jar that fills as you feed it.
 //
@@ -96,7 +97,7 @@ function Coin({ denom, startX, onDone }) {
       pointerEvents="none"
       style={[s.coin, { left: startX, backgroundColor: denom.tone }, style]}
     >
-      <Text style={s.coinText}>{denom.value}</Text>
+      <CustomText style={s.coinText}>{denom.value}</CustomText>
     </Animated.View>
   );
 }
@@ -190,8 +191,8 @@ export default function SavingsScreen({ navigation }) {
           <Icon name={I18nManager.isRTL ? "arrow-right" : "arrow-left"} size={19} color={UI.ink} />
         </Bounce>
         <View style={{ flex: 1 }}>
-          <Text style={s.title}>אזור החיסכון</Text>
-          <Text style={s.subtitle}>כל מטבע נספר ונשמר במכשיר</Text>
+          <CustomText style={s.title}>אזור החיסכון</CustomText>
+          <CustomText style={s.subtitle}>כל מטבע נספר ונשמר במכשיר</CustomText>
         </View>
         {balance > 0 && (
           <Bounce style={s.iconBtn} scaleTo={0.9} onPress={reset}>
@@ -219,9 +220,9 @@ export default function SavingsScreen({ navigation }) {
             ))}
 
             <View style={s.jarReadout} pointerEvents="none">
-              <Text testID="savings-balance" style={s.balance}>{shekel(balance || 0)}</Text>
-              <Text style={s.ofGoal}>מתוך {shekel(target)}</Text>
-              <Text style={[s.pct, reached && { color: UI.green }]}>{Math.round(pct)}%</Text>
+              <CustomText testID="savings-balance" style={s.balance}>{shekel(balance || 0)}</CustomText>
+              <CustomText style={s.ofGoal}>מתוך {shekel(target)}</CustomText>
+              <CustomText style={[s.pct, reached && { color: UI.green }]}>{Math.round(pct)}%</CustomText>
             </View>
           </View>
         </View>
@@ -229,7 +230,7 @@ export default function SavingsScreen({ navigation }) {
         {reached && (
           <Animated.View entering={FadeIn.duration(300)} style={s.reachedCard}>
             <Icon name="award" size={18} color={UI.green} />
-            <Text style={s.reachedText}>הגעת ליעד. אפשר להעלות אותו ולהמשיך.</Text>
+            <CustomText style={s.reachedText}>הגעת ליעד. אפשר להעלות אותו ולהמשיך.</CustomText>
           </Animated.View>
         )}
 
@@ -244,9 +245,9 @@ export default function SavingsScreen({ navigation }) {
               onPress={() => drop(d)}
             >
               <View style={[s.coinBtnFace, { backgroundColor: d.tone }]}>
-                <Text style={s.coinBtnValue}>{d.value}</Text>
+                <CustomText style={s.coinBtnValue}>{d.value}</CustomText>
               </View>
-              <Text style={s.coinBtnLabel}>הוסף {d.label}</Text>
+              <CustomText style={s.coinBtnLabel}>הוסף {d.label}</CustomText>
             </Bounce>
           ))}
         </View>
@@ -260,7 +261,7 @@ export default function SavingsScreen({ navigation }) {
 
         {/* Goal + undo */}
         <View style={s.card}>
-          <Text style={s.cardLabel}>יעד החיסכון</Text>
+          <CustomText style={s.cardLabel}>יעד החיסכון</CustomText>
           <View style={s.goalRow}>
             <Bounce style={s.goalSave} scaleTo={0.93} onPress={saveGoal}>
               <Icon name="check" size={17} color="#FFFFFF" />
@@ -281,15 +282,15 @@ export default function SavingsScreen({ navigation }) {
           {!!(history || []).length && (
             <Bounce style={s.undoBtn} scaleTo={0.96} onPress={undo}>
               <Icon name="corner-up-left" size={16} color={UI.inkSoft} />
-              <Text style={s.undoText}>בטל את ההפקדה האחרונה</Text>
+              <CustomText style={s.undoText}>בטל את ההפקדה האחרונה</CustomText>
             </Bounce>
           )}
         </View>
 
-        <Text style={s.hint}>
+        <CustomText style={s.hint}>
           הסכום נשמר במכשיר בלבד ואינו מסונכרן לענן. המטבע מתווסף למאזן ברגע הנחיתה, כדי שהמספר
           והאנימציה יספרו את אותו סיפור.
-        </Text>
+        </CustomText>
       </ScrollView>
     </View>
   );
@@ -298,8 +299,8 @@ export default function SavingsScreen({ navigation }) {
 function Stat({ label, value, tone = UI.ink }) {
   return (
     <View style={s.stat}>
-      <Text style={[s.statValue, { color: tone }]}>{value}</Text>
-      <Text style={s.statLabel}>{label}</Text>
+      <CustomText style={[s.statValue, { color: tone }]}>{value}</CustomText>
+      <CustomText style={s.statLabel}>{label}</CustomText>
     </View>
   );
 }

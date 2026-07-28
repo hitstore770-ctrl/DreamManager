@@ -1,9 +1,4 @@
-import {
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  signInWithPopup,
-  signOut,
-} from "firebase/auth";
+import { onAuthStateChanged, signInAnonymously, signOut } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { Platform } from "react-native";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
@@ -44,6 +39,7 @@ function shapeUser(fbUser, coins = 0) {
   return {
     uid: fbUser.uid,
     displayName: fbUser.displayName || fbUser.email?.split("@")[0] || "משתמש",
+    isAnonymous: !!fbUser.isAnonymous,
     email: fbUser.email || null,
     photoURL: fbUser.photoURL || null,
     coins,
@@ -68,8 +64,10 @@ export function AuthProvider({ children }) {
       async (fbUser) => {
         if (!fbUser) {
           coinsHydrated.current = false;
-          setUser(null);
-          setAuthLoading(false);
+          // Nobody signed in — get an anonymous session going immediately
+          // rather than showing a login wall. This fires once; the listener
+          // runs again with the new user and takes the branch below.
+          signInAnonymously(auth).catch(() => setAuthLoading(false));
           return;
         }
         // Show the app immediately; the balance arrives from Firestore after.
@@ -92,27 +90,20 @@ export function AuthProvider({ children }) {
     }
   }, [user?.coins]);
 
-  const signInWithGoogle = useCallback(async () => {
+  // Sign in silently, with no screen and no decision to make.
+  //
+  // An anonymous account is still a real Firebase uid, so Firestore rules can
+  // scope data to it and cloud backup works from the first launch. The cost is
+  // worth stating plainly: the account lives in this install only. Clear the
+  // app data or move to a new phone and that uid — and the cloud data behind
+  // it — is gone. Firebase can later upgrade the same uid to a real credential
+  // with linkWithCredential, which keeps everything already written.
+  const signInAnon = useCallback(async () => {
+    if (!isFirebaseConfigured) return;
     setAuthError(null);
     setIsAuthenticating(true);
-
-    // The Firebase JS SDK's OAuth popup/redirect flows are browser-only — in
-    // React Native there is no window to open. A native build needs an OAuth
-    // client id and expo-auth-session, feeding the id token into
-    // signInWithCredential; until that exists, say so instead of failing
-    // silently.
-    if (Platform.OS !== "web") {
-      setIsAuthenticating(false);
-      setAuthError(
-        "כניסה עם Google זמינה כרגע בגרסת הדפדפן בלבד. לבנייה נייטיב צריך מזהה OAuth ו-expo-auth-session."
-      );
-      return;
-    }
-
     try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: "select_account" });
-      await signInWithPopup(auth, provider);
+      await signInAnonymously(auth);
       // onAuthStateChanged takes it from here.
     } catch (err) {
       setIsAuthenticating(false);
@@ -150,12 +141,12 @@ export function AuthProvider({ children }) {
       authLoading,
       authError,
       clearAuthError: () => setAuthError(null),
-      signInWithGoogle,
+      signInAnon,
       logout,
       addCoins,
       spendCoins,
     }),
-    [user, isAuthenticating, authLoading, authError, signInWithGoogle, logout, addCoins, spendCoins]
+    [user, isAuthenticating, authLoading, authError, signInAnon, logout, addCoins, spendCoins]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

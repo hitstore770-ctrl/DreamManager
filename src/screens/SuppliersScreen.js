@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { I18nManager, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { I18nManager, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 
 import Bounce from "../components/Bounce";
@@ -11,6 +11,7 @@ import { uid } from "../utils/posStore";
 import { STORAGE_KEYS } from "../utils/storageKeys";
 import { usePersistentState } from "../utils/usePersistentState";
 import { CARD_SHADOW, TYPE, UI } from "../utils/ui";
+import CustomText from "../components/CustomText";
 
 // ספקים — the supplier book: who you buy from, how good they are, and which
 // orders are still in transit. An order past DELAY_LIMIT days flags itself in
@@ -144,8 +145,8 @@ export default function SuppliersScreen() {
           <View style={s.emptyBadge}>
             <Icon name="truck" size={30} color={UI.violet} />
           </View>
-          <Text style={s.emptyTitle}>אין ספקים רשומים</Text>
-          <Text style={s.emptyHint}>הוסף ספק כדי לעקוב אחרי הזמנות בדרך ואיחורים.</Text>
+          <CustomText style={s.emptyTitle}>אין ספקים רשומים</CustomText>
+          <CustomText style={s.emptyHint}>הוסף ספק כדי לעקוב אחרי הזמנות בדרך ואיחורים.</CustomText>
         </Animated.View>
       ) : (
         list.map((sup, index) => {
@@ -160,10 +161,10 @@ export default function SuppliersScreen() {
                   <Icon name="x" size={15} color={UI.inkMuted} />
                 </Bounce>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.supName} numberOfLines={1}>{sup.name}</Text>
-                  <Text style={s.supMeta}>
+                  <CustomText style={s.supName} numberOfLines={1}>{sup.name}</CustomText>
+                  <CustomText style={s.supMeta}>
                     {inTransit.length} בדרך{arrived ? ` · ${arrived} הגיעו` : ""}
-                  </Text>
+                  </CustomText>
                 </View>
                 <View style={s.supBadge}>
                   <Icon name="truck" size={18} color={UI.violet} />
@@ -179,9 +180,9 @@ export default function SuppliersScreen() {
                 ))}
               </View>
 
-              <Text style={s.subTitle}>הזמנות בדרך</Text>
+              <CustomText style={s.subTitle}>הזמנות בדרך</CustomText>
               {inTransit.length === 0 ? (
-                <Text style={s.noneText}>אין הזמנות פתוחות</Text>
+                <CustomText style={s.noneText}>אין הזמנות פתוחות</CustomText>
               ) : (
                 inTransit.map((o) => {
                   const passed = daysSince(o.placedAt);
@@ -195,20 +196,20 @@ export default function SuppliersScreen() {
                     >
                       <Bounce style={s.arrivedBtn} onPress={() => markArrived(sup.id, o.id)} scaleTo={0.93}>
                         <Icon name="check" size={15} color="#FFFFFF" />
-                        <Text style={s.arrivedText}>הגיע</Text>
+                        <CustomText style={s.arrivedText}>הגיע</CustomText>
                       </Bounce>
                       <View style={{ flex: 1 }}>
-                        <Text style={s.orderDesc} numberOfLines={2}>{o.desc}</Text>
-                        <Text style={s.orderMeta}>
+                        <CustomText style={s.orderDesc} numberOfLines={2}>{o.desc}</CustomText>
+                        <CustomText style={s.orderMeta}>
                           עברו {passed} ימים
                           {eta != null
                             ? ` · יעד: ${eta >= 0 ? `בעוד ${eta} ימים` : `באיחור ${-eta} ימים`}`
                             : ""}
-                        </Text>
+                        </CustomText>
                         {delayed && (
                           <View style={s.delayRow}>
                             <Icon name="alert-triangle" size={12} color={UI.coral} />
-                            <Text style={s.delayText}>עיכוב מעל {DELAY_LIMIT} יום</Text>
+                            <CustomText style={s.delayText}>עיכוב מעל {DELAY_LIMIT} יום</CustomText>
                           </View>
                         )}
                       </View>
@@ -250,8 +251,8 @@ export default function SuppliersScreen() {
 function Metric({ value, label, color = UI.ink }) {
   return (
     <View style={{ flex: 1, alignItems: "center" }}>
-      <Text style={[s.metricValue, { color }]}>{value}</Text>
-      <Text style={s.metricLabel}>{label}</Text>
+      <CustomText style={[s.metricValue, { color }]}>{value}</CustomText>
+      <CustomText style={s.metricLabel}>{label}</CustomText>
     </View>
   );
 }

@@ -1,20 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  I18nManager,
-  Keyboard,
-  KeyboardAvoidingView,
-  Linking,
-  Modal,
-  Platform,
-  ScrollView,
-  Share,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
-} from "react-native";
+import { I18nManager, Keyboard, KeyboardAvoidingView, Linking, Modal, Platform, ScrollView, Share, StyleSheet, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInUp, FadeOutDown } from "react-native-reanimated";
 
@@ -32,6 +17,7 @@ import { NOTE_BG, extractTags, noteBg, textToChecklist, uid } from "../utils/not
 import { NOTES_FONTS as FONTS, NOTES_SHADOW as SHADOW_SM, NOTES_SHADOW_LG as SHADOW, NOTES_THEME } from "../utils/notesTheme";
 import { RADIUS, RADIUS_SM } from "../utils/theme";
 import HebrewDateTools from "../components/notes/HebrewDateTools";
+import CustomText from "../components/CustomText";
 
 // ---------------------------------------------------------------------------
 // Dual-mode note editor:
@@ -160,7 +146,7 @@ export default function NoteEditorScreen({ route, navigation }) {
   if (!note) {
     return (
       <View style={{ flex: 1, backgroundColor: ZEN_BG, alignItems: "center", justifyContent: "center" }}>
-        <Text style={{ color: theme.textMuted, fontFamily: FONTS.medium }}>ההערה לא נמצאה</Text>
+        <CustomText style={{ color: theme.textMuted, fontFamily: FONTS.medium }}>ההערה לא נמצאה</CustomText>
       </View>
     );
   }
@@ -345,7 +331,7 @@ export default function NoteEditorScreen({ route, navigation }) {
       {icon ? (
         <Icon name={icon} size={18} color={active ? "#FFF" : labelColor || theme.accent} />
       ) : (
-        <Text style={[s.tbtnText, { color: active ? "#FFF" : labelColor || theme.accent }]}>{label}</Text>
+        <CustomText style={[s.tbtnText, { color: active ? "#FFF" : labelColor || theme.accent }]}>{label}</CustomText>
       )}
     </Bounce>
   );
@@ -353,7 +339,7 @@ export default function NoteEditorScreen({ route, navigation }) {
   const checklistBlock = (
     <View style={[pro ? s.editorCard : s.zenChecklistWrap, pro && { backgroundColor: cardBg }]}>
       <View style={s.progressWrap}>
-        <Text style={s.progressText}>{checklistDone}/{note.checklist?.length || 0} הושלמו</Text>
+        <CustomText style={s.progressText}>{checklistDone}/{note.checklist?.length || 0} הושלמו</CustomText>
         <View style={s.progressBg}>
           <View style={[s.progressFill, { width: `${checklistPct}%`, backgroundColor: theme.accent }]} />
         </View>
@@ -386,10 +372,10 @@ export default function NoteEditorScreen({ route, navigation }) {
       {!readOnly && (
         <View style={s.checkActions}>
           <TouchableOpacity style={s.smallAction} onPress={addChecklistItem}>
-            <Text style={[s.smallActionText, { color: theme.accent }]}>＋ פריט</Text>
+            <CustomText style={[s.smallActionText, { color: theme.accent }]}>＋ פריט</CustomText>
           </TouchableOpacity>
           <TouchableOpacity style={s.smallAction} onPress={clearCompleted}>
-            <Text style={[s.smallActionText, { color: theme.textSecondary }]}>הורד שהושלמו לתחתית</Text>
+            <CustomText style={[s.smallActionText, { color: theme.textSecondary }]}>הורד שהושלמו לתחתית</CustomText>
           </TouchableOpacity>
         </View>
       )}
@@ -401,14 +387,14 @@ export default function NoteEditorScreen({ route, navigation }) {
       {/* Header: back · mode toggle · pin/share/lock */}
       <View style={[s.header, { paddingTop: insets.top + 10 }, !pro && { backgroundColor: ZEN_BG }]}>
         <TouchableOpacity style={s.iconBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={s.icon}>‹</Text>
+          <CustomText style={s.icon}>‹</CustomText>
         </TouchableOpacity>
         <TouchableOpacity
           style={[s.modePill, pro && s.modePillPro]}
           onPress={toggleMode}
           activeOpacity={0.75}
         >
-          <Text style={[s.modePillText, pro && { color: "#FFF" }]}>{pro ? "Pro" : "Zen"}</Text>
+          <CustomText style={[s.modePillText, pro && { color: "#FFF" }]}>{pro ? "Pro" : "Zen"}</CustomText>
         </TouchableOpacity>
         <View style={{ flex: 1 }} />
         <View style={s.headerActions}>
@@ -459,7 +445,7 @@ export default function NoteEditorScreen({ route, navigation }) {
               <View style={s.tagPillRow}>
                 {liveTags.map((t) => (
                   <View key={t} style={s.tagPill}>
-                    <Text style={s.tagPillText}>#{t}</Text>
+                    <CustomText style={s.tagPillText}>#{t}</CustomText>
                   </View>
                 ))}
               </View>
@@ -468,7 +454,7 @@ export default function NoteEditorScreen({ route, navigation }) {
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
                 {inlineMath.map((m, i) => (
                   <TouchableOpacity key={i} style={s.mathChip} onPress={() => applyInline(m)} activeOpacity={0.8}>
-                    <Text style={s.mathChipText}>{m.expr} = {m.value}  ⊕</Text>
+                    <CustomText style={s.mathChipText}>{m.expr} = {m.value}  ⊕</CustomText>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -479,9 +465,9 @@ export default function NoteEditorScreen({ route, navigation }) {
               checklistBlock
             ) : pro && preview ? (
               <View style={[s.editorCard, { backgroundColor: cardBg, minHeight: 260 }]}>
-                <Text style={{ fontSize: fs, color: inkColor, textAlign: bodyAlign === "auto" ? "right" : bodyAlign, lineHeight }}>
+                <CustomText style={{ fontSize: fs, color: inkColor, textAlign: bodyAlign === "auto" ? "right" : bodyAlign, lineHeight }}>
                   {segments.map((seg, i) => (
-                    <Text
+                    <CustomText
                       key={i}
                       style={[
                         seg.bold && { fontFamily: FONTS.bold },
@@ -491,9 +477,9 @@ export default function NoteEditorScreen({ route, navigation }) {
                       ]}
                     >
                       {seg.text}
-                    </Text>
+                    </CustomText>
                   ))}
-                </Text>
+                </CustomText>
               </View>
             ) : pro ? (
               <View style={[s.editorCard, { backgroundColor: cardBg }]}>
@@ -537,7 +523,7 @@ export default function NoteEditorScreen({ route, navigation }) {
             {links.map((l) => (
               <TouchableOpacity key={l.label} style={s.linkChip} onPress={() => openLink(l)} activeOpacity={0.7}>
                 <Icon name={l.type === "phone" ? "phone" : "link-2"} size={13} color={theme.accent} />
-                <Text style={s.linkChipText}>{l.label}</Text>
+                <CustomText style={s.linkChipText}>{l.label}</CustomText>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -608,11 +594,11 @@ export default function NoteEditorScreen({ route, navigation }) {
 
         {/* Bottom status line: date · counters · autosave */}
         <View style={[s.bottomLine, { paddingBottom: Math.max(insets.bottom, 8), backgroundColor: pro ? PRO_BG : ZEN_BG }]}>
-          <Text style={s.bottomText}>{savedAt ? "נשמר" : "שמירה אוטומטית"}</Text>
-          <Text style={s.bottomText}>
+          <CustomText style={s.bottomText}>{savedAt ? "נשמר" : "שמירה אוטומטית"}</CustomText>
+          <CustomText style={s.bottomText}>
             {counts.words} מילים · {counts.chars} תווים{sum.count > 0 ? ` · Σ ${sum.total}` : ""}
-          </Text>
-          <Text style={s.bottomText} numberOfLines={1}>{today.formatted}</Text>
+          </CustomText>
+          <CustomText style={s.bottomText} numberOfLines={1}>{today.formatted}</CustomText>
         </View>
       </KeyboardAvoidingView>
 
@@ -622,10 +608,10 @@ export default function NoteEditorScreen({ route, navigation }) {
           <View style={s.calcBackdrop}>
             <TouchableWithoutFeedback onPress={() => {}}>
               <View style={s.calcCard}>
-                <View style={s.calcTitleRow}><Icon name="calculator-outline" size={17} color={theme.accent} /><Text style={s.calcTitle}>מחשבון מרחף</Text></View>
+                <View style={s.calcTitleRow}><Icon name="calculator-outline" size={17} color={theme.accent} /><CustomText style={s.calcTitle}>מחשבון מרחף</CustomText></View>
                 <View style={s.calcDisplay}>
-                  <Text style={s.calcExpr}>{calcExpr || "0"}</Text>
-                  <Text style={s.calcResult}>{calcValue !== null ? `= ${calcValue}` : ""}</Text>
+                  <CustomText style={s.calcExpr}>{calcExpr || "0"}</CustomText>
+                  <CustomText style={s.calcResult}>{calcValue !== null ? `= ${calcValue}` : ""}</CustomText>
                 </View>
                 <View style={s.calcGrid}>
                   {["7", "8", "9", "/", "4", "5", "6", "*", "1", "2", "3", "-", "0", ".", "(", ")", "C", "=", "+"].map((k) => (
@@ -644,23 +630,23 @@ export default function NoteEditorScreen({ route, navigation }) {
                         else setCalcExpr((e) => e + k);
                       }}
                     >
-                      <Text style={[s.calcKeyText, { color: k === "=" ? "#FFF" : theme.textPrimary }]}>{k}</Text>
+                      <CustomText style={[s.calcKeyText, { color: k === "=" ? "#FFF" : theme.textPrimary }]}>{k}</CustomText>
                     </TouchableOpacity>
                   ))}
                 </View>
                 {calcHistory.length > 0 && (
                   <View style={s.tapeBox}>
                     {calcHistory.slice(0, 3).map((c) => (
-                      <Text key={c.id} style={s.tapeLine}>{c.line}</Text>
+                      <CustomText key={c.id} style={s.tapeLine}>{c.line}</CustomText>
                     ))}
                   </View>
                 )}
                 <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
                   <TouchableOpacity style={[s.calcAction, { backgroundColor: theme.surfaceMuted }]} onPress={() => setShowCalc(false)}>
-                    <Text style={[s.calcActionText, { color: theme.textSecondary }]}>סגור</Text>
+                    <CustomText style={[s.calcActionText, { color: theme.textSecondary }]}>סגור</CustomText>
                   </TouchableOpacity>
                   <TouchableOpacity style={[s.calcAction, { backgroundColor: theme.accent }]} onPress={insertTape}>
-                    <Text style={[s.calcActionText, { color: "#FFF" }]}>הדבק סרט חישוב</Text>
+                    <CustomText style={[s.calcActionText, { color: "#FFF" }]}>הדבק סרט חישוב</CustomText>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -675,13 +661,13 @@ export default function NoteEditorScreen({ route, navigation }) {
           <View style={s.calcBackdrop}>
             <TouchableWithoutFeedback onPress={() => {}}>
               <View style={s.calcCard}>
-                <View style={s.calcTitleRow}><Icon name="color-wand-outline" size={17} color={theme.accent} /><Text style={s.calcTitle}>תבניות עסקיות</Text></View>
+                <View style={s.calcTitleRow}><Icon name="color-wand-outline" size={17} color={theme.accent} /><CustomText style={s.calcTitle}>תבניות עסקיות</CustomText></View>
                 {SMART_TEMPLATES.map((tpl) => (
                   <TouchableOpacity key={tpl.key} style={s.tplRow} onPress={() => insertTemplate(tpl)} activeOpacity={0.8}>
                     <Icon name={tpl.icon} size={17} color={theme.accent} />
                     <View style={{ flex: 1 }}>
-                      <Text style={s.tplLabel}>{tpl.label}</Text>
-                      <Text style={s.tplPreview} numberOfLines={1}>{tpl.text}</Text>
+                      <CustomText style={s.tplLabel}>{tpl.label}</CustomText>
+                      <CustomText style={s.tplPreview} numberOfLines={1}>{tpl.text}</CustomText>
                     </View>
                   </TouchableOpacity>
                 ))}
@@ -689,7 +675,7 @@ export default function NoteEditorScreen({ route, navigation }) {
                   style={[s.calcAction, { backgroundColor: theme.surfaceMuted, marginTop: 6 }]}
                   onPress={() => setShowTemplates(false)}
                 >
-                  <Text style={[s.calcActionText, { color: theme.textSecondary }]}>סגור</Text>
+                  <CustomText style={[s.calcActionText, { color: theme.textSecondary }]}>סגור</CustomText>
                 </TouchableOpacity>
               </View>
             </TouchableWithoutFeedback>

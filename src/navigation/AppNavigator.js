@@ -14,8 +14,8 @@ import ContextualAiChatScreen from "../screens/ContextualAiChatScreen";
 import DreamsNotesHubScreen from "../screens/DreamsNotesHubScreen";
 import DreamsScreen from "../screens/DreamsScreen";
 import LiveAiScreen from "../screens/LiveAiScreen";
-import LoginScreen from "../screens/LoginScreen";
-import MainDashboardScreen from "../screens/MainDashboardScreen";
+import BiometricGate from "../components/BiometricGate";
+import CashFlowScreen from "../screens/CashFlowScreen";
 import MyMoneyHubScreen from "../screens/MyMoneyHubScreen";
 import NoteEditorScreen from "../screens/NoteEditorScreen";
 import SavingsHubScreen from "../screens/money/SavingsHubScreen";
@@ -23,23 +23,28 @@ import SavingsScreen from "../screens/SavingsScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import ToolsWorkshopScreen from "../screens/ToolsWorkshopScreen";
 import TransitAssistantScreen from "../screens/TransitAssistantScreen";
+import VisionCameraScreen from "../screens/VisionCameraScreen";
 import { FONTS } from "../utils/theme";
 import { BEVEL, CARD_SHADOW, UI, tint } from "../utils/ui";
 
 const RootStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// Five zones.
+// Five tabs, and Noa is the middle one.
 //
-// Declaration order is the RTL reading order — first declared sits rightmost,
-// because the app forces RTL and the bar is a flex row. So the money hub is
-// under the right thumb, the assistant next to it, the Core in the middle,
-// and the two libraries out to the left.
+// "Exact centre" is only expressible with an odd count, which is why the tab
+// list stays at five after the Core was removed: four tabs have no middle
+// slot, and a floating button parked over the seam between slots 2 and 3 is
+// centred by eyeball rather than by layout. Cash Flow takes the freed slot, so
+// Noa sits in position 3 of 5 — genuinely central, on any screen width.
+//
+// Declaration order is the RTL reading order: first declared sits rightmost,
+// because the app forces RTL and the bar is a flex row.
 const ZONES = [
   { name: "Money", component: MyMoneyHubScreen, icon: "trending-up", label: "הכסף שלי" },
-  { name: "Assistant", component: LiveAiScreen, icon: "message-circle", label: "נועה" },
-  { name: "Core", component: MainDashboardScreen, icon: "hexagon", label: "הליבה" },
   { name: "Library", component: DreamsNotesHubScreen, icon: "star", label: "חלומות" },
+  { name: "Assistant", component: LiveAiScreen, icon: "message-circle", label: "נועה", center: true },
+  { name: "CashFlow", component: CashFlowScreen, icon: "bar-chart-2", label: "תזרים" },
   { name: "Workshop", component: ToolsWorkshopScreen, icon: "tool", label: "כלים" },
 ];
 
@@ -87,6 +92,28 @@ const ACTIVE_CHIP = {
 };
 const INACTIVE_CHIP = { minWidth: 44, height: 30, alignItems: "center", justifyContent: "center" };
 
+const CENTERS = new Set(ZONES.filter((z) => z.center).map((z) => z.name));
+
+// Noa's tab is a raised disc rather than an icon in a row. It lifts above the
+// bar's top edge, which is what makes it read as the primary action instead of
+// as one of five equals — and the negative margin is why the bar itself has
+// `overflow: visible` below.
+function CenterTabIcon({ focused }) {
+  return (
+    <View style={st.centerWrap}>
+      <LinearGradient
+        colors={focused ? ["#8B5CF6", "#6D28D9"] : ["#A78BFA", "#7C3AED"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={st.centerDisc}
+      >
+        <Icon name="message-circle" size={24} color="#FFFFFF" />
+      </LinearGradient>
+      {focused && <View style={st.centerDot} />}
+    </View>
+  );
+}
+
 const screenOptions = ({ route }) => ({
   headerShown: false,
   tabBarActiveTintColor: UI.violet,
@@ -103,27 +130,61 @@ const screenOptions = ({ route }) => ({
     borderRadius: UI.radiusLg,
     backgroundColor: UI.glass,
     borderTopWidth: 0,
-    overflow: "hidden",
+    // Noa's disc lifts above the bar, so the bar must not clip it.
+    overflow: "visible",
     ...BEVEL,
     ...CARD_SHADOW,
   },
   tabBarItemStyle: { borderRadius: UI.radiusSm },
   tabBarLabelStyle: { fontFamily: FONTS.medium, fontSize: 10, lineHeight: 15, marginTop: 2 },
-  tabBarIcon: ({ focused }) => (
-    <View style={focused ? ACTIVE_CHIP : INACTIVE_CHIP}>
-      <Icon name={ICONS[route.name]} size={20} color={focused ? UI.violet : UI.inkMuted} />
-    </View>
-  ),
+  tabBarIcon: ({ focused }) =>
+    CENTERS.has(route.name) ? (
+      <CenterTabIcon focused={focused} />
+    ) : (
+      <View style={focused ? ACTIVE_CHIP : INACTIVE_CHIP}>
+        <Icon name={ICONS[route.name]} size={20} color={focused ? UI.violet : UI.inkMuted} />
+      </View>
+    ),
   tabBarLabel: LABELS[route.name],
 });
 
 function ZoneTabs() {
+  // Noa is the landing tab as well as the centre one: she is the thing the app
+  // is for, and the Core screen this used to open no longer exists.
   return (
-    <Tab.Navigator initialRouteName="Core" screenOptions={screenOptions}>
+    <Tab.Navigator initialRouteName="Assistant" screenOptions={screenOptions}>
       {ORDERED_ZONES.map((z) => (
         <Tab.Screen key={z.name} name={z.name} component={z.component} />
       ))}
     </Tab.Navigator>
+  );
+}
+
+const st = StyleSheet.create({
+  // Lifted above the bar's top edge. The bar sets overflow: visible for this.
+  centerWrap: { alignItems: "center", justifyContent: "center", marginTop: -22 },
+  centerDisc: {
+    width: 56,
+    height: 56,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 3,
+    borderColor: "#FFFFFF",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  centerDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: UI.violet, marginTop: 5 },
+});
+
+function ConnectingScreen() {
+  return (
+    <View style={{ flex: 1, backgroundColor: UI.bg, alignItems: "center", justifyContent: "center" }}>
+      <ActivityIndicator color={UI.violet} />
+    </View>
   );
 }
 
@@ -142,7 +203,20 @@ export default function AppNavigator() {
 
   return (
     <MoneyProvider>
-      <RootStack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
+      {/* Everything behind the gate. Wrapping the navigator rather than each
+          screen means there is no route that can be reached around it. */}
+      <BiometricGate>
+      {/* Every push slides in horizontally. Under forced RTL the platform
+          mirrors the direction on its own, so a screen enters from the side
+          the back gesture will send it out of. */}
+      <RootStack.Navigator
+        screenOptions={{
+          headerShown: false,
+          animation: "slide_from_right",
+          animationDuration: 260,
+          gestureEnabled: true,
+        }}
+      >
         {user ? (
           <>
             <RootStack.Screen name="Main" component={ZoneTabs} />
@@ -151,13 +225,13 @@ export default function AppNavigator() {
             <RootStack.Screen
               name="CashRegister"
               component={CashRegisterScreen}
-              options={{ animation: "slide_from_bottom" }}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen name="SavingsHub" component={SavingsHubScreen} />
             <RootStack.Screen
               name="Savings"
               component={SavingsScreen}
-              options={{ animation: "slide_from_bottom" }}
+              options={{ animation: "slide_from_right" }}
             />
 
             {/* Pushed from the Library zone: the full dream board, and the
@@ -166,7 +240,7 @@ export default function AppNavigator() {
             <RootStack.Screen
               name="NoteEditor"
               component={NoteEditorScreen}
-              options={{ animation: "slide_from_bottom" }}
+              options={{ animation: "slide_from_right" }}
             />
 
             {/* Per-item AI thread. Opened with { threadId, title, itemData }
@@ -174,12 +248,12 @@ export default function AppNavigator() {
             <RootStack.Screen
               name="ContextualAiChat"
               component={ContextualAiChatScreen}
-              options={{ animation: "slide_from_bottom" }}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="TransitAssistant"
               component={TransitAssistantScreen}
-              options={{ animation: "slide_from_bottom" }}
+              options={{ animation: "slide_from_right" }}
             />
 
             {/* Reached from the money hub and the Core. Kept as stack screens
@@ -188,11 +262,23 @@ export default function AppNavigator() {
                 would be a much larger change than it asked for. */}
             <RootStack.Screen name="Business" component={withBack(BusinessScreen)} />
             <RootStack.Screen name="Settings" component={withBack(SettingsScreen)} />
+
+            {/* Full screen, and with no animation of its own: a viewfinder
+                that slides in reads as a panel rather than as the camera
+                taking over. */}
+            <RootStack.Screen
+              name="VisionCamera"
+              component={VisionCameraScreen}
+              options={{ animation: "fade", presentation: "fullScreenModal" }}
+            />
           </>
         ) : (
-          <RootStack.Screen name="Login" component={LoginScreen} />
+          // Anonymous sign-in happens on its own in AuthContext, so this is a
+          // brief connecting state rather than a wall the user has to act on.
+          <RootStack.Screen name="Connecting" component={ConnectingScreen} />
         )}
       </RootStack.Navigator>
+      </BiometricGate>
     </MoneyProvider>
   );
 }

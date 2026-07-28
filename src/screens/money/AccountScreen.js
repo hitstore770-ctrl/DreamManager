@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { I18nManager, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { I18nManager, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import Animated, { FadeIn, FadeInDown, LinearTransition } from "react-native-reanimated";
 
 import Bounce from "../../components/Bounce";
@@ -10,6 +10,7 @@ import { hapticLight, hapticSuccess, hapticWarning } from "../../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
 import { shekel } from "../../utils/posStore";
 import { BEVEL, CARD_SHADOW, GRAD, TYPE, UI, tint } from "../../utils/ui";
+import CustomText from "../../components/CustomText";
 
 // החשבון שלי — one liquid balance on top, and named funds under it that the
 // liquid balance can be moved into.
@@ -71,17 +72,17 @@ export default function AccountScreen() {
       {/* Liquid balance */}
       <GradCard colors={GRAD.violet} halo={UI.violet} radius={28} style={s.heroWrap}>
         <View style={s.hero}>
-          <Text style={s.heroLabel}>יתרה נזילה</Text>
-          <Text testID="account-liquid" style={s.heroValue}>{shekel(liquid)}</Text>
+          <CustomText style={s.heroLabel}>יתרה נזילה</CustomText>
+          <CustomText testID="account-liquid" style={s.heroValue}>{shekel(liquid)}</CustomText>
           <View style={s.heroMetaRow}>
             <View style={s.heroMeta}>
-              <Text style={s.heroMetaValue}>{shekel(totalDeposited)}</Text>
-              <Text style={s.heroMetaLabel}>בקרנות</Text>
+              <CustomText style={s.heroMetaValue}>{shekel(totalDeposited)}</CustomText>
+              <CustomText style={s.heroMetaLabel}>בקרנות</CustomText>
             </View>
             <View style={s.heroDivider} />
             <View style={s.heroMeta}>
-              <Text testID="account-networth" style={s.heroMetaValue}>{shekel(netWorth)}</Text>
-              <Text style={s.heroMetaLabel}>סה״כ ברשותי</Text>
+              <CustomText testID="account-networth" style={s.heroMetaValue}>{shekel(netWorth)}</CustomText>
+              <CustomText style={s.heroMetaLabel}>סה״כ ברשותי</CustomText>
             </View>
           </View>
         </View>
@@ -89,7 +90,7 @@ export default function AccountScreen() {
 
       {!!flash && (
         <Animated.View entering={FadeIn.duration(200)} style={s.flash}>
-          <Text style={s.flashText}>{flash}</Text>
+          <CustomText style={s.flashText}>{flash}</CustomText>
         </Animated.View>
       )}
 
@@ -97,7 +98,7 @@ export default function AccountScreen() {
         <Bounce style={s.addBtn} scaleTo={0.92} onPress={() => { hapticLight(); setAdding((v) => !v); }}>
           <Icon name={adding ? "x" : "plus"} size={17} color={UI.violet} />
         </Bounce>
-        <Text style={s.sectionHead}>הפקדונות שלי</Text>
+        <CustomText style={s.sectionHead}>הפקדונות שלי</CustomText>
       </View>
 
       {adding && (
@@ -130,7 +131,7 @@ export default function AccountScreen() {
       {deposits.length === 0 && !adding && (
         <View style={s.empty}>
           <Icon name="target" size={26} color={UI.inkMuted} />
-          <Text style={s.emptyText}>אין קרנות עדיין. הוסף אחת עם ה-＋</Text>
+          <CustomText style={s.emptyText}>אין קרנות עדיין. הוסף אחת עם ה-＋</CustomText>
         </View>
       )}
 
@@ -153,10 +154,10 @@ export default function AccountScreen() {
             >
               <Icon name={isOpen ? "chevron-up" : "chevron-down"} size={17} color={UI.inkMuted} />
               <View style={{ flex: 1 }}>
-                <Text style={s.cardLabel}>{d.label}</Text>
-                <Text style={s.cardMeta}>
+                <CustomText style={s.cardLabel}>{d.label}</CustomText>
+                <CustomText style={s.cardMeta}>
                   {shekel(saved)} מתוך {shekel(d.target)}
-                </Text>
+                </CustomText>
               </View>
               <View style={[s.cardBadge, full && { backgroundColor: UI.green + "1A" }]}>
                 <Icon name={d.icon || "target"} size={19} color={full ? UI.green : UI.violet} />
@@ -169,7 +170,7 @@ export default function AccountScreen() {
                 style={[s.fill, { width: `${pct}%`, backgroundColor: full ? UI.green : UI.violet }]}
               />
             </View>
-            <Text style={[s.pct, full && { color: UI.green }]}>{pct}%</Text>
+            <CustomText style={[s.pct, full && { color: UI.green }]}>{pct}%</CustomText>
 
             {isOpen && (
               <Animated.View entering={FadeIn.duration(200)} layout={LinearTransition} style={s.actions}>
@@ -182,7 +183,7 @@ export default function AccountScreen() {
                       scaleTo={0.93}
                       onPress={() => move(d.id, amount)}
                     >
-                      <Text style={s.quickText}>+{amount}</Text>
+                      <CustomText style={s.quickText}>+{amount}</CustomText>
                     </Bounce>
                   ))}
                   <Bounce
@@ -191,7 +192,7 @@ export default function AccountScreen() {
                     scaleTo={0.93}
                     onPress={() => move(d.id, liquid)}
                   >
-                    <Text style={[s.quickText, { color: "#FFFFFF" }]}>הכול</Text>
+                    <CustomText style={[s.quickText, { color: "#FFFFFF" }]}>הכול</CustomText>
                   </Bounce>
                 </View>
 
@@ -217,7 +218,7 @@ export default function AccountScreen() {
                 <View style={s.footRow}>
                   <Bounce style={s.footBtn} scaleTo={0.95} onPress={() => take(d.id, saved)}>
                     <Icon name="corner-up-left" size={15} color={UI.inkSoft} />
-                    <Text style={s.footText}>משוך הכול</Text>
+                    <CustomText style={s.footText}>משוך הכול</CustomText>
                   </Bounce>
                   <Bounce
                     style={s.footBtn}
@@ -225,7 +226,7 @@ export default function AccountScreen() {
                     onPress={() => { hapticWarning(); removeDeposit(d.id); setOpenId(null); }}
                   >
                     <Icon name="trash-2" size={15} color={UI.coral} />
-                    <Text style={[s.footText, { color: UI.coral }]}>סגור קרן</Text>
+                    <CustomText style={[s.footText, { color: UI.coral }]}>סגור קרן</CustomText>
                   </Bounce>
                 </View>
               </Animated.View>
@@ -234,10 +235,10 @@ export default function AccountScreen() {
         );
       })}
 
-      <Text style={s.hint}>
+      <CustomText style={s.hint}>
         סגירת קרן מחזירה את מה שנצבר בה ליתרה הנזילה ולא מוחקת אותו. הכסף עובר בין המקומות ואינו נוצר
         או נעלם — לכן הסכום הכולל למעלה נשאר נכון.
-      </Text>
+      </CustomText>
     </ScrollView>
   );
 }

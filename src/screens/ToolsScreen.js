@@ -1,18 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import {
-  I18nManager,
-  KeyboardAvoidingView,
-  Modal,
-  PanResponder,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
-} from "react-native";
+import { I18nManager, KeyboardAvoidingView, Modal, PanResponder, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   FadeInDown,
@@ -35,6 +22,7 @@ import { ALL_TOOLS, TOOL_CATEGORIES, TOOL_COUNT, toolById } from "../utils/tools
 import { STORAGE_KEYS } from "../utils/storageKeys";
 import { usePersistentState } from "../utils/usePersistentState";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
+import CustomText from "../components/CustomText";
 
 // כלים — four collapsible category accordions over a fixed search and a
 // pinned favourites row, with a swipe-to-dismiss sheet hosting the tool.
@@ -157,16 +145,16 @@ export default function ToolsScreen({ navigation }) {
         <View style={{ flex: 1 }}>
           <View style={s.titleRow}>
             <Icon name="grid" size={20} color={BLUE} />
-            <Text style={s.title}>כלים</Text>
+            <CustomText style={s.title}>כלים</CustomText>
           </View>
-          <Text style={s.subtitle}>
+          <CustomText style={s.subtitle}>
             {searchResults
               ? `${searchResults.length} תוצאות`
               : `${TOOL_COUNT} כלים ב-${TOOL_CATEGORIES.length} קטגוריות`}
-          </Text>
+          </CustomText>
         </View>
         <View style={s.readyPill}>
-          <Text style={s.readyPillText}>{TOOL_CATEGORIES.length} קטגוריות</Text>
+          <CustomText style={s.readyPillText}>{TOOL_CATEGORIES.length} קטגוריות</CustomText>
         </View>
       </View>
 
@@ -181,8 +169,8 @@ export default function ToolsScreen({ navigation }) {
       >
         <Icon name="chevron-left" size={18} color={WHITE} />
         <View style={{ flex: 1 }}>
-          <Text style={s.transitTitle}>עוזר תחב״ץ</Text>
-          <Text style={s.transitSub}>מסלולים בין ביתר לפנימייה · מעקב רב-קו</Text>
+          <CustomText style={s.transitTitle}>עוזר תחב״ץ</CustomText>
+          <CustomText style={s.transitSub}>מסלולים בין ביתר לפנימייה · מעקב רב-קו</CustomText>
         </View>
         <View style={s.transitBadge}>
           <Icon name="navigation" size={20} color={WHITE} />
@@ -215,7 +203,7 @@ export default function ToolsScreen({ navigation }) {
           searchResults.length === 0 ? (
             <Animated.View entering={FadeInUp.duration(260)} style={s.empty}>
               <Icon name="search" size={38} color={INK_MUTED} />
-              <Text style={s.emptyText}>לא נמצא כלי בשם הזה</Text>
+              <CustomText style={s.emptyText}>לא נמצא כלי בשם הזה</CustomText>
             </Animated.View>
           ) : (
             <View style={s.grid}>
@@ -239,8 +227,8 @@ export default function ToolsScreen({ navigation }) {
               <Animated.View layout={FLUID} style={s.section}>
                 <View style={[s.sectionHead, { backgroundColor: GOLD + "12", borderWidth: 1, borderColor: GOLD + "44" }]}>
                   <View style={{ flex: 1, alignItems: "flex-end" }}>
-                    <Text style={s.sectionLabel}>מועדפים</Text>
-                    <Text style={s.sectionMeta}>{favTools.length} כלים · לחיצה ארוכה להסרה</Text>
+                    <CustomText style={s.sectionLabel}>מועדפים</CustomText>
+                    <CustomText style={s.sectionMeta}>{favTools.length} כלים · לחיצה ארוכה להסרה</CustomText>
                   </View>
                   <View style={[s.sectionBadge, { backgroundColor: GOLD + "24" }]}>
                     <Icon name="star" size={20} color={GOLD} />
@@ -267,10 +255,10 @@ export default function ToolsScreen({ navigation }) {
               return (
                 <Animated.View key={cat.key} layout={FLUID} style={s.section}>
                   <Bounce style={s.sectionHead} onPress={() => toggleSection(cat.key)} scaleTo={0.98}>
-                    <Text style={[s.chevron, isOpen && { transform: [{ rotate: "90deg" }] }]}>›</Text>
+                    <CustomText style={[s.chevron, isOpen && { transform: [{ rotate: "90deg" }] }]}>›</CustomText>
                     <View style={{ flex: 1, alignItems: "flex-end" }}>
-                      <Text style={s.sectionLabel}>{cat.label}</Text>
-                      <Text style={s.sectionMeta}>{cat.tools.length} כלים</Text>
+                      <CustomText style={s.sectionLabel}>{cat.label}</CustomText>
+                      <CustomText style={s.sectionMeta}>{cat.tools.length} כלים</CustomText>
                     </View>
                     <View style={[s.sectionBadge, { backgroundColor: cat.color + "16" }]}>
                       <Icon name={cat.icon} size={20} color={cat.color} />
@@ -300,7 +288,7 @@ export default function ToolsScreen({ navigation }) {
 
       {toast && (
         <Animated.View entering={FadeInUp.duration(200)} style={[s.toast, { bottom: insets.bottom + 90 }]}>
-          <Text style={s.toastText}>{toast}</Text>
+          <CustomText style={s.toastText}>{toast}</CustomText>
         </Animated.View>
       )}
 
@@ -324,9 +312,9 @@ export default function ToolsScreen({ navigation }) {
                     >
                       <Icon name="star" size={18} color={activeTool && favSet.has(activeTool.id) ? GOLD : INK_MUTED} />
                     </TouchableOpacity>
-                    <Text style={s.sheetTitle} numberOfLines={1}>
+                    <CustomText style={s.sheetTitle} numberOfLines={1}>
                       {activeTool?.name}
-                    </Text>
+                    </CustomText>
                   </View>
                   <ToolRenderer toolId={activeTool?.id} tool={activeTool} />
                 </Animated.View>
@@ -352,8 +340,8 @@ function ToolCard({ tool, index, fav, onPress, onLongPress, showCategory }) {
         <View style={[s.cardIcon, { backgroundColor: (tool.color || BLUE) + "14" }]}>
           <Icon name={tool.icon || "circle"} size={21} color={tool.color || BLUE} />
         </View>
-        <Text style={s.cardName} numberOfLines={2}>{tool.name}</Text>
-        {showCategory && <Text style={s.cardCat} numberOfLines={1}>{tool.categoryLabel}</Text>}
+        <CustomText style={s.cardName} numberOfLines={2}>{tool.name}</CustomText>
+        {showCategory && <CustomText style={s.cardCat} numberOfLines={1}>{tool.categoryLabel}</CustomText>}
       </Bounce>
     </Animated.View>
   );

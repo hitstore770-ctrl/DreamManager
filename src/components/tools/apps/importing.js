@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 
 import Icon from "../../Icon";
 import { useSettings } from "../../../context/SettingsContext";
 import { hapticLight } from "../../../utils/haptics";
 import { shekel } from "../../../utils/posStore";
 import { Field, Stat, WHITE, INK_SOFT, BLUE, GOLD, GREEN, s } from "../kit";
+import CustomText from "../../../components/CustomText";
 
 // Import / landed-cost tools.
 
@@ -55,7 +56,7 @@ export function AliImportCalc() {
         <View style={[s.checkbox, vat && { backgroundColor: BLUE, borderColor: BLUE }]}>
           {vat && <Icon name="check" size={13} color={WHITE} />}
         </View>
-        <Text style={s.checkLabel}>הוסף מע״מ {vatPct}% למחיר המכירה</Text>
+        <CustomText style={s.checkLabel}>הוסף מע״מ {vatPct}% למחיר המכירה</CustomText>
       </TouchableOpacity>
 
       {r.ready ? (
@@ -68,13 +69,13 @@ export function AliImportCalc() {
             <Stat label="עלות נחיתה בשקלים" value={shekel(r.landedIls)} />
             <Stat label="רווח מהמחיר" value={`${r.marginOfPrice}%`} />
           </View>
-          <Text style={[s.hint, { color: INK_SOFT }]}>מחיר מדף מומלץ (עיגול ל-5): {shekel(r.rounded)}</Text>
-          <Text style={s.hint}>
+          <CustomText style={[s.hint, { color: INK_SOFT }]}>מחיר מדף מומלץ (עיגול ל-5): {shekel(r.rounded)}</CustomText>
+          <CustomText style={s.hint}>
             הרווח מחושב לפני מע״מ — המע״מ נגבה מהלקוח ומועבר למדינה, ולכן אינו חלק מהרווח.
-          </Text>
+          </CustomText>
         </>
       ) : (
-        <Text style={s.hint}>הזן עלות מוצר ושער דולר כדי לחשב.</Text>
+        <CustomText style={s.hint}>הזן עלות מוצר ושער דולר כדי לחשב.</CustomText>
       )}
     </View>
   );

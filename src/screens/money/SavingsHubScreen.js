@@ -1,4 +1,4 @@
-import { I18nManager, StyleSheet, Text, View } from "react-native";
+import { I18nManager, StyleSheet, View } from "react-native";
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -13,6 +13,7 @@ import { BEVEL, CARD_SHADOW, TYPE, UI, tint } from "../../utils/ui";
 import AccountScreen from "./AccountScreen";
 import PiggyBankScreen from "./PiggyBankScreen";
 import WalletScreen from "./WalletScreen";
+import CustomText from "../../components/CustomText";
 
 // אזור החיסכון — three swipeable pages following the money: coins go into the
 // piggy bank, the piggy bank empties into the wallet, the wallet deposits into
@@ -35,8 +36,8 @@ export default function SavingsHubScreen({ navigation }) {
           <Icon name={I18nManager.isRTL ? "arrow-right" : "arrow-left"} size={19} color={UI.ink} />
         </Bounce>
         <View style={{ flex: 1 }}>
-          <Text style={s.title}>אזור החיסכון</Text>
-          <Text style={s.subtitle}>סה״כ ברשותי {shekel(netWorth)}</Text>
+          <CustomText style={s.title}>אזור החיסכון</CustomText>
+          <CustomText style={s.subtitle}>סה״כ ברשותי {shekel(netWorth)}</CustomText>
         </View>
       </View>
 

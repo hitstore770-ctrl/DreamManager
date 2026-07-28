@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -10,6 +10,7 @@ import Animated, {
 
 import { habitStreak, weekDays } from "../../context/DreamContext";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
+import CustomText from "../../components/CustomText";
 
 // "Don't break the chain" — the current week as seven tappable dots. Marking
 // a day pops it briefly so the tap feels physical.
@@ -38,9 +39,9 @@ function Day({ day, done, onPress }) {
 
   return (
     <View style={s.dayCol}>
-      <Text style={[s.dayLetter, day.isToday && { color: INK, fontFamily: FONTS.bold }]}>
+      <CustomText style={[s.dayLetter, day.isToday && { color: INK, fontFamily: FONTS.bold }]}>
         {day.letter}
-      </Text>
+      </CustomText>
       <TouchableOpacity onPress={onPress} activeOpacity={0.75} disabled={day.isFuture}>
         <Animated.View
           style={[
@@ -51,9 +52,9 @@ function Day({ day, done, onPress }) {
             animated,
           ]}
         >
-          <Text style={[s.dotText, done && { color: "#3A2E08" }]}>
+          <CustomText style={[s.dotText, done && { color: "#3A2E08" }]}>
             {done ? "·" : day.date.getDate()}
-          </Text>
+          </CustomText>
         </Animated.View>
       </TouchableOpacity>
     </View>
@@ -68,10 +69,10 @@ export default function HabitChain({ habitDays = {}, onToggle }) {
   return (
     <View style={s.wrap}>
       <View style={s.head}>
-        <Text style={s.streak}>
+        <CustomText style={s.streak}>
           {streak > 0 ? `${streak} ${streak === 1 ? "יום" : "ימים"} ברצף` : "מתחילים שרשרת חדשה"}
-        </Text>
-        <Text style={s.headLabel}>{doneThisWeek}/7 השבוע</Text>
+        </CustomText>
+        <CustomText style={s.headLabel}>{doneThisWeek}/7 השבוע</CustomText>
       </View>
       <View style={s.row}>
         {days.map((day) => (

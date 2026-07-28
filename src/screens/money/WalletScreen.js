@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Dimensions, I18nManager, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Dimensions, I18nManager, ScrollView, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 
@@ -12,6 +12,7 @@ import { hapticLight, hapticSuccess, hapticWarning } from "../../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
 import { shekel } from "../../utils/posStore";
 import { BEVEL, GRAD, TYPE, UI, glow } from "../../utils/ui";
+import CustomText from "../../components/CustomText";
 
 // ארנק — payment cards on top, printed banknotes at the bottom, and a tap that
 // moves a note into the account.
@@ -93,8 +94,8 @@ export default function WalletScreen() {
                 />
 
                 <View style={s.cardTop}>
-                  <Text style={s.cardBrand}>{c.brand}</Text>
-                  <Text style={s.cardLabel}>{c.label}</Text>
+                  <CustomText style={s.cardBrand}>{c.brand}</CustomText>
+                  <CustomText style={s.cardLabel}>{c.label}</CustomText>
                 </View>
 
                 {/* Contact chip. */}
@@ -111,10 +112,10 @@ export default function WalletScreen() {
                   </View>
                 </View>
 
-                <Text testID={`wallet-card-${c.key}`} style={s.cardValue}>{shekel(c.value)}</Text>
+                <CustomText testID={`wallet-card-${c.key}`} style={s.cardValue}>{shekel(c.value)}</CustomText>
                 <View style={s.cardFoot}>
-                  <Text style={s.cardNote}>{c.note}</Text>
-                  <Text style={s.cardDots}>•••• 7708</Text>
+                  <CustomText style={s.cardNote}>{c.note}</CustomText>
+                  <CustomText style={s.cardDots}>•••• 7708</CustomText>
                 </View>
               </View>
             </GradCard>
@@ -130,14 +131,14 @@ export default function WalletScreen() {
 
       {!!flash && (
         <Animated.View entering={FadeIn.duration(200)} style={s.flash}>
-          <Text style={s.flashText}>{flash}</Text>
+          <CustomText style={s.flashText}>{flash}</CustomText>
         </Animated.View>
       )}
 
       {/* Deposit to account */}
       <GradCard colors={GRAD.surface} style={s.depositCard}>
         <View style={s.depositInner}>
-          <Text style={s.sectionLabel}>הפקדה לחשבון</Text>
+          <CustomText style={s.sectionLabel}>הפקדה לחשבון</CustomText>
           <View style={s.depositRow}>
             <Bounce testID="deposit-all" style={s.depositPrimaryWrap} scaleTo={0.94} onPress={() => deposit(wallet)}>
               <LinearGradient
@@ -147,7 +148,7 @@ export default function WalletScreen() {
                 style={s.depositPrimary}
               >
                 <Icon name="arrow-left" size={16} color="#FFFFFF" />
-                <Text style={s.depositText}>הפקד הכול</Text>
+                <CustomText style={s.depositText}>הפקד הכול</CustomText>
               </LinearGradient>
             </Bounce>
             {[50, 100].map((amount) => (
@@ -158,7 +159,7 @@ export default function WalletScreen() {
                 scaleTo={0.94}
                 onPress={() => deposit(amount)}
               >
-                <Text style={[s.depositText, { color: UI.inkSoft }]}>{amount} ₪</Text>
+                <CustomText style={[s.depositText, { color: UI.inkSoft }]}>{amount} ₪</CustomText>
               </Bounce>
             ))}
           </View>
@@ -166,8 +167,8 @@ export default function WalletScreen() {
       </GradCard>
 
       {/* Banknotes */}
-      <Text style={s.sectionHead}>שטרות</Text>
-      <Text style={s.sectionHint}>הקש על שטר כדי להוסיף אותו לארנק</Text>
+      <CustomText style={s.sectionHead}>שטרות</CustomText>
+      <CustomText style={s.sectionHint}>הקש על שטר כדי להוסיף אותו לארנק</CustomText>
 
       <View style={s.notes}>
         {NOTES.map((value, i) => (
@@ -185,10 +186,10 @@ export default function WalletScreen() {
         ))}
       </View>
 
-      <Text style={s.hint}>
+      <CustomText style={s.hint}>
         הקשה מוסיפה שטר לארנק, לחיצה ארוכה מפקידה אותו ישירות לחשבון. הכרטיסים למעלה הם תצוגה של אותו
         כסף בשלושת המקומות — לא שלושה חשבונות נפרדים.
-      </Text>
+      </CustomText>
     </ScrollView>
   );
 }
