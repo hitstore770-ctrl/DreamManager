@@ -3,16 +3,18 @@ import "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, I18nManager, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { DefaultTheme, NavigationContainer } from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useFonts } from "expo-font";
+import * as SplashScreen from "expo-splash-screen";
+import { useCallback, useEffect } from "react";
 // Per-weight entry points, not the package barrel: the barrel registers all
-// seven Assistant weights as assets even though the app loads five.
-import { Assistant_300Light } from "@expo-google-fonts/assistant/300Light";
-import { Assistant_400Regular } from "@expo-google-fonts/assistant/400Regular";
-import { Assistant_500Medium } from "@expo-google-fonts/assistant/500Medium";
-import { Assistant_600SemiBold } from "@expo-google-fonts/assistant/600SemiBold";
-import { Assistant_700Bold } from "@expo-google-fonts/assistant/700Bold";
+// nine Heebo weights as assets even though the app loads four.
+import { Heebo_300Light } from "@expo-google-fonts/heebo/300Light";
+import { Heebo_400Regular } from "@expo-google-fonts/heebo/400Regular";
+import { Heebo_500Medium } from "@expo-google-fonts/heebo/500Medium";
+import { Heebo_700Bold } from "@expo-google-fonts/heebo/700Bold";
 
 import ErrorBoundary from "./src/components/ErrorBoundary";
 import PinLock from "./src/components/PinLock";
@@ -39,6 +41,14 @@ const NAV_THEME = {
     primary: UI.violet,
   },
 };
+
+// Hold the native splash until the fonts are in. Without this the first frame
+// paints in the system Hebrew face and then reflows to Heebo — the metrics
+// differ, so every line jumps. preventAutoHideAsync is called at module scope,
+// before the first render, which is the only point early enough to matter.
+SplashScreen.preventAutoHideAsync().catch(() => {
+  // Already hidden, or no splash on this platform (web). Not a failure.
+});
 
 // The app is Hebrew-only for now, so force RTL layout app-wide.
 // On native builds this takes full effect after the next app reload.
@@ -74,39 +84,50 @@ function Shell() {
 }
 
 export default function App() {
-  // Assistant, app-wide — one family, light-to-semibold.
+  // Heebo, app-wide — one family, four weights, no system fallback.
   const [fontsLoaded, fontError] = useFonts({
-    Assistant_300Light,
-    Assistant_400Regular,
-    Assistant_500Medium,
-    Assistant_600SemiBold,
-    Assistant_700Bold,
+    Heebo_300Light,
+    Heebo_400Regular,
+    Heebo_500Medium,
+    Heebo_700Bold,
   });
 
-  // Only block on the very first load. If a font fails to fetch (e.g. flaky
-  // network in a web preview), still render the app with system-font fallbacks
-  // rather than hanging forever on a blank screen.
-  if (!fontsLoaded && !fontError) {
-    return (
-      <View style={{ flex: 1, backgroundColor: "#F3F4F6", alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator color="#7C3AED" />
-      </View>
-    );
-  }
+  const ready = fontsLoaded || !!fontError;
+
+  // Drop the splash on the frame the first real content is laid out, not on a
+  // timer — onLayout fires after that layout pass, so there is no window where
+  // the splash is gone and the tree is still blank.
+  const onReady = useCallback(async () => {
+    if (ready) await SplashScreen.hideAsync().catch(() => {});
+  }, [ready]);
+
+  // A font that never resolves must not strand the user on a splash forever —
+  // on web the files come over the network and can simply fail. After three
+  // seconds the app renders regardless; Heebo swaps in if it arrives later.
+  useEffect(() => {
+    const t = setTimeout(() => SplashScreen.hideAsync().catch(() => {}), 3000);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (!ready) return null;
 
   return (
     <ErrorBoundary>
-      <GestureHandlerRootView style={{ flex: 1 }}>
+      <GestureHandlerRootView style={{ flex: 1 }} onLayout={onReady}>
         <SafeAreaProvider>
-          <SettingsProvider>
-            <AuthProvider>
-              <DreamProvider>
-                <NotesProvider>
-                  <Shell />
-                </NotesProvider>
-              </DreamProvider>
-            </AuthProvider>
-          </SettingsProvider>
+          {/* Bottom sheets are portalled to this provider, which is why it has
+              to sit above the navigators rather than inside a screen. */}
+          <BottomSheetModalProvider>
+            <SettingsProvider>
+              <AuthProvider>
+                <DreamProvider>
+                  <NotesProvider>
+                    <Shell />
+                  </NotesProvider>
+                </DreamProvider>
+              </AuthProvider>
+            </SettingsProvider>
+          </BottomSheetModalProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>
     </ErrorBoundary>

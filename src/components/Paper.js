@@ -1,7 +1,9 @@
 import { StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
-import { BEVEL, CARD_SHADOW, GRAD, PASTEL, UI, glow, pastelFor } from "../utils/ui";
+import Aurora from "./Aurora";
+
+import { BEVEL, CARD_SHADOW, GRAD, PASTEL, SHADOW_AMBIENT, SHADOW_CONTACT, UI, glow, pastelFor } from "../utils/ui";
 
 // The surfaces every screen is built from.
 //
@@ -16,10 +18,14 @@ import { BEVEL, CARD_SHADOW, GRAD, PASTEL, UI, glow, pastelFor } from "../utils/
 
 // The desk. A very slight vertical wash keeps a full screen of white cards
 // from reading as one flat sheet, without ever becoming a visible gradient.
-export function Canvas({ children, style, testID }) {
+export function Canvas({ children, style, testID, aurora = false }) {
   return (
     <View testID={testID} style={[st.canvas, style]}>
-      <LinearGradient colors={GRAD.canvas} style={StyleSheet.absoluteFill} />
+      {aurora ? (
+        <Aurora />
+      ) : (
+        <LinearGradient colors={GRAD.canvas} style={StyleSheet.absoluteFill} />
+      )}
       {children}
     </View>
   );
@@ -28,17 +34,22 @@ export function Canvas({ children, style, testID }) {
 // A plain white card. This is the default surface for anything that holds
 // content: widgets, list rows, panels.
 export function Card({ children, style, radius = UI.radius, lifted = true }) {
-  return (
+  // Two nested views so two shadows can stack: a wide ambient pool on the
+  // outside, a tight contact shadow on the inside. One view can only carry one
+  // shadow, and a single shadow can be soft or defined, never both.
+  const face = (
     <View
       style={[
         { backgroundColor: UI.surface, borderRadius: radius, ...BEVEL },
-        lifted && CARD_SHADOW,
+        lifted && SHADOW_CONTACT,
         style,
       ]}
     >
       {children}
     </View>
   );
+  if (!lifted) return face;
+  return <View style={[{ borderRadius: radius }, SHADOW_AMBIENT]}>{face}</View>;
 }
 
 // A sticky note: a pastel stock with its own matching edge, and a slight tilt.

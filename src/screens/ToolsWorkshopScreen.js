@@ -1,16 +1,10 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { I18nManager, Platform, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import {
-  I18nManager,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableWithoutFeedback,
-  View,
-} from "react-native";
+  BottomSheetBackdrop,
+  BottomSheetModal,
+  BottomSheetView,
+} from "@gorhom/bottom-sheet";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
@@ -24,7 +18,7 @@ import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import { STORAGE_KEYS } from "../utils/storageKeys";
 import { ALL_TOOLS } from "../utils/toolsCatalog";
 import { usePersistentState } from "../utils/usePersistentState";
-import { BEVEL, GRAD, SOFT_SHADOW_LG, TYPE, UI, glow, tint } from "../utils/ui";
+import { BEVEL, GRAD, TYPE, UI, glow, tint } from "../utils/ui";
 
 // בית המלאכה — the tools tab, organised as workbenches rather than as a
 // flat directory.
@@ -109,6 +103,11 @@ const WORKBENCHES = BENCHES.map((b) => ({
 
 const TOTAL = WORKBENCHES.reduce((n, b) => n + b.tools.length, 0);
 
+// One snap point, high enough for the tallest tool. A second, shorter stop
+// sounds nice but every tool is a form — half-height just means scrolling to
+// reach the field you came for.
+const SNAP_POINTS = ["88%"];
+
 export default function ToolsWorkshopScreen() {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState("");
@@ -127,10 +126,22 @@ export default function ToolsWorkshopScreen() {
     return ALL_TOOLS.filter((t) => t.name.includes(q) || t.id.includes(q.toLowerCase()));
   }, [q]);
 
+  const sheetRef = useRef(null);
+
   const open = (tool) => {
     hapticLight();
     setActiveTool(tool);
+    sheetRef.current?.present();
   };
+
+  // Memoised: an inline backdrop remounts on every render and makes the fade
+  // restart mid-gesture.
+  const renderBackdrop = useCallback(
+    (props) => (
+      <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} opacity={0.38} />
+    ),
+    []
+  );
 
   const toggleFavorite = (tool) => {
     hapticSuccess();
@@ -260,39 +271,48 @@ export default function ToolsWorkshopScreen() {
         )}
       </ScrollView>
 
-      {/* Tool sheet */}
-      <Modal visible={!!activeTool} transparent animationType="slide" onRequestClose={() => setActiveTool(null)}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-          <TouchableWithoutFeedback onPress={() => setActiveTool(null)}>
-            <View style={s.backdrop}>
-              <TouchableWithoutFeedback onPress={() => {}}>
-                <View style={[s.sheet, { paddingBottom: insets.bottom + 16 }]}>
-                  <View style={s.grabber} />
-                  <View style={s.sheetHead}>
-                    <Bounce style={s.sheetBtn} scaleTo={0.9} onPress={() => setActiveTool(null)}>
-                      <Icon name="x" size={17} color={UI.inkSoft} />
-                    </Bounce>
-                    <Bounce
-                      testID="sheet-fav"
-                      style={s.sheetBtn}
-                      scaleTo={0.9}
-                      onPress={() => activeTool && toggleFavorite(activeTool)}
-                    >
-                      <Icon
-                        name="star"
-                        size={17}
-                        color={activeTool && favSet.has(activeTool.id) ? UI.gold : UI.inkMuted}
-                      />
-                    </Bounce>
-                    <Text style={s.sheetTitle} numberOfLines={1}>{activeTool?.name}</Text>
-                  </View>
-                  <ToolRenderer toolId={activeTool?.id} tool={activeTool} />
-                </View>
-              </TouchableWithoutFeedback>
-            </View>
-          </TouchableWithoutFeedback>
-        </KeyboardAvoidingView>
-      </Modal>
+      {/* Tool sheet — a real bottom sheet, not a Modal.
+          BottomSheetModal brings the drag handle, the velocity-aware snap and
+          the backdrop fade for free; the Modal it replaces had a hand-rolled
+          PanResponder that only ever approximated them. */}
+      <BottomSheetModal
+        ref={sheetRef}
+        index={0}
+        snapPoints={SNAP_POINTS}
+        onDismiss={() => setActiveTool(null)}
+        enablePanDownToClose
+        backdropComponent={renderBackdrop}
+        handleIndicatorStyle={s.grabber}
+        backgroundStyle={s.sheetBg}
+        // Without this the keyboard covers the tool's own inputs, which is the
+        // whole reason the old Modal needed a KeyboardAvoidingView wrapper.
+        keyboardBehavior="interactive"
+        keyboardBlurBehavior="restore"
+        android_keyboardInputMode="adjustResize"
+      >
+        <BottomSheetView style={[s.sheet, { paddingBottom: insets.bottom + 16 }]}>
+          <View style={s.sheetHead}>
+            <Bounce style={s.sheetBtn} scaleTo={0.9} onPress={() => sheetRef.current?.dismiss()}>
+              <Icon name="x" size={17} color={UI.inkSoft} />
+            </Bounce>
+            <Bounce
+              testID="sheet-fav"
+              style={s.sheetBtn}
+              scaleTo={0.9}
+              onPress={() => activeTool && toggleFavorite(activeTool)}
+            >
+              <Icon
+                name="star"
+                size={17}
+                color={activeTool && favSet.has(activeTool.id) ? UI.gold : UI.inkMuted}
+              />
+            </Bounce>
+            <Text style={s.sheetTitle} numberOfLines={1}>{activeTool?.name}</Text>
+          </View>
+          <ToolRenderer toolId={activeTool?.id} tool={activeTool} />
+        </BottomSheetView>
+      </BottomSheetModal>
+
     </Canvas>
   );
 }
@@ -417,26 +437,14 @@ const s = StyleSheet.create({
   empty: { alignItems: "center", gap: 10, paddingVertical: 60 },
   emptyText: { fontFamily: FONTS.medium, fontSize: 14, color: UI.inkMuted },
 
-  backdrop: { flex: 1, backgroundColor: "rgba(15,23,42,0.38)", justifyContent: "flex-end" },
-  sheet: {
+  // The sheet's own chrome is the library's now; these style its parts.
+  sheetBg: {
     backgroundColor: UI.bg,
     borderTopLeftRadius: UI.radiusLg,
     borderTopRightRadius: UI.radiusLg,
-    paddingHorizontal: 18,
-    paddingTop: 8,
-    maxHeight: "88%",
-    borderTopWidth: 1,
-    borderTopColor: UI.hairline,
-    ...SOFT_SHADOW_LG,
   },
-  grabber: {
-    alignSelf: "center",
-    width: 44,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: "#D6DBE5",
-    marginBottom: 10,
-  },
+  sheet: { flex: 1, paddingHorizontal: 18, paddingTop: 4 },
+  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: "#D6DBE5" },
   sheetHead: { flexDirection: ROW, alignItems: "center", gap: 10, marginBottom: 14 },
   sheetBtn: {
     width: 36,

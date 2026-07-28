@@ -34,15 +34,23 @@ export const NOTES_THEME = {
   overlay: "rgba(16, 24, 40, 0.32)",
 };
 
-// Sleek modern Hebrew typeface (Assistant) with light weights for a crisp,
-// high-end, airy feel.
+// Heebo, app-wide. One family, four weights, named explicitly — no system
+// font is ever reached for, which is what stops the app looking like every
+// other React Native build on the store.
+//
+// Heebo is a Hebrew/Latin superfamily, so Hebrew body copy and Latin model ids
+// share one set of metrics instead of silently falling back to two different
+// faces mid-line.
+//
+// `semibold` maps to 500 rather than to its own file: at these sizes the gap
+// between 500 and 700 already carries the hierarchy, and a fifth weight is
+// ~45KB in the bundle for a difference nobody can see.
 export const NOTES_FONTS = {
-  light: "Assistant_300Light",
-  regular: "Assistant_400Regular",
-  medium: "Assistant_500Medium",
-  semibold: "Assistant_600SemiBold",
-  // Titles top out at 600: 700+ reads blocky against the soft surfaces.
-  bold: "Assistant_600SemiBold",
+  light: "Heebo_300Light",
+  regular: "Heebo_400Regular",
+  medium: "Heebo_500Medium",
+  semibold: "Heebo_500Medium",
+  bold: "Heebo_700Bold",
 };
 
 // Soft, barely-there elevation per the spec (elevation 2, opacity 0.05).

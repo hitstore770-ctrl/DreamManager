@@ -34,10 +34,13 @@ export const UI = {
   red: "#DC2626",
   gold: "#B45309", // metallic accents, deposits at target
 
-  // Rhythm — structured but friendly.
-  radius: 16,
-  radiusSm: 12,
-  radiusLg: 24,
+  // Rhythm. Generous radii, because a squircle reads as one continuous curve
+  // rather than as a straight edge with a corner stuck on each end — and at
+  // these sizes a plain rounded rect is close enough to a squircle that the
+  // difference is invisible, while an SVG path per card is not free.
+  radius: 20,
+  radiusSm: 14,
+  radiusLg: 28,
   cardPadding: 20,
   cardMarginH: 16,
   cardMarginB: 16,
@@ -85,14 +88,35 @@ export const GRAD = {
   glass: ["rgba(255,255,255,0.92)", "rgba(255,255,255,0.72)"],
 };
 
-// The one card shadow, exactly as specified: soft, low, close. A card lifted
-// this little reads as paper; lifted more, it reads as a floating panel.
+// The one card shadow: soft, low, close. A card lifted this little reads as
+// paper; lifted more, it reads as a floating panel.
 export const CARD_SHADOW = {
   shadowColor: "#0F172A",
   shadowOffset: { width: 0, height: 4 },
   shadowOpacity: 0.08,
   shadowRadius: 8,
   elevation: 3,
+};
+
+// Layered elevation. React Native gives one shadow per view, and one shadow
+// always has to choose: tight and dark enough to define contact, or wide and
+// soft enough to read as ambient light. Real depth is both at once, so this
+// is a pair applied to two nested views — a tight contact shadow under a wide
+// ambient one. Card renders it; nothing else needs to know.
+export const SHADOW_CONTACT = {
+  shadowColor: "#0F172A",
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.06,
+  shadowRadius: 2,
+  elevation: 1,
+};
+
+export const SHADOW_AMBIENT = {
+  shadowColor: "#0F172A",
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.07,
+  shadowRadius: 18,
+  elevation: 4,
 };
 
 export const SOFT_SHADOW = CARD_SHADOW;

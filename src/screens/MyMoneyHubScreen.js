@@ -31,7 +31,7 @@ export default function MyMoneyHubScreen({ navigation }) {
   };
 
   return (
-    <Canvas testID="money-screen">
+    <Canvas aurora testID="money-screen">
       <ScrollView
         contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 120 }}
         showsVerticalScrollIndicator={false}

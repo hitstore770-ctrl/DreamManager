@@ -182,11 +182,11 @@ export const SPACING = { xs: 6, sm: 10, md: 16, lg: 22, xl: 30 };
 // Assistant, app-wide. Body sits at 400 and "bold" resolves to 600 — the
 // blockier 700/800 cuts read as heavy next to the soft surfaces.
 export const FONTS = {
-  light: "Assistant_300Light",
-  regular: "Assistant_400Regular",
-  medium: "Assistant_500Medium",
-  semibold: "Assistant_600SemiBold",
-  bold: "Assistant_600SemiBold",
+  light: "Heebo_300Light",
+  regular: "Heebo_400Regular",
+  medium: "Heebo_500Medium",
+  semibold: "Heebo_500Medium",
+  bold: "Heebo_700Bold",
 };
 
 // Font-scale multipliers for the accessibility setting.

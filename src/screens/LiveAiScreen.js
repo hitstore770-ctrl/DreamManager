@@ -172,7 +172,7 @@ export default function LiveAiScreen() {
   }, [messages.length, loading]);
 
   return (
-    <Canvas testID="ai-screen" style={{ paddingTop: insets.top + 10 }}>
+    <Canvas aurora testID="ai-screen" style={{ paddingTop: insets.top + 10 }}>
       {/* Header */}
       <View style={s.header}>
         <View style={{ flex: 1 }}>
