@@ -9,7 +9,7 @@ import { withBack } from "../components/BackFab";
 import { useAuth } from "../context/AuthContext";
 import { MoneyProvider } from "../context/MoneyContext";
 import BusinessScreen from "../screens/BusinessScreen";
-import CashRegisterScreen from "../screens/money/CashRegisterScreen";
+import CashRegisterScreen from "../screens/CashRegisterScreen";
 import ContextualAiChatScreen from "../screens/ContextualAiChatScreen";
 import DreamsNotesHubScreen from "../screens/DreamsNotesHubScreen";
 import DreamsScreen from "../screens/DreamsScreen";
@@ -221,7 +221,11 @@ export default function AppNavigator() {
           <>
             <RootStack.Screen name="Main" component={ZoneTabs} />
 
-            {/* Money */}
+            {/* Money. CashRegister is the eight-zone micro-operations hub —
+                the register, the floor tools around it, and the modules that
+                used to be reachable only through the "העסק שלי" tab. It slides
+                up rather than across because it is a mode you drop into and
+                leave, not a place in the tab hierarchy. */}
             <RootStack.Screen
               name="CashRegister"
               component={CashRegisterScreen}

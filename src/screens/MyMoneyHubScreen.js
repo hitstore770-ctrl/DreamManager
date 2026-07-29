@@ -79,7 +79,7 @@ export default function MyMoneyHubScreen({ navigation }) {
           halo={UI.cyan}
           icon="cash-outline"
           title="הקופה"
-          hint="ספירת מזומן בסוף משמרת מול דוח Z"
+          hint="מכירה · מלאי · שילוח · תמחור · לקוחות ועוד"
           onPress={() => go("CashRegister")}
         />
         <Door

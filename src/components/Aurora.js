@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle, Defs, RadialGradient, Stop } from "react-native-svg";
 import { useDerivedValue, useSharedValue, withRepeat, withTiming, Easing } from "react-native-reanimated";
 
 import { GRAD, UI } from "../utils/ui";
+import { useSkia } from "../utils/skiaRuntime";
 
 // A slow, living wash behind the hero screens.
 //
@@ -25,61 +26,13 @@ import { GRAD, UI } from "../utils/ui";
 // If it never resolves (wasm not deployed, blocked, old browser) the screen
 // stays on a static SVG wash that reads close enough that most people would
 // not notice. Degrading is the design, not an afterthought.
-let Skia = null;
-try {
-  // eslint-disable-next-line global-require
-  Skia = require("@shopify/react-native-skia");
-} catch {
-  Skia = null;
-}
-
-const HAS_SKIA_MODULE = !!(Skia && Skia.Canvas && Skia.Fill);
-
-// Native links the real library in, so there is nothing to wait for. Web has
-// to fetch and instantiate several megabytes of WebAssembly first.
-let skiaReady = HAS_SKIA_MODULE && Platform.OS !== "web";
-let skiaPending = null;
-const listeners = new Set();
-
-function ensureSkia() {
-  if (skiaReady || !HAS_SKIA_MODULE || Platform.OS !== "web") return;
-  if (skiaPending) return;
-  skiaPending = (async () => {
-    try {
-      // eslint-disable-next-line global-require
-      const { LoadSkiaWeb } = require("@shopify/react-native-skia/lib/module/web");
-      await LoadSkiaWeb({ locateFile: (file) => `/${file}` });
-
-      // Resolving is still not proof. The loader can come back having attached
-      // a partially-wired CanvasKit — enough for <Canvas> to mount, then
-      // "Cannot read properties of undefined (reading 'PictureRecorder')" on
-      // every frame after. The only trustworthy check is to make a real Skia
-      // object and see whether it comes back.
-      const paint = Skia.Skia?.Paint?.();
-      if (!paint) throw new Error("Skia runtime did not initialise");
-
-      skiaReady = true;
-      listeners.forEach((fn) => fn());
-    } catch {
-      // Stays false forever; the SVG wash is already on screen and correct.
-      skiaReady = false;
-    }
-  })();
-}
-
-function useSkiaReady() {
-  const [ready, setReady] = useState(skiaReady);
-  useEffect(() => {
-    if (ready) return undefined;
-    const fn = () => setReady(true);
-    listeners.add(fn);
-    ensureSkia();
-    return () => listeners.delete(fn);
-  }, [ready]);
-  return ready;
-}
-
-export const SKIA_AVAILABLE = HAS_SKIA_MODULE;
+//
+// The loading itself lives in utils/skiaRuntime, shared with the register's
+// glass tab indicator. It used to live here, requiring the module at import
+// time and only then fetching the wasm — which meant `Skia.Skia` was captured
+// as undefined before CanvasKit existed and the animated path never once ran
+// on web. The order is load-then-require, and there is one loader so it cannot
+// drift back apart.
 
 const BLOOMS = [
   { key: "a", color: "#8B5CF6", r: 0.62, cx: 0.86, cy: 0.06, drift: 0.06, ms: 14000 },
@@ -96,8 +49,8 @@ const PEAK = 0.2;
 // useDerivedValue inside a .map would work only for as long as BLOOMS never
 // changes length — a rule of hooks violation waiting for someone to add a
 // fourth colour.
-function SkiaBloom({ bloom, index, width, height, t }) {
-  const { Circle: SkCircle, RadialGradient: SkRadial, vec, BlurMask } = Skia;
+function SkiaBloom({ skia, bloom, index, width, height, t }) {
+  const { Circle: SkCircle, RadialGradient: SkRadial, vec, BlurMask } = skia;
   const r = Math.max(width, height) * bloom.r;
 
   // Each bloom drifts on its own phase, so the three never line up and the
@@ -119,8 +72,8 @@ function SkiaBloom({ bloom, index, width, height, t }) {
   );
 }
 
-function SkiaAurora({ width, height }) {
-  const { Canvas, Fill } = Skia;
+function SkiaAurora({ skia, width, height }) {
+  const { Canvas, Fill } = skia;
   const t = useSharedValue(0);
 
   useEffect(() => {
@@ -131,7 +84,7 @@ function SkiaAurora({ width, height }) {
     <Canvas style={StyleSheet.absoluteFill}>
       <Fill color={UI.bg} />
       {BLOOMS.map((b, i) => (
-        <SkiaBloom key={b.key} bloom={b} index={i} width={width} height={height} t={t} />
+        <SkiaBloom key={b.key} skia={skia} bloom={b} index={i} width={width} height={height} t={t} />
       ))}
     </Canvas>
   );
@@ -162,7 +115,7 @@ function SvgAurora({ width, height }) {
 
 export default function Aurora({ style }) {
   const [size, setSize] = useState(null);
-  const skiaReady = useSkiaReady();
+  const skia = useSkia();
 
   return (
     <View
@@ -176,7 +129,7 @@ export default function Aurora({ style }) {
       }}
     >
       <LinearGradient colors={GRAD.canvas} style={StyleSheet.absoluteFill} />
-      {!!size && (skiaReady ? <SkiaAurora {...size} /> : <SvgAurora {...size} />)}
+      {!!size && (skia ? <SkiaAurora skia={skia} {...size} /> : <SvgAurora {...size} />)}
     </View>
   );
 }
