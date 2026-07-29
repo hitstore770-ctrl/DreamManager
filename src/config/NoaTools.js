@@ -1,3 +1,5 @@
+import { fetchDirections, fetchPlaces, isGoogleMapsConfigured } from "./googleMaps";
+
 // Noa's toolkit: the things she can go and look up.
 //
 // Each tool is a pair — the async function that does the work, and the schema
@@ -6,57 +8,30 @@
 // drifts the first time someone adds a parameter, and the failure mode is the
 // model calling a function with arguments it does not accept.
 //
-// EVERY RETURN BELOW IS SIMULATED. Each payload carries `source:
-// "mock-not-live"` and a `disclaimer`, which is not decoration — it is fed
-// straight back into the model, and Noa's persona already forbids her from
-// guessing. Without it she would state invented departure times as fact, in
-// Hebrew, with total confidence. When the real Google APIs land, those two
-// fields come out and nothing else about the wiring changes.
-
-const MOCK_NOTE = "SIMULATED DATA — not a live API result. Tell the user these figures are placeholders.";
+// These are live now. Every payload below is a real Google Maps Platform
+// response, condensed. The invented returns are gone, along with the markers
+// that flagged them as invented and the persona line that told Noa to hedge.
+//
+// Which makes the failure path the important part. Noa is now instructed to
+// present tool results as fact, so a tool that returns something empty-looking
+// when a call fails would have her state a confident answer built on nothing.
+// Every failure therefore comes back as an explicit `{ ok: false, error,
+// message }` that says in words that the lookup did not happen. "I could not
+// reach the transit feed" is a good answer; an invented departure time is not.
 
 // ---------------------------------------------------------------------------
 // 1. Public transit
 // ---------------------------------------------------------------------------
 
-export async function getTransitRoute(origin, destination) {
-  return {
-    source: "mock-not-live",
-    disclaimer: MOCK_NOTE,
-    origin: origin || "unknown",
-    destination: destination || "unknown",
-    queriedAt: new Date().toISOString(),
-    options: [
-      {
-        line: "386",
-        operator: "Egged",
-        boardingStop: "ביתר עילית / מרכז מסחרי",
-        departsInMinutes: 12,
-        durationMinutes: 35,
-        transfers: 0,
-        fareIls: 6,
-      },
-      {
-        line: "185",
-        operator: "Superbus",
-        boardingStop: "ביתר עילית / הרב שך",
-        departsInMinutes: 27,
-        durationMinutes: 48,
-        transfers: 1,
-        fareIls: 6,
-      },
-    ],
-    serviceNotes: [
-      "Service thins out sharply on Friday afternoons and holiday eves.",
-      "No live GPS feed in this payload — treat departure times as estimates.",
-    ],
-  };
+export async function getTransitRoute(origin, destination, options = {}) {
+  return fetchDirections(origin, destination, "transit", options);
 }
 
 export const getTransitRouteDeclaration = {
   name: "getTransitRoute",
   description:
-    "Look up bus and public transit options between two places. " +
+    "Look up LIVE bus and public transit options between two places, from Google's real-time transit feed. " +
+    "Returns real departure times, line numbers, boarding stops and fares as of right now. " +
     "Use this ONLY when the user asks about live bus times, a transit route, which line to take, " +
     "or how to get somewhere by public transport. " +
     "Do NOT use it for general knowledge, coding questions, business advice, arithmetic, or " +
@@ -68,9 +43,10 @@ export const getTransitRouteDeclaration = {
       origin: {
         type: "string",
         description:
-          "Where the journey starts. Use the user's GPS coordinates from the system context if they did not name a place.",
+          "Where the journey starts. A place name, an address, or 'lat,lon'. " +
+          "Use the user's GPS coordinates from the system context if they did not name a place.",
       },
-      destination: { type: "string", description: "Where the journey ends." },
+      destination: { type: "string", description: "Where the journey ends. A place name, address, or 'lat,lon'." },
     },
     required: ["origin", "destination"],
   },
@@ -80,36 +56,40 @@ export const getTransitRouteDeclaration = {
 // 2. Two-wheeler routing
 // ---------------------------------------------------------------------------
 
-export async function getScooterRoute(origin, destination) {
+// Routed as `bicycling`.
+//
+// Google has no scooter mode outside a handful of Asian markets — `two_wheeler`
+// is unsupported in Israel and comes back REQUEST_DENIED — so bicycling is the
+// closest available profile and the one this is specified to use. It is a good
+// approximation of the *path* a small two-wheeler takes through a town and a
+// poor one of its speed, since it is timed for a cyclist. The returned payload
+// names the mode it actually used rather than claiming to be a scooter routing
+// engine, so Noa is reporting what Google returned instead of an assumption.
+export async function getScooterRoute(origin, destination, options = {}) {
+  const res = await fetchDirections(origin, destination, "bicycling", options);
+  if (!res.ok) return res;
   return {
-    source: "mock-not-live",
-    disclaimer: MOCK_NOTE,
-    origin: origin || "unknown",
-    destination: destination || "unknown",
-    distanceKm: 11.4,
-    durationMinutes: 24,
-    elevationGainM: 180,
-    surface: "mostly paved, one 400m gravel stretch",
-    warnings: [
-      "Route includes a segment on a road with no shoulder.",
-      "Estimated for a 45 km/h two-wheeler; adjust for a slower scooter.",
-    ],
+    ...res,
+    routedAs: "bicycling",
+    timingNote:
+      "Duration is Google's cycling estimate. A motor scooter covers this distance faster — " +
+      "treat the distance and the path as exact and the minutes as an upper bound.",
   };
 }
 
 export const getScooterRouteDeclaration = {
   name: "getScooterRoute",
   description:
-    "Look up a route for a scooter, moped or motorcycle between two places, with distance, " +
-    "duration and elevation. " +
+    "Look up a LIVE route for a scooter, moped or motorcycle between two places, from Google Maps, " +
+    "with real distance, duration and turn-by-turn opening steps. " +
     "Use this ONLY when the user asks about travelling by scooter or two-wheeler specifically. " +
     "Do NOT use it for bus or transit questions — that is getTransitRoute — and do NOT use it for " +
     "general knowledge or for questions about vehicles in the abstract.",
   parameters: {
     type: "object",
     properties: {
-      origin: { type: "string", description: "Where the ride starts." },
-      destination: { type: "string", description: "Where the ride ends." },
+      origin: { type: "string", description: "Where the ride starts. A place name, address, or 'lat,lon'." },
+      destination: { type: "string", description: "Where the ride ends. A place name, address, or 'lat,lon'." },
     },
     required: ["origin", "destination"],
   },
@@ -119,45 +99,15 @@ export const getScooterRouteDeclaration = {
 // 3. Nearby businesses
 // ---------------------------------------------------------------------------
 
-export async function findLocalBusiness(query, location) {
-  return {
-    source: "mock-not-live",
-    disclaimer: MOCK_NOTE,
-    query: query || "unknown",
-    location: location || "unknown",
-    results: [
-      {
-        name: "מכולת המרכז",
-        category: "grocery",
-        distanceMeters: 320,
-        openNow: true,
-        hours: "07:00–22:00",
-        rating: 4.3,
-      },
-      {
-        name: "טכנו-פיקס שירות מחשבים",
-        category: "electronics repair",
-        distanceMeters: 850,
-        openNow: false,
-        hours: "09:00–18:00",
-        rating: 4.7,
-      },
-      {
-        name: "דלק פזומט",
-        category: "fuel",
-        distanceMeters: 1600,
-        openNow: true,
-        hours: "24h",
-        rating: 3.9,
-      },
-    ],
-  };
+export async function findLocalBusiness(query, location, options = {}) {
+  return fetchPlaces(query, location, options);
 }
 
 export const findLocalBusinessDeclaration = {
   name: "findLocalBusiness",
   description:
-    "Find shops, services or businesses near a location, with distance and opening hours. " +
+    "Search Google Places LIVE for shops, services or businesses near a location, returning real " +
+    "names, addresses, ratings and whether each is open right now. " +
     "Use this ONLY when the user asks what is nearby, where to buy or repair something, or " +
     "whether a place is open right now. " +
     "Do NOT use it for general knowledge about companies or brands, for business strategy " +
@@ -172,7 +122,9 @@ export const findLocalBusinessDeclaration = {
       location: {
         type: "string",
         description:
-          "Where to search around. Use the user's GPS coordinates from the system context if they did not name a place.",
+          "Where to search around, as 'lat,lon' or a place name. " +
+          "Use the user's GPS coordinates from the system context if they did not name a place — " +
+          "coordinates give distances, a place name does not.",
       },
     },
     required: ["query"],
@@ -187,9 +139,9 @@ export const findLocalBusinessDeclaration = {
 // so a declared-but-unimplemented tool is impossible to ship: the two lists are
 // built from the same object.
 export const NOA_TOOL_HANDLERS = {
-  getTransitRoute: (args = {}) => getTransitRoute(args.origin, args.destination),
-  getScooterRoute: (args = {}) => getScooterRoute(args.origin, args.destination),
-  findLocalBusiness: (args = {}) => findLocalBusiness(args.query, args.location),
+  getTransitRoute: (args = {}, options) => getTransitRoute(args.origin, args.destination, options),
+  getScooterRoute: (args = {}, options) => getScooterRoute(args.origin, args.destination, options),
+  findLocalBusiness: (args = {}, options) => findLocalBusiness(args.query, args.location, options),
 };
 
 export const NOA_TOOL_DECLARATIONS = [
@@ -201,17 +153,25 @@ export const NOA_TOOL_DECLARATIONS = [
 // The shape Gemini wants under `tools`.
 export const NOA_TOOLS = [{ functionDeclarations: NOA_TOOL_DECLARATIONS }];
 
+// Re-exported so a screen can tell the user the key is missing before Noa has
+// to discover it mid-answer.
+export { isGoogleMapsConfigured };
+
 // Run a call the model asked for. Unknown names are reported back as an error
 // payload rather than thrown: a hallucinated tool name should make the model
 // apologise and carry on, not crash the chat.
-export async function runNoaTool(name, args) {
+export async function runNoaTool(name, args, options) {
   const handler = NOA_TOOL_HANDLERS[name];
   if (!handler) {
-    return { error: `Unknown tool "${name}". Available: ${Object.keys(NOA_TOOL_HANDLERS).join(", ")}.` };
+    return {
+      ok: false,
+      error: "UNKNOWN_TOOL",
+      message: `Unknown tool "${name}". Available: ${Object.keys(NOA_TOOL_HANDLERS).join(", ")}.`,
+    };
   }
   try {
-    return await handler(args || {});
+    return await handler(args || {}, options);
   } catch (e) {
-    return { error: String(e?.message || e) };
+    return { ok: false, error: "TOOL_THREW", message: String(e?.message || e) };
   }
 }

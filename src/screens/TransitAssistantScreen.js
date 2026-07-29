@@ -5,7 +5,7 @@ import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 
 import Bounce from "../components/Bounce";
 import Icon from "../components/Icon";
-import { callGemini, isGeminiConfigured } from "../config/geminiConfig";
+import { NOA_TOOLS, callGeminiWithTools, isGeminiConfigured } from "../config/geminiConfig";
 import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import { shekel } from "../utils/posStore";
@@ -47,9 +47,12 @@ function buildSystemPrompt(place) {
     "Rules:",
     "- Answer in Hebrew.",
     "- Lead with the line number and where to board. Details after.",
-    "- Give times as ranges, not false precision.",
-    "- You do not have live timetables. Say so when it matters, and point to",
-    "  Moovit or the Egged/Superbus app for the departure actually running now.",
+    "- You have LIVE transit data through the getTransitRoute tool: call it for any",
+    "  real journey and report the line, the boarding stop and the departure time it",
+    "  returns as fact. Do not hedge them, and do not send the user to another app to",
+    "  confirm a departure you just looked up.",
+    "- If a tool result comes back with \"ok\": false the lookup failed. Say what failed.",
+    "  Never invent a line number or a time to fill the gap.",
     "- If the location is unknown, ask where they are starting from instead of guessing.",
     "- Remember Friday and holiday-eve services stop early in this area.",
   ].join("\n");
@@ -118,13 +121,17 @@ export default function TransitAssistantScreen({ navigation }) {
       abortRef.current = controller;
 
       try {
-        const res = await callGemini(
+        // The transit screen gets the same toolkit as Noa. It is the screen
+        // whose entire job is "which bus, and when" — leaving it on the
+        // model's training data while the assistant tab has a live feed would
+        // make the specialised screen the less accurate of the two.
+        const res = await callGeminiWithTools(
           {
             systemInstruction: { parts: [{ text: buildSystemPrompt(place) }] },
             contents: next.map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
             generationConfig: { temperature: 0.4, maxOutputTokens: 900 },
           },
-          { signal: controller.signal }
+          { tools: NOA_TOOLS, signal: controller.signal }
         );
 
         if (controller.signal.aborted) return;
@@ -136,9 +143,10 @@ export default function TransitAssistantScreen({ navigation }) {
           return;
         }
 
-        const { json } = res;
-        const reply =
-          json?.candidates?.[0]?.content?.parts?.map((p) => p.text).filter(Boolean).join("") || "";
+        // callGeminiWithTools returns the finished text, not the raw envelope:
+        // by the time it resolves, any function round-trip has already been
+        // run and folded back in, so there is no candidate to unwrap here.
+        const reply = res.text || "";
         if (!reply) {
           hapticWarning();
           setError("המודל החזיר תשובה ריקה. נסה לנסח אחרת.");

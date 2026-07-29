@@ -48,7 +48,7 @@ function systemPrompt(place) {
     "Weekday base": "residential boarding school (פנימייה)",
     "Local time": new Date().toLocaleString("he-IL", { timeZone: "Asia/Jerusalem" }),
     "Known constraint":
-      "Israeli public transit stops early on Fridays and holiday eves. No live timetable is available to you — give ranges and name the app to check.",
+      "Israeli public transit stops early on Fridays and holiday eves — factor that into planning, but the live feed is authoritative on actual departures.",
   });
 }
 
