@@ -1,5 +1,6 @@
 import { fetchDirections, fetchPlaces, isGoogleMapsConfigured } from "./googleMaps";
 import { allCosts, saveCost } from "../utils/costStore";
+import { quotaSnapshot } from "../utils/quotaTracker";
 
 // Noa's toolkit: the things she can go and look up.
 //
@@ -187,6 +188,36 @@ export const saveItemCostDeclaration = {
 export { allCosts };
 
 // ---------------------------------------------------------------------------
+// 5. Quota
+// ---------------------------------------------------------------------------
+
+// How much of the Gemini allowance this app has used.
+//
+// The token counts are the API's own, off `usageMetadata` on every response,
+// so they are exact rather than derived from character counts. What the tool
+// deliberately does not do is invent a ceiling: there is no billing API being
+// read here, quota limits differ per model and tier and Google moves them, and
+// "you have 400 requests left" is the kind of confident number a person plans
+// their evening around. Unconfigured limits come back null with an instruction
+// to say so.
+export async function checkQuota() {
+  return quotaSnapshot();
+}
+
+export const checkQuotaDeclaration = {
+  name: "checkQuota",
+  description:
+    "Report how much of the Gemini API allowance this app has used — exact token counts (input, output, total), " +
+    "request counts for today and this session, and the current per-minute rate. " +
+    "Use this whenever the user asks how much quota, credit or tokens they have left or have used " +
+    "('כמה נשאר לי', 'כמה טוקנים שרפתי', 'how much quota is left'). " +
+    "Always repeat the limitations the tool returns: the figures cover only this app on this device, and where " +
+    "no limit is configured there is no 'remaining' number to give. Never estimate a ceiling that the tool " +
+    "reported as null. Do NOT use this tool for questions about money, sales or business costs.",
+  parameters: { type: "object", properties: {}, required: [] },
+};
+
+// ---------------------------------------------------------------------------
 // Wiring
 // ---------------------------------------------------------------------------
 
@@ -198,6 +229,7 @@ export const NOA_TOOL_HANDLERS = {
   getScooterRoute: (args = {}, options) => getScooterRoute(args.origin, args.destination, options),
   findLocalBusiness: (args = {}, options) => findLocalBusiness(args.query, args.location, options),
   saveItemCost: (args = {}) => saveItemCost(args.itemName, args.costPrice),
+  checkQuota: () => checkQuota(),
 };
 
 export const NOA_TOOL_DECLARATIONS = [
@@ -205,6 +237,7 @@ export const NOA_TOOL_DECLARATIONS = [
   getScooterRouteDeclaration,
   findLocalBusinessDeclaration,
   saveItemCostDeclaration,
+  checkQuotaDeclaration,
 ];
 
 // The shape Gemini wants under `tools`.

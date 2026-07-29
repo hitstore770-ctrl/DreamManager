@@ -1,4 +1,5 @@
 import { NOA_TOOLS, runNoaTool } from "./NoaTools";
+import { recordUsage } from "../utils/quotaTracker";
 
 // Gemini REST configuration, kept in one file so the key has exactly one home.
 //
@@ -121,6 +122,11 @@ export async function callGemini(body, { signal } = {}) {
 
     if (res.ok) {
       resolvedModel = model;
+      // Gemini's own accounting, straight off the response. Recorded here
+      // rather than at the call sites so nothing can consume quota without
+      // being counted — including the tool round-trips and the background
+      // shortcut suggestions, which are easy to forget and add up.
+      recordUsage(json?.usageMetadata, model).catch(() => {});
       return { ok: true, json, model };
     }
 
