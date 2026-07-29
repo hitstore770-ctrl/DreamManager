@@ -62,7 +62,7 @@ function RegisterShell({ navigation }) {
   return (
     <View style={[st.screen, { paddingTop: insets.top + 6 }]}>
       <View style={st.header}>
-        <Bounce style={st.iconBtn} scaleTo={0.9} onPress={() => navigation?.goBack()}>
+        <Bounce testID="register-back" style={st.iconBtn} scaleTo={0.9} onPress={() => navigation?.goBack()}>
           <Icon name={I18nManager.isRTL ? "arrow-right" : "arrow-left"} size={19} color={UI.ink} />
         </Bounce>
         <View style={{ flex: 1 }}>

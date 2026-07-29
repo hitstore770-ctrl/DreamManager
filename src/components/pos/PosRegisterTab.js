@@ -7,8 +7,10 @@ import Icon from "../Icon";
 import CustomText from "../CustomText";
 import ScanCamera from "./ScanCamera";
 import VoiceOrderButton from "./VoiceOrderButton";
+import { useAuth } from "../../context/AuthContext";
 import { useBusiness } from "../../context/BusinessContext";
 import { costFor, useItemCosts } from "../../utils/costStore";
+import { pushMany } from "../../utils/cloudSync";
 import { hapticLight, hapticSuccess, hapticWarning } from "../../utils/haptics";
 import { DECKS, DEFAULT_DECK_ITEMS, marginOf } from "../../utils/posCatalog";
 import { monthKey, shekel, todayKey, uid } from "../../utils/posStore";
@@ -43,6 +45,7 @@ const SCAN_PLACEHOLDER = { name: "פריט סרוק (הדגמה)", price: 45 };
 
 export default function PosRegisterTab({ bottomInset = 0 }) {
   const { sales, setSales, setInventory } = useBusiness();
+  const { user } = useAuth();
   const costs = useItemCosts();
 
   const [deckKey, setDeckKey] = useState("food");
@@ -153,6 +156,10 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
       const unit = lineCost(l);
       return {
         id: uid(),
+        // Stamped by the app, not by the server. serverTimestamp() resolves to
+        // null on a write made offline, and the sync's last-write-wins would
+        // then rank a real sale below anything already in the cloud.
+        updatedAt: ts,
         ts,
         day: todayKey(),
         month: monthKey(),
@@ -171,6 +178,13 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
     });
 
     setSales((prev) => [...(prev || []), ...records]);
+
+    // Straight to the cloud rather than waiting for the next reconciliation
+    // pass. Not awaited, and its failure is not surfaced: the sale is already
+    // committed to local state, which is what the register and every report
+    // read from. Offline this resolves once Firestore has queued it, and the
+    // queue drains on reconnect — so the cashier never waits on a network.
+    if (user?.uid) pushMany(user.uid, "sales", records);
 
     // Deck lines only touch stock when explicitly linked to a warehouse item.
     // Matching on name would be a guess, and a guess that silently decrements

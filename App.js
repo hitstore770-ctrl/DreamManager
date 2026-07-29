@@ -20,6 +20,7 @@ import ErrorBoundary from "./src/components/ErrorBoundary";
 import PinLock from "./src/components/PinLock";
 import { AuthProvider } from "./src/context/AuthContext";
 import { DreamProvider } from "./src/context/DreamContext";
+import { CloudSyncProvider } from "./src/context/CloudSyncContext";
 import { NotesProvider } from "./src/context/NotesContext";
 import { SettingsProvider, useSettings } from "./src/context/SettingsContext";
 import AppNavigator from "./src/navigation/AppNavigator";
@@ -120,11 +121,16 @@ export default function App() {
           <BottomSheetModalProvider>
             <SettingsProvider>
               <AuthProvider>
-                <DreamProvider>
-                  <NotesProvider>
-                    <Shell />
-                  </NotesProvider>
-                </DreamProvider>
+                {/* Inside AuthProvider because it needs the uid, and above
+                    everything else because its listeners must be mounted
+                    exactly once for the whole app. */}
+                <CloudSyncProvider>
+                  <DreamProvider>
+                    <NotesProvider>
+                      <Shell />
+                    </NotesProvider>
+                  </DreamProvider>
+                </CloudSyncProvider>
               </AuthProvider>
             </SettingsProvider>
           </BottomSheetModalProvider>
