@@ -1,6 +1,4 @@
-import { ActivityIndicator, I18nManager, Platform, StyleSheet, View } from "react-native";
-import { BlurView } from "expo-blur";
-import { LinearGradient } from "expo-linear-gradient";
+import { ActivityIndicator, I18nManager, View } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
@@ -26,7 +24,7 @@ import ToolsWorkshopScreen from "../screens/ToolsWorkshopScreen";
 import TransitAssistantScreen from "../screens/TransitAssistantScreen";
 import VisionCameraScreen from "../screens/VisionCameraScreen";
 import { FONTS } from "../utils/theme";
-import { BEVEL, CARD_SHADOW, UI, tint } from "../utils/ui";
+import { UI } from "../utils/ui";
 
 const RootStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -44,7 +42,7 @@ const Tab = createBottomTabNavigator();
 const ZONES = [
   { name: "Money", component: MyMoneyHubScreen, icon: "trending-up", label: "הכסף שלי" },
   { name: "Library", component: DreamsNotesHubScreen, icon: "star", label: "חלומות" },
-  { name: "Assistant", component: LiveAiScreen, icon: "message-circle", label: "נועה", center: true },
+  { name: "Assistant", component: LiveAiScreen, icon: "message-circle", label: "נועה" },
   { name: "CashFlow", component: MoneyDashboardScreen, icon: "bar-chart-2", label: "תזרים" },
   { name: "Workshop", component: ToolsWorkshopScreen, icon: "tool", label: "כלים" },
 ];
@@ -64,88 +62,56 @@ const ORDERED_ZONES = I18nManager.isRTL ? ZONES : [...ZONES].reverse();
 const ICONS = Object.fromEntries(ZONES.map((z) => [z.name, z.icon]));
 const LABELS = Object.fromEntries(ZONES.map((z) => [z.name, z.label]));
 
-// The bar is a slip of frosted white paper: light blur so whatever scrolls
-// under it stays faintly visible, and a near-opaque white wash on top so the
-// labels never have to fight the content. With five items it also has to stay
-// narrow, so the active state is a tinted pill rather than anything that adds
-// height.
-function TabBackground() {
-  return (
-    <View style={StyleSheet.absoluteFill}>
-      <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
-      <LinearGradient
-        colors={["rgba(255,255,255,0.94)", "rgba(255,255,255,0.86)"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-    </View>
-  );
-}
+// The bar is a bar.
+//
+// It was a floating, blurred, rounded card with a raised violet disc lifted
+// out of it for the assistant — the shape every AI app shipped. This is the
+// platform convention instead: attached to the bottom edge, opaque white, one
+// hairline rule along the top, and five equal items. The active state is ink
+// against grey, which is all a tab bar has ever needed to say.
 
-const ACTIVE_CHIP = {
-  minWidth: 44,
-  height: 30,
-  borderRadius: 15,
-  alignItems: "center",
-  justifyContent: "center",
-  backgroundColor: tint(UI.violet, 0.12),
-};
-const INACTIVE_CHIP = { minWidth: 44, height: 30, alignItems: "center", justifyContent: "center" };
+// No tinted pill behind the active icon. Colour carries meaning in this
+// system, and "which tab am I on" is already carried by the icon and label
+// going from grey to ink.
+const CHIP = { minWidth: 44, height: 24, alignItems: "center", justifyContent: "center" };
 
-const CENTERS = new Set(ZONES.filter((z) => z.center).map((z) => z.name));
-
-// Noa's tab is a raised disc rather than an icon in a row. It lifts above the
-// bar's top edge, which is what makes it read as the primary action instead of
-// as one of five equals — and the negative margin is why the bar itself has
-// `overflow: visible` below.
-function CenterTabIcon({ focused }) {
-  return (
-    <View style={st.centerWrap}>
-      <LinearGradient
-        colors={focused ? ["#8B5CF6", "#6D28D9"] : ["#A78BFA", "#7C3AED"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={st.centerDisc}
-      >
-        <Icon name="message-circle" size={24} color="#FFFFFF" />
-      </LinearGradient>
-      {focused && <View style={st.centerDot} />}
-    </View>
-  );
-}
+// The assistant is one of five, not a floating action button.
+//
+// A raised, glowing, gradient-filled disc in the middle of a tab bar is the
+// single loudest "this is an AI app" signal in the whole interface. Noa keeps
+// the centre slot — she is still the thing you reach for most — but she gets
+// there by being in the middle of five, not by being physically larger.
 
 const screenOptions = ({ route }) => ({
   headerShown: false,
-  tabBarActiveTintColor: UI.violet,
+  tabBarActiveTintColor: UI.ink,
   tabBarInactiveTintColor: UI.inkMuted,
-  tabBarBackground: TabBackground,
   tabBarStyle: {
-    position: "absolute",
-    left: 12,
-    right: 12,
-    bottom: 14,
-    height: 78,
-    paddingTop: 9,
+    // Attached, not floating. No blur, no radius, no shadow — a hairline is
+    // what separates the bar from the content above it.
+    backgroundColor: UI.surface,
+    borderTopWidth: 1,
+    borderTopColor: UI.hairline,
+    // The bar has to be taller than icon + label, with slack.
+    //
+    // At 64 with 8pt padding the tab was exactly as tall as its contents, and
+    // the label flex-shrank to a 4px sliver — present in the DOM, invisible on
+    // screen, and easy to mistake for a font problem. Hebrew ascenders and
+    // descenders need the full 14pt line, so the bar is sized to give the
+    // label its line height with room left over rather than exactly enough.
+    height: 70,
+    paddingTop: 7,
     paddingBottom: 9,
-    borderRadius: UI.radiusLg,
-    backgroundColor: UI.glass,
-    borderTopWidth: 0,
-    // Noa's disc lifts above the bar, so the bar must not clip it.
-    overflow: "visible",
-    ...BEVEL,
-    ...CARD_SHADOW,
+    elevation: 0,
+    shadowOpacity: 0,
   },
-  tabBarItemStyle: { borderRadius: UI.radiusSm },
-  tabBarLabelStyle: { fontFamily: FONTS.medium, fontSize: 10, lineHeight: 15, marginTop: 2 },
-  tabBarIcon: ({ focused }) =>
-    CENTERS.has(route.name) ? (
-      <CenterTabIcon focused={focused} />
-    ) : (
-      <View style={focused ? ACTIVE_CHIP : INACTIVE_CHIP}>
-        <Icon name={ICONS[route.name]} size={20} color={focused ? UI.violet : UI.inkMuted} />
-      </View>
-    ),
+  tabBarItemStyle: { paddingVertical: 2 },
+  tabBarLabelStyle: { fontFamily: FONTS.medium, fontSize: 10.5, lineHeight: 14, marginTop: 1 },
+  tabBarIcon: ({ focused }) => (
+    <View style={CHIP}>
+      <Icon name={ICONS[route.name]} size={21} color={focused ? UI.ink : UI.inkMuted} />
+    </View>
+  ),
   tabBarLabel: LABELS[route.name],
 });
 
@@ -161,25 +127,6 @@ function ZoneTabs() {
   );
 }
 
-const st = StyleSheet.create({
-  // Lifted above the bar's top edge. The bar sets overflow: visible for this.
-  centerWrap: { alignItems: "center", justifyContent: "center", marginTop: -22 },
-  centerDisc: {
-    width: 56,
-    height: 56,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 3,
-    borderColor: "#FFFFFF",
-    shadowColor: "#7C3AED",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  centerDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: UI.violet, marginTop: 5 },
-});
 
 function ConnectingScreen() {
   return (

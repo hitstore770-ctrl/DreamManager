@@ -1,65 +1,91 @@
-// "Paper & Pastel" — the single design system every screen must use.
+// The design system. One file, and every screen reads from it.
 //
-// A soft grey desk with white and pastel cards lifted just off it. Depth comes
-// from one gentle shadow and a hairline edge, never from heavy borders or hard
-// drop shadows: a sticky note sits a millimetre above the desk, not a
-// centimetre. Type is near-black on paper, so contrast is never in question.
+// A strict light fintech aesthetic: white paper, hairline rules, one 12pt
+// radius, and colour used only where it carries meaning. The previous system
+// leaned on violet gradients, coloured haloes and soft floating cards — the
+// look every AI product shipped in the same eighteen months. This one is built
+// from the opposite instinct: nothing glows, nothing floats, and a surface is
+// separated from the one behind it by a 1px line rather than by a shadow.
 //
-// These are *semantic* tokens — `ink` means "the colour titles are", not "dark
-// grey". That is what lets the whole app change temperature by editing this
+// Two consequences worth stating, because they are the whole discipline:
+//
+//   • Depth comes from borders. A shadow is present but almost invisible; if a
+//     card is not readable without it, the layout is wrong, not the shadow.
+//   • Colour is functional. Green means money in, red means money out, amber
+//     means attention. Nothing is coloured to be attractive, so when something
+//     is coloured it means something.
+//
+// These are *semantic* tokens — `ink` means "the colour titles are", not "near
+// black". That is what lets the whole app change temperature by editing this
 // file instead of forty screens.
 
 export const UI = {
-  // Surfaces. The desk, the paper on it, and the wells pressed into that paper.
-  bgDeep: "#E9EBEF", // under-page, edges of the desk
-  bg: "#F3F4F6", // every main screen wrapper
-  surface: "#FFFFFF", // cards — crisp white paper
-  surfaceAlt: "#F8FAFC", // wells and inputs sitting on a card
-  surfaceHi: "#EEF1F6", // pressed states, chips
-  hairline: "#E7EAF0",
-  glass: "rgba(255,255,255,0.86)", // floating nav — sits over blur
+  // Surfaces. White, on white, on white — told apart by their rules.
+  bgDeep: "#F7F7F8",
+  bg: "#FFFFFF",
+  surface: "#FFFFFF",
+  surfaceAlt: "#FAFAFA", // wells, inputs, table stripes
+  surfaceHi: "#F2F2F3", // pressed states, chips
+  hairline: "#EAEAEA", // the one border colour
+  glass: "#FFFFFF", // the nav bar is opaque now; no blur, no translucency
 
-  // Ink
-  ink: "#111827", // titles
-  inkSoft: "#4B5563", // subtitles and body
-  inkMuted: "#9CA3AF", // captions
+  // Ink. A near-black rather than a true one: #000 on #FFF is harsh at body
+  // size and is not what print or any good financial interface uses.
+  ink: "#111111",
+  inkSoft: "#5C5C5C",
+  inkMuted: "#8E8E93",
 
-  // Vibrant accents
-  violet: "#7C3AED", // primary
-  violetLo: "#6D28D9", // primary text on paper, where #7C3AED is too light
-  cyan: "#0891B2", // progress / active
-  coral: "#F43F5E", // floating actions
-  green: "#059669",
-  amber: "#D97706",
-  red: "#DC2626",
-  gold: "#B45309", // metallic accents, deposits at target
+  // The primary accent is ink itself. A fintech primary button is black or
+  // white; a coloured one belongs to a consumer app, and a violet one belongs
+  // to an AI demo.
+  accent: "#111111",
+  accentSoft: "#3A3A3A",
 
-  // Rhythm. Generous radii, because a squircle reads as one continuous curve
-  // rather than as a straight edge with a corner stuck on each end — and at
-  // these sizes a plain rounded rect is close enough to a squircle that the
-  // difference is invisible, while an SVG path per card is not free.
-  radius: 20,
-  radiusSm: 14,
-  radiusLg: 28,
-  cardPadding: 20,
+  // Kept under their old names so the forty screens that reference them do not
+  // all have to change in one commit. `violet` is no longer violet — it is the
+  // primary accent, whatever this file says that is.
+  violet: "#111111",
+  violetLo: "#000000",
+
+  // Functional colour. Restrained, high-contrast, and each one earns its place.
+  green: "#067647", // money in, positive change
+  red: "#D92D20", // money out, destructive, error
+  amber: "#B54708", // attention, unknown, degraded
+  cyan: "#175CD3", // informational / links
+  gold: "#B54708",
+
+  // Was the floating-action pink. Eight screens still name it, and a token
+  // that silently evaluates to undefined does not throw — it renders a
+  // transparent button, which is how the voice control on the register
+  // disappeared into the page. Mapped onto the primary accent rather than
+  // deleted, so those call sites keep working and stop being pink.
+  coral: "#111111",
+
+  // Rhythm. One radius, used everywhere, with a tighter one for controls.
+  radius: 12,
+  radiusSm: 10,
+  radiusLg: 16,
+  cardPadding: 16,
   cardMarginH: 16,
-  cardMarginB: 16,
+  cardMarginB: 12,
   gap: 12,
-  rowMinHeight: 60,
+  rowMinHeight: 56,
 };
 
-// Sticky-note stocks. Deliberately desaturated: a full-strength highlighter
-// yellow behind #111827 text is exhausting to read at body size, and six of
-// them on one board is a toy. `edge` is a slightly deeper shade of the same
-// hue, used for the hairline so a pastel note never needs a grey border.
+// Note stocks for the dreams board.
+//
+// Desaturated hard: on a white fintech surface a full pastel reads as a
+// children's app, and six of them next to each other read as a toy. These are
+// tints — a few percent of hue over white — so the board stays legible as a
+// set of cards while a single note is still identifiable by colour.
 export const PASTEL = {
-  white: { bg: "#FFFFFF", edge: "#E7EAF0", ink: "#111827" },
-  butter: { bg: "#FEF6DA", edge: "#F3E3AE", ink: "#6B4E00" },
-  mint: { bg: "#DCFCE7", edge: "#B3EFC9", ink: "#065F46" },
-  sky: { bg: "#DBEAFE", edge: "#B4D4FB", ink: "#1E40AF" },
-  blush: { bg: "#FCE7F3", edge: "#F7C9E3", ink: "#9D174D" },
-  lilac: { bg: "#EDE9FE", edge: "#D6CDFA", ink: "#5B21B6" },
-  peach: { bg: "#FFEDD5", edge: "#FBD5A8", ink: "#9A3412" },
+  white: { bg: "#FFFFFF", edge: "#EAEAEA", ink: "#111111" },
+  butter: { bg: "#FDFBF3", edge: "#EDE6D2", ink: "#6B4E00" },
+  mint: { bg: "#F3FAF6", edge: "#D6EADF", ink: "#067647" },
+  sky: { bg: "#F4F8FE", edge: "#D9E5F7", ink: "#175CD3" },
+  blush: { bg: "#FDF5F7", edge: "#EFDCE2", ink: "#B42318" },
+  lilac: { bg: "#F7F6FB", edge: "#E2DFEE", ink: "#4A4458" },
+  peach: { bg: "#FDF7F3", edge: "#EFE0D4", ink: "#B54708" },
 };
 
 export const PASTEL_KEYS = Object.keys(PASTEL).filter((k) => k !== "white");
@@ -74,83 +100,86 @@ export function pastelFor(seed, keys = PASTEL_KEYS) {
   return PASTEL[keys[h % keys.length]];
 }
 
-// Gradient ramps, for the few surfaces that are still coloured objects rather
-// than paper — the money hero, the primary buttons, the note stocks.
+// Gradient ramps.
+//
+// Deliberately almost flat. The API stays because a dozen call sites pass
+// `colors` to GradCard, but a two-stop violet-to-indigo sweep is the single
+// most recognisable "AI product" signature there is, so every ramp here is now
+// a solid or a barely-there shift within one hue.
 export const GRAD = {
-  canvas: ["#F8FAFC", "#EFF1F5"],
-  surface: ["#FFFFFF", "#FBFCFE"],
-  violet: ["#8B5CF6", "#6D28D9"],
-  cyan: ["#22D3EE", "#0891B2"],
-  coral: ["#FB7185", "#E11D48"],
-  green: ["#34D399", "#059669"],
-  gold: ["#FCD34D", "#D97706"],
-  ink: ["#374151", "#111827"],
-  glass: ["rgba(255,255,255,0.92)", "rgba(255,255,255,0.72)"],
+  canvas: ["#FFFFFF", "#FFFFFF"],
+  surface: ["#FFFFFF", "#FFFFFF"],
+  violet: ["#1A1A1A", "#111111"],
+  accent: ["#1A1A1A", "#111111"],
+  cyan: ["#175CD3", "#134FB8"],
+  coral: ["#D92D20", "#C0271B"],
+  green: ["#067647", "#05633B"],
+  gold: ["#B54708", "#9C3D07"],
+  ink: ["#1A1A1A", "#111111"],
+  glass: ["#FFFFFF", "#FFFFFF"],
 };
 
-// The one card shadow: soft, low, close. A card lifted this little reads as
-// paper; lifted more, it reads as a floating panel.
+// Nearly nothing. Present so a sheet or a menu still lifts off the page, but
+// far too faint to be what separates a card from its background — that is the
+// border's job, and a card that needs the shadow is a card in the wrong place.
 export const CARD_SHADOW = {
-  shadowColor: "#0F172A",
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.08,
-  shadowRadius: 8,
-  elevation: 3,
-};
-
-// Layered elevation. React Native gives one shadow per view, and one shadow
-// always has to choose: tight and dark enough to define contact, or wide and
-// soft enough to read as ambient light. Real depth is both at once, so this
-// is a pair applied to two nested views — a tight contact shadow under a wide
-// ambient one. Card renders it; nothing else needs to know.
-export const SHADOW_CONTACT = {
-  shadowColor: "#0F172A",
+  shadowColor: "#000000",
   shadowOffset: { width: 0, height: 1 },
-  shadowOpacity: 0.06,
+  shadowOpacity: 0.03,
   shadowRadius: 2,
   elevation: 1,
 };
 
+// Kept for the two components that render nested views for layered depth.
+// Both are now so faint that the pair reads as a single hairline of contact.
+export const SHADOW_CONTACT = {
+  shadowColor: "#000000",
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.03,
+  shadowRadius: 1,
+  elevation: 1,
+};
+
 export const SHADOW_AMBIENT = {
-  shadowColor: "#0F172A",
-  shadowOffset: { width: 0, height: 8 },
-  shadowOpacity: 0.07,
-  shadowRadius: 18,
-  elevation: 4,
+  shadowColor: "#000000",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.04,
+  shadowRadius: 6,
+  elevation: 2,
 };
 
 export const SOFT_SHADOW = CARD_SHADOW;
+
+// For genuinely floating surfaces only — a bottom sheet, a modal. Still far
+// short of the old drop shadows.
 export const SOFT_SHADOW_LG = {
-  shadowColor: "#0F172A",
-  shadowOffset: { width: 0, height: 10 },
-  shadowOpacity: 0.12,
-  shadowRadius: 20,
-  elevation: 7,
+  shadowColor: "#000000",
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.08,
+  shadowRadius: 12,
+  elevation: 5,
 };
 
-// A hairline edge. On paper the job is the opposite of on a dark canvas: a
-// white card on a near-white desk needs a *darker* edge to be separable, not a
-// lighter one.
+// The rule. One weight, one colour, everywhere — this is what the design is
+// actually made of.
 export const BEVEL = {
   borderWidth: 1,
-  borderColor: "#E7EAF0",
+  borderColor: "#EAEAEA",
 };
 
 export const BEVEL_STRONG = {
   borderWidth: 1,
-  borderColor: "#D8DDE7",
+  borderColor: "#DCDCDC",
 };
 
-// Coloured halo for an active/primary element. Softer than on dark, because a
-// strong coloured glow on a light desk reads as a printing error.
-export function glow(color, strength = 0.22) {
-  return {
-    shadowColor: color,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: strength,
-    shadowRadius: 14,
-    elevation: 6,
-  };
+// Was a coloured halo; now deliberately inert.
+//
+// Every call site that wanted to make something glow still compiles, and
+// nothing glows. Left as a function rather than deleted because removing it
+// would mean editing a dozen screens to say the same thing this says once:
+// emphasis in this system comes from weight and contrast, not from light.
+export function glow() {
+  return CARD_SHADOW;
 }
 
 // Translucent wash of a colour, for tinted chips and badges.

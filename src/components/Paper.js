@@ -1,31 +1,24 @@
 import { StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
-import Aurora from "./Aurora";
-
 import { BEVEL, CARD_SHADOW, GRAD, PASTEL, SHADOW_AMBIENT, SHADOW_CONTACT, UI, glow, pastelFor } from "../utils/ui";
 
 // The surfaces every screen is built from.
 //
-// All of them are the same physical object seen from different angles: a piece
-// of paper resting on a desk. One soft shadow lifts it, one hairline separates
-// it from the near-white desk behind, and the corners are rounded enough to
-// read as friendly but not so much that it stops looking like a page.
-//
-// The hairline is doing more work than it looks. White paper on a #F3F4F6 desk
-// is only a few percent apart in luminance, and a shadow alone leaves the top
-// edge of every card invisible — the border is what closes the shape.
+// All of them are one object: a white plane, separated from the plane behind
+// it by a single hairline. The shadow is almost nothing on purpose — if a card
+// cannot be found without it, the spacing is wrong and no amount of blur will
+// fix that.
 
-// The desk. A very slight vertical wash keeps a full screen of white cards
-// from reading as one flat sheet, without ever becoming a visible gradient.
+// The page. Flat white, and that is the whole design.
+//
+// `aurora` used to swap in a drifting three-colour Skia bloom behind the hero
+// screens. It is accepted and ignored now rather than removed from the call
+// sites, because a soft coloured glow behind a balance is the exact thing this
+// theme exists to get rid of.
 export function Canvas({ children, style, testID, aurora = false }) {
   return (
     <View testID={testID} style={[st.canvas, style]}>
-      {aurora ? (
-        <Aurora />
-      ) : (
-        <LinearGradient colors={GRAD.canvas} style={StyleSheet.absoluteFill} />
-      )}
       {children}
     </View>
   );

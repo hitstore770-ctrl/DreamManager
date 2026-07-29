@@ -93,7 +93,7 @@ export default function MoneyDashboardScreen({ navigation }) {
         {/* Hero */}
         <View style={s.header}>
           <View style={{ flex: 1 }}>
-            <CustomText weight="bold" style={s.title}>הכסף שלי</CustomText>
+            <CustomText weight="bold" style={s.title}>תזרים</CustomText>
             <CustomText style={s.subtitle}>רווח נקי מכל הפעילות</CustomText>
           </View>
           <Bounce
@@ -306,7 +306,7 @@ function Bucket({ testID, delay, icon, tone, title, hint, value, right, onPress 
           end={{ x: 0.4, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
-        <View style={[StyleSheet.absoluteFill, { borderRadius: 20, borderWidth: 1, borderColor: tint(tone, 0.22) }]} />
+        <View style={[StyleSheet.absoluteFill, { borderRadius: UI.radius, borderWidth: 1, borderColor: UI.hairline }]} />
 
         <View style={s.bucketTop}>
           <View style={[s.bucketIcon, { backgroundColor: tint(tone, 0.12) }]}>
@@ -521,7 +521,7 @@ const s = StyleSheet.create({
   bucket: {
     width: 168,
     minHeight: 148,
-    borderRadius: 20,
+    borderRadius: UI.radius,
     padding: 14,
     justifyContent: "space-between",
     overflow: "hidden",
@@ -562,7 +562,7 @@ const s = StyleSheet.create({
     marginHorizontal: UI.cardMarginH,
     marginTop: 18,
     marginBottom: 20,
-    borderRadius: 20,
+    borderRadius: UI.radius,
     padding: 16,
     gap: 8,
     overflow: "hidden",
@@ -585,7 +585,7 @@ const s = StyleSheet.create({
   logHead: { flexDirection: ROW, alignItems: "center", paddingHorizontal: UI.cardMarginH },
   logCount: { fontFamily: FONTS.semibold, fontSize: 12, color: UI.inkMuted, marginBottom: 10 },
 
-  log: { marginHorizontal: UI.cardMarginH, backgroundColor: UI.surface, borderRadius: 18, paddingHorizontal: 14, ...BEVEL, ...CARD_SHADOW },
+  log: { marginHorizontal: UI.cardMarginH, backgroundColor: UI.surface, borderRadius: UI.radius, paddingHorizontal: 14, ...BEVEL, ...CARD_SHADOW },
   logRow: { flexDirection: ROW, alignItems: "center", gap: 12, minHeight: 60, borderBottomWidth: 1, borderBottomColor: UI.hairline },
   logIcon: { width: 34, height: 34, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   logTitle: { fontFamily: FONTS.semibold, fontSize: 13.5, color: UI.ink, textAlign: "right" },

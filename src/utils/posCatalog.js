@@ -25,7 +25,7 @@ export const POS_CATEGORIES = [
     key: "pos",
     label: "קופה",
     icon: "shopping-cart",
-    color: "#7C3AED",
+    color: "#111111",
     hint: "מכירה מהירה · עגלה · תשלום",
     // Rendered by PosRegisterTab, not as a tool list — this tab *is* a tool.
     tools: [],
@@ -34,7 +34,7 @@ export const POS_CATEGORIES = [
     key: "logistics",
     label: "שילוח",
     icon: "truck",
-    color: "#D97706",
+    color: "#B54708",
     hint: "ספקים, משלוחים וחישוב עלות נחיתה",
     tools: [
       {
@@ -78,7 +78,7 @@ export const POS_CATEGORIES = [
     key: "pricing",
     label: "תמחור",
     icon: "tag",
-    color: "#059669",
+    color: "#067647",
     hint: "כמה לגבות, וכמה באמת נשאר ביד",
     tools: [
       {
@@ -136,7 +136,7 @@ export const POS_CATEGORIES = [
     key: "kitchen",
     label: "מטבח ואריזה",
     icon: "clock",
-    color: "#B45309",
+    color: "#8E4B10",
     hint: "מה מכינים עכשיו ומה נכנס לחבילה",
     tools: [
       {
@@ -166,7 +166,7 @@ export const POS_CATEGORIES = [
     key: "analytics",
     label: "אנליטיקה",
     icon: "bar-chart-2",
-    color: "#1D4ED8",
+    color: "#175CD3",
     hint: "מה קרה היום, והאם זה משתפר",
     tools: [
       {
@@ -217,7 +217,7 @@ export const POS_CATEGORIES = [
     key: "automations",
     label: "אוטומציות",
     icon: "zap",
-    color: "#4F46E5",
+    color: "#5C5C5C",
     hint: "כללים שרצים עליך במקום שתזכור",
     tools: [
       {
@@ -263,9 +263,11 @@ export function posCategory(key) {
 // margin it reports a lie. With a cost per line the Z-report and the dashboard
 // finally reconcile to money actually earned.
 
+// Both decks select to ink. A selected segment in a fintech control is black
+// or it is nothing; two competing brand colours in one switch is a toy.
 export const DECKS = [
-  { key: "food", label: "מזון מהיר", icon: "coffee", color: "#D97706" },
-  { key: "import", label: "אליאקספרס", icon: "package", color: "#0891B2" },
+  { key: "food", label: "מזון מהיר", icon: "coffee", color: "#111111" },
+  { key: "import", label: "אליאקספרס", icon: "package", color: "#111111" },
 ];
 
 export const FAST_FOOD = [

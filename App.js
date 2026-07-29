@@ -8,7 +8,7 @@ import { DefaultTheme, NavigationContainer } from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 // Per-weight entry points, not the package barrel: the barrel registers all
 // nine Heebo weights as assets even though the app loads four.
 import { Heebo_300Light } from "@expo-google-fonts/heebo/300Light";
@@ -93,7 +93,16 @@ export default function App() {
     Heebo_700Bold,
   });
 
-  const ready = fontsLoaded || !!fontError;
+  // Nothing renders until the four weights are in. Not "mostly in", and not
+  // after a timer: a first frame painted in the system Hebrew face and then
+  // reflowed to Heebo is the exact symptom that reads as "the font failed to
+  // load", because the metrics differ enough that every line jumps.
+  //
+  // `fontError` is the one escape, and it is a real one rather than a timeout:
+  // a font that genuinely cannot load must not brick the app forever, so a
+  // reported failure lets the tree render in whatever face the platform has.
+  const [gaveUp, setGaveUp] = useState(false);
+  const ready = fontsLoaded || !!fontError || gaveUp;
 
   // Drop the splash on the frame the first real content is laid out, not on a
   // timer — onLayout fires after that layout pass, so there is no window where
@@ -102,13 +111,22 @@ export default function App() {
     if (ready) await SplashScreen.hideAsync().catch(() => {});
   }, [ready]);
 
-  // A font that never resolves must not strand the user on a splash forever —
-  // on web the files come over the network and can simply fail. After three
-  // seconds the app renders regardless; Heebo swaps in if it arrives later.
+  // The backstop, and the bug it replaces.
+  //
+  // This used to hide the splash on a 3s timer while the tree below still
+  // returned null — so a slow font left the user looking at a blank white
+  // screen with the splash already gone, which is worse than either state on
+  // its own. The timeout now flips a flag that lets the app *render*; the
+  // splash is only ever hidden once something is actually behind it.
+  //
+  // Eight seconds, not three: on a cold cellular connection the four files
+  // regularly take longer than three, and cutting them off early guarantees
+  // the unstyled flash this whole gate exists to prevent.
   useEffect(() => {
-    const t = setTimeout(() => SplashScreen.hideAsync().catch(() => {}), 3000);
+    if (fontsLoaded || fontError) return undefined;
+    const t = setTimeout(() => setGaveUp(true), 8000);
     return () => clearTimeout(t);
-  }, []);
+  }, [fontsLoaded, fontError]);
 
   if (!ready) return null;
 
