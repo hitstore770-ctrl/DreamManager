@@ -16,6 +16,7 @@ import DreamsScreen from "../screens/DreamsScreen";
 import LiveAiScreen from "../screens/LiveAiScreen";
 import BiometricGate from "../components/BiometricGate";
 import CashFlowScreen from "../screens/CashFlowScreen";
+import MoneyDashboardScreen from "../screens/MoneyDashboardScreen";
 import MyMoneyHubScreen from "../screens/MyMoneyHubScreen";
 import NoteEditorScreen from "../screens/NoteEditorScreen";
 import SavingsHubScreen from "../screens/money/SavingsHubScreen";
@@ -44,7 +45,7 @@ const ZONES = [
   { name: "Money", component: MyMoneyHubScreen, icon: "trending-up", label: "הכסף שלי" },
   { name: "Library", component: DreamsNotesHubScreen, icon: "star", label: "חלומות" },
   { name: "Assistant", component: LiveAiScreen, icon: "message-circle", label: "נועה", center: true },
-  { name: "CashFlow", component: CashFlowScreen, icon: "bar-chart-2", label: "תזרים" },
+  { name: "CashFlow", component: MoneyDashboardScreen, icon: "bar-chart-2", label: "תזרים" },
   { name: "Workshop", component: ToolsWorkshopScreen, icon: "tool", label: "כלים" },
 ];
 
@@ -231,6 +232,10 @@ export default function AppNavigator() {
               component={CashRegisterScreen}
               options={{ animation: "slide_from_right" }}
             />
+            {/* The dashboard is the tab; logging a movement is a push from
+                it, so the entry form stays reachable without occupying a tab
+                of its own. */}
+            <RootStack.Screen name="CashFlowDetail" component={withBack(CashFlowScreen)} />
             <RootStack.Screen name="SavingsHub" component={SavingsHubScreen} />
             <RootStack.Screen
               name="Savings"
