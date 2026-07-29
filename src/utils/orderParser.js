@@ -80,9 +80,17 @@ export function forms(word) {
   // Feminine plurals do not just drop a suffix, they swap one: פחית becomes
   // פחיות, not פחיתים. Offering both singular endings back is what lets the
   // plural a customer says meet the singular the price list is written in.
+  //
+  // The masculine ending has to be written twice, and that is not redundancy.
+  // `base` has already been through normalize(), which folds the final mem in
+  // "כבלים" to a regular one — so the word now ends in "ימ" and a pattern
+  // written only as "ים" silently never fires. It looked like it worked
+  // because a prefix comparison downstream caught most cases anyway; a plain
+  // set intersection does not, and neither does anything else that reuses
+  // these forms.
   const withSuffixes = (w) => {
     add(w);
-    add(w.replace(/(יות|ות|ים)$/, ""));
+    add(w.replace(/(יות|ות|ימ|ים)$/, ""));
     if (w.endsWith("ות")) {
       add(`${w.slice(0, -2)}ת`);
       add(`${w.slice(0, -2)}ה`);

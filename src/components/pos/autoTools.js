@@ -1,15 +1,14 @@
 import { useMemo, useState } from "react";
 import { Share, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
-import * as Clipboard from "expo-clipboard";
 
 import Icon from "../Icon";
 import CustomText from "../CustomText";
 import { useBusiness } from "../../context/BusinessContext";
 import { hapticLight, hapticSuccess, hapticWarning } from "../../utils/haptics";
-import { LOW_STOCK, shekel, todayKey, uid } from "../../utils/posStore";
+import { LOW_STOCK, todayKey, uid } from "../../utils/posStore";
 import { usePersistentState } from "../../utils/usePersistentState";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
-import { BLUE, CARD, GREEN, INK, INK_MUTED, INK_SOFT, NO_OUTLINE, RED, WHITE, s as kit } from "../tools/kit";
+import { BLUE, CARD, GREEN, INK, INK_MUTED, INK_SOFT, RED, WHITE, s as kit } from "../tools/kit";
 import { Empty } from "./ops";
 
 // Automations and logistics.
@@ -152,122 +151,6 @@ export function ShipmentTracker() {
           <CustomText style={[kit.actionText, { color: INK_SOFT }]}>נקה משלוחים שהגיעו</CustomText>
         </TouchableOpacity>
       )}
-    </View>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Customer message templates.
-//
-// Placeholders are filled from real state — today's date, the customer's
-// name, an amount you type — so the message that reaches the clipboard is
-// finished, not a form to edit afterwards.
-
-const TEMPLATES = [
-  {
-    id: "ready",
-    name: "ההזמנה מוכנה",
-    body: "היי {שם}, ההזמנה שלך מוכנה לאיסוף. סה״כ {סכום}. אפשר לאסוף היום עד 21:00.",
-  },
-  {
-    id: "shipped",
-    name: "יצא למשלוח",
-    body: "היי {שם}, ההזמנה שלך יצאה למשלוח היום ({תאריך}). אעדכן ברגע שהיא בדרך אליך.",
-  },
-  {
-    id: "debt",
-    name: "תזכורת תשלום",
-    body: "היי {שם}, רק תזכורת ידידותית — נשאר יתרה של {סכום} על החשבון. אפשר להעביר בביט או במזומן.",
-  },
-  {
-    id: "delay",
-    name: "עיכוב באספקה",
-    body: "היי {שם}, הפריט שהזמנת מתעכב אצל הספק. אני מעריך שבוע נוסף. אם זה לא מסתדר — מחזיר לך את הכסף מיד.",
-  },
-  {
-    id: "thanks",
-    name: "תודה אחרי קנייה",
-    body: "תודה {שם}! היה כיף לעבוד איתך. אם משהו לא מושלם — כתוב לי ואני מסדר.",
-  },
-];
-
-export function MessageTemplates() {
-  const [customer, setCustomer] = useState("");
-  const [amount, setAmount] = useState("");
-  const [copied, setCopied] = useState(null);
-
-  const fill = (body) =>
-    body
-      .replace(/\{שם\}/g, customer.trim() || "לקוח")
-      .replace(/\{סכום\}/g, amount ? shekel(parseFloat(amount) || 0) : "___")
-      .replace(/\{תאריך\}/g, new Date().toLocaleDateString("he-IL"));
-
-  return (
-    <View style={st.wrap}>
-      <View style={kit.row}>
-        <View style={{ flex: 2 }}>
-          <CustomText style={kit.fieldLabel}>שם הלקוח</CustomText>
-          <View style={kit.fieldRow}>
-            <TextInput
-              testID="tpl-name"
-              style={[kit.fieldInput, { fontSize: 15, textAlign: "right" }]}
-              value={customer}
-              onChangeText={setCustomer}
-              placeholder="דני"
-              placeholderTextColor={INK_MUTED}
-            />
-          </View>
-        </View>
-        <View style={{ flex: 1 }}>
-          <CustomText style={kit.fieldLabel}>סכום</CustomText>
-          <View style={kit.fieldRow}>
-            <TextInput
-              testID="tpl-amount"
-              style={kit.fieldInput}
-              value={amount}
-              onChangeText={setAmount}
-              keyboardType="decimal-pad"
-              placeholder="0"
-              placeholderTextColor={INK_MUTED}
-              textAlign="center"
-            />
-          </View>
-        </View>
-      </View>
-
-      {TEMPLATES.map((t) => {
-        const text = fill(t.body);
-        return (
-          <View key={t.id} style={st.card}>
-            <CustomText style={st.cardTitle}>{t.name}</CustomText>
-            <CustomText testID={`tpl-body-${t.id}`} style={st.tplBody}>
-              {text}
-            </CustomText>
-            <View style={kit.row}>
-              <TouchableOpacity
-                testID={`tpl-copy-${t.id}`}
-                style={[st.smallBtn, { backgroundColor: copied === t.id ? GREEN : BLUE }]}
-                onPress={async () => {
-                  hapticSuccess();
-                  await Clipboard.setStringAsync(text);
-                  setCopied(t.id);
-                }}
-              >
-                <CustomText style={st.smallBtnText}>{copied === t.id ? "הועתק" : "העתק"}</CustomText>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[st.smallBtn, { backgroundColor: CARD }]}
-                onPress={() => {
-                  hapticLight();
-                  Share.share({ message: text }).catch(() => {});
-                }}
-              >
-                <CustomText style={[st.smallBtnText, { color: INK_SOFT }]}>שלח</CustomText>
-              </TouchableOpacity>
-            </View>
-          </View>
-        );
-      })}
     </View>
   );
 }

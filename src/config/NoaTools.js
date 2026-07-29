@@ -1,4 +1,5 @@
 import { fetchDirections, fetchPlaces, isGoogleMapsConfigured } from "./googleMaps";
+import { allCosts, saveCost } from "../utils/costStore";
 
 // Noa's toolkit: the things she can go and look up.
 //
@@ -132,6 +133,60 @@ export const findLocalBusinessDeclaration = {
 };
 
 // ---------------------------------------------------------------------------
+// 4. Cost of goods
+// ---------------------------------------------------------------------------
+
+// The one tool that writes rather than reads.
+//
+// Everything else here answers a question; this changes the app's state, and
+// it does so from a passing remark ("the cables were 4.20 each") rather than
+// from a deliberate action. That is the point — nobody opens a spreadsheet to
+// log a supplier price — but it is also why the return is verbose. Noa has to
+// confirm what she wrote, and name the old value when she overwrote one, so a
+// misheard number is caught in the next sentence rather than silently
+// reshaping every margin the register reports afterwards.
+export async function saveItemCost(itemName, costPrice) {
+  const res = await saveCost(itemName, costPrice);
+  if (!res.ok) return res;
+
+  return {
+    ...res,
+    message:
+      res.previousCost != null && res.previousCost !== res.cost
+        ? `Updated the cost of "${res.name}" from ${res.previousCost} to ${res.cost}. Tell the user you replaced the old figure.`
+        : `Recorded: "${res.name}" costs ${res.cost}. Confirm the item and the number back to the user.`,
+  };
+}
+
+export const saveItemCostDeclaration = {
+  name: "saveItemCost",
+  description:
+    "Save what an item or supply costs the user to buy (its cost price / COGS) into the app's cost ledger, " +
+    "so the register can calculate real profit at checkout. " +
+    "When the user tells you how much an item or supply cost them to buy, use this tool to log it in the system. " +
+    "This applies to any mention of a purchase price — 'the cables cost me 4.20 each', 'I paid 12 shekels a box'. " +
+    "Do NOT use it for the price the user SELLS at, for a total spend across many units, or for a price the user " +
+    "is only asking about or considering. Only log a per-unit cost the user has actually stated.",
+  parameters: {
+    type: "object",
+    properties: {
+      itemName: {
+        type: "string",
+        description: "The item's name as the user would say it, e.g. 'כבל USB-C'. Keep it short and singular.",
+      },
+      costPrice: {
+        type: "number",
+        description: "What one unit costs to buy, as a number. Never the selling price, and never a total for several units.",
+      },
+    },
+    required: ["itemName", "costPrice"],
+  },
+};
+
+// Re-exported so the register can read the same ledger Noa writes.
+export { allCosts };
+
+// ---------------------------------------------------------------------------
 // Wiring
 // ---------------------------------------------------------------------------
 
@@ -142,12 +197,14 @@ export const NOA_TOOL_HANDLERS = {
   getTransitRoute: (args = {}, options) => getTransitRoute(args.origin, args.destination, options),
   getScooterRoute: (args = {}, options) => getScooterRoute(args.origin, args.destination, options),
   findLocalBusiness: (args = {}, options) => findLocalBusiness(args.query, args.location, options),
+  saveItemCost: (args = {}) => saveItemCost(args.itemName, args.costPrice),
 };
 
 export const NOA_TOOL_DECLARATIONS = [
   getTransitRouteDeclaration,
   getScooterRouteDeclaration,
   findLocalBusinessDeclaration,
+  saveItemCostDeclaration,
 ];
 
 // The shape Gemini wants under `tools`.

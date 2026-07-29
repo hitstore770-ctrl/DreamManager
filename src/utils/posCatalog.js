@@ -1,4 +1,4 @@
-// The eight zones of the register, and the two decks it sells from.
+// The six zones of the register, and the two decks it sells from.
 //
 // This is the *micro* side of the business — what happens in the ninety
 // seconds around a sale — as opposed to the macro cashflow view. Every entry
@@ -6,6 +6,11 @@
 // tile: the catalogue is derived from what is built, so a category can never
 // advertise a tool the sheet cannot open (see posRegistry.js, which is the
 // thing that would fail to resolve).
+//
+// Inventory and CRM were the seventh and eighth. They are gone: the warehouse
+// and the customer ledger still live in the "העסק שלי" tab, and duplicating
+// them here made the register a second front door to the same screens rather
+// than a place of its own.
 //
 // `target.kind` decides how an entry is presented, and the two are genuinely
 // different objects:
@@ -24,43 +29,6 @@ export const POS_CATEGORIES = [
     hint: "מכירה מהירה · עגלה · תשלום",
     // Rendered by PosRegisterTab, not as a tool list — this tab *is* a tool.
     tools: [],
-  },
-  {
-    key: "inventory",
-    label: "מלאי",
-    icon: "package",
-    color: "#0891B2",
-    hint: "מה יש במלאי ומה עומד להיגמר",
-    tools: [
-      {
-        id: "warehouse",
-        name: "מחסן ומלאי",
-        hint: "כל הפריטים, חידוש מלאי וסימון פריטים פגומים",
-        icon: "package",
-        target: { kind: "screen", key: "warehouse" },
-      },
-      {
-        id: "blind-count",
-        name: "ספירת מלאי עיוורת",
-        hint: "סופרים בלי לראות את הכמות במערכת, ואז משווים",
-        icon: "eye-off",
-        target: { kind: "app", key: "blind-count" },
-      },
-      {
-        id: "stock-forecast",
-        name: "תחזית אזילת מלאי",
-        hint: "בכמה ימים ייגמר הפריט לפי קצב המכירה",
-        icon: "trending-down",
-        target: { kind: "app", key: "stock-forecast" },
-      },
-      {
-        id: "machine-roi",
-        name: "החזר השקעה למכונה",
-        hint: "כמה זמן עד שמכונת השתייה מחזירה את עצמה",
-        icon: "target",
-        target: { kind: "app", key: "machine-roi" },
-      },
-    ],
   },
   {
     key: "logistics",
@@ -161,43 +129,6 @@ export const POS_CATEGORIES = [
         hint: "מחיר אחרי הנחה, וכמה ויתרת",
         icon: "tag",
         target: { kind: "app", key: "discount-calc" },
-      },
-    ],
-  },
-  {
-    key: "crm",
-    label: "לקוחות",
-    icon: "users",
-    color: "#E11D48",
-    hint: "הקפות, הודעות וחזרה של לקוחות",
-    tools: [
-      {
-        id: "debts",
-        name: "הקפות ולקוחות",
-        hint: "מי חייב כמה, ומתי סגר",
-        icon: "book-open",
-        target: { kind: "screen", key: "debts" },
-      },
-      {
-        id: "templates",
-        name: "תבניות הודעה",
-        hint: "הודעות מוכנות עם שדות שמתמלאים לבד",
-        icon: "message-square",
-        target: { kind: "app", key: "templates" },
-      },
-      {
-        id: "wa-direct",
-        name: "וואטסאפ ללא שמירה",
-        hint: "לפתוח צ׳אט למספר בלי להוסיף אותו לאנשי הקשר",
-        icon: "message-circle",
-        target: { kind: "app", key: "wa-direct" },
-      },
-      {
-        id: "qr-gen",
-        name: "QR לתפריט ולתשלום",
-        hint: "קוד סריקה לקישור, למספר או לטקסט",
-        icon: "grid",
-        target: { kind: "app", key: "qr-gen" },
       },
     ],
   },
