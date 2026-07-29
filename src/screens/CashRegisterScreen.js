@@ -8,6 +8,7 @@ import Bounce from "../components/Bounce";
 import CategoryTabBar from "../components/pos/CategoryTabBar";
 import Icon from "../components/Icon";
 import CustomText from "../components/CustomText";
+import KitchenTab from "../components/pos/KitchenTab";
 import PosRegisterTab from "../components/pos/PosRegisterTab";
 import { BusinessProvider } from "../context/BusinessContext";
 import { POS_CATEGORIES, posCategory } from "../utils/posCatalog";
@@ -83,6 +84,11 @@ function RegisterShell({ navigation }) {
 
       {active === "pos" ? (
         <PosRegisterTab bottomInset={insets.bottom} />
+      ) : active === "kitchen" ? (
+        // The kitchen is a live queue, not a tool launcher. Its three
+        // calculators are still reachable from the sheet below via the
+        // catalogue; what the tab itself shows is the board.
+        <KitchenTab bottomInset={insets.bottom} />
       ) : (
         <ToolList key={active} category={category} onOpen={openTool} bottomInset={insets.bottom} />
       )}
