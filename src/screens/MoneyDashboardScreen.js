@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { I18nManager, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 import Slider from "@react-native-community/slider";
 import { LinearGradient } from "expo-linear-gradient";
@@ -6,12 +6,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 
 import Bounce from "../components/Bounce";
-import CircularProgress from "../components/money/CircularProgress";
+import DroneGoalIcon from "../components/money/DroneGoalIcon";
+import ProfitAllocationCard from "../components/money/ProfitAllocationCard";
 import CustomText from "../components/CustomText";
 import Icon from "../components/Icon";
 import RiveVault, { VAULT_IS_RIVE } from "../components/money/RiveVault";
 import { Canvas } from "../components/Paper";
-import { hapticLight, hapticSuccess } from "../utils/haptics";
+import { hapticHeavy, hapticLight, hapticSuccess } from "../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import { shekel } from "../utils/posStore";
 import { STORAGE_KEYS } from "../utils/storageKeys";
@@ -63,6 +64,16 @@ function timeMachineInsight(futureSales) {
   return "זהירות - דורש מלאי מסיבי והיערכות לוגיסטית. רמת סיכון עולה.";
 }
 
+const todayKey = () => new Date().toISOString().slice(0, 10);
+
+const EMPTY_ALLOC = { day: "", destination: null, amount: 0 };
+
+const ALLOC_LABEL = {
+  buying: "לתקציב הרכש מאליאקספרס",
+  withdraw: "לכיס",
+  goal: "לרחפן",
+};
+
 // The first bucket has to be the one you see without scrolling.
 //
 // Under real RTL a `row` lays itself out right to left and a horizontal
@@ -85,6 +96,16 @@ export default function MoneyDashboardScreen({ navigation }) {
   // not a figure anyone should expect to survive a reload.
   const [futureSales, setFutureSales] = useState(0);
 
+  // What today's profit was swiped toward, if anything — resets the moment
+  // the calendar day changes, since "unallocated daily net profit" is a new
+  // question every morning. What has actually flown to the drone goal is a
+  // separate, cumulative pool: a savings goal does not reset at midnight.
+  const [dailyAlloc, setDailyAlloc] = usePersistentState("@dreammanager/dashboard-daily-alloc", EMPTY_ALLOC);
+  const [droneSaved, setDroneSaved] = usePersistentState("@dreammanager/drone-saved", 0);
+  // Bumped whenever an allocation pushes the drone goal to 100%; the icon
+  // watches this to fire its takeoff sequence exactly once per crossing.
+  const [takeoffToken, setTakeoffToken] = useState(0);
+
   const stats = useMemo(() => computeStats(sales || [], entries || []), [sales, entries]);
   const target = Number(goal?.target) > 0 ? Number(goal.target) : DEFAULT_GOAL.target;
 
@@ -95,9 +116,49 @@ export default function MoneyDashboardScreen({ navigation }) {
   const buckets = {
     buying: Math.max(0, stats.net * SPLIT.buying),
     withdraw: Math.max(0, stats.net * SPLIT.withdraw),
-    goal: Math.max(0, stats.net * SPLIT.goal),
   };
-  const goalProgress = target > 0 ? buckets.goal / target : 0;
+  const droneAmount = Number(droneSaved) || 0;
+  const droneProgress = target > 0 ? droneAmount / target : 0;
+
+  const today = todayKey();
+  const dailyProfit = Math.max(0, stats.todayProfit);
+  const allocatedToday = dailyAlloc?.day === today ? dailyAlloc : null;
+  const showProfitCard = dailyProfit > 0 && !allocatedToday;
+
+  const allocateProfit = useCallback(
+    (destination) => {
+      const amount = dailyProfit;
+      if (amount <= 0) return;
+
+      if (destination === "goal") {
+        const next = droneAmount + amount;
+        hapticHeavy();
+        setDroneSaved(next);
+        setDailyAlloc({ day: today, destination: "goal", amount });
+        if (target > 0 && next >= target) {
+          // The token only has to change, not count anything — the icon
+          // reacts to it changing, not to its value.
+          setTakeoffToken((t) => t + 1);
+        }
+        return;
+      }
+      if (destination === "buying") {
+        hapticLight();
+        setDailyAlloc({ day: today, destination: "buying", amount });
+        return;
+      }
+      hapticSuccess();
+      setDailyAlloc({ day: today, destination: "withdraw", amount });
+    },
+    [dailyProfit, droneAmount, target, today, setDroneSaved, setDailyAlloc]
+  );
+
+  // A drone goal that has just flown away starts the next one from zero
+  // rather than sitting at "100% forever" with nothing left on screen to
+  // show for it.
+  const onDroneTakeoffComplete = useCallback(() => {
+    setDroneSaved(0);
+  }, [setDroneSaved]);
 
   const insight = useMemo(() => buildInsight(stats), [stats]);
   const log = useMemo(() => buildLog(sales || [], entries || []), [sales, entries]);
@@ -170,6 +231,21 @@ export default function MoneyDashboardScreen({ navigation }) {
             <CustomText style={s.vaultNote}>הכספת מצוירת ב-SVG — אין קובץ Rive בפרויקט</CustomText>
           )}
         </Animated.View>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* Today's profit, thrown rather than read — a gesture card while it
+            is unallocated, a one-line receipt once it has been swiped. */}
+        {showProfitCard && (
+          <ProfitAllocationCard testID="profit-card" amount={dailyProfit} onAllocate={allocateProfit} />
+        )}
+        {allocatedToday?.destination && (
+          <Animated.View entering={FadeInDown.duration(200)} style={s.allocReceipt}>
+            <Icon name="check-circle" size={15} color={UI.green} />
+            <CustomText testID="alloc-receipt" style={s.allocReceiptText}>
+              רווח היום ({shekel(allocatedToday.amount)}) הועבר {ALLOC_LABEL[allocatedToday.destination]}.
+            </CustomText>
+          </Animated.View>
+        )}
 
         {/* ---------------------------------------------------------------- */}
         {/* Financial time machine — a local "what if", no server round trip. */}
@@ -257,19 +333,20 @@ export default function MoneyDashboardScreen({ navigation }) {
               tone: UI.violet,
               title: goal?.name || DEFAULT_GOAL.name,
               hint: `יעד ${shekel(target)}`,
-              value: shekel(buckets.goal),
+              value: shekel(droneAmount),
               onPress: () => {
                 hapticLight();
                 setDraftTarget(String(target));
                 setEditGoal((e) => !e);
               },
               right: (
-                <CircularProgress
+                <DroneGoalIcon
                   testID="goal-progress"
-                  progress={goalProgress}
-                  size={58}
-                  stroke={6}
+                  progress={droneProgress}
+                  size={54}
                   color={UI.violet}
+                  takeoffTrigger={takeoffToken}
+                  onTakeoffComplete={onDroneTakeoffComplete}
                 />
               ),
             },
@@ -647,6 +724,20 @@ const s = StyleSheet.create({
   },
   goalSave: { paddingHorizontal: 16, minHeight: 44, borderRadius: 12, backgroundColor: UI.violet, alignItems: "center", justifyContent: "center" },
   goalSaveText: { fontFamily: FONTS.bold, fontSize: 13.5, color: "#FFFFFF" },
+
+  allocReceipt: {
+    flexDirection: ROW,
+    alignItems: "center",
+    gap: 8,
+    marginHorizontal: UI.cardMarginH,
+    marginBottom: 22,
+    padding: 12,
+    borderRadius: UI.radius,
+    backgroundColor: tint(UI.green, 0.08),
+    borderWidth: 1,
+    borderColor: tint(UI.green, 0.2),
+  },
+  allocReceiptText: { flex: 1, fontFamily: FONTS.regular, fontSize: 12.5, color: UI.inkSoft, textAlign: "right" },
 
   timeMachine: {
     marginHorizontal: UI.cardMarginH,
