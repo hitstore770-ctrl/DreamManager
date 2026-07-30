@@ -218,6 +218,94 @@ export const checkQuotaDeclaration = {
 };
 
 // ---------------------------------------------------------------------------
+// 6. Web search
+// ---------------------------------------------------------------------------
+
+// Tavily, not Google — this is a search API built for feeding LLMs, so its
+// results are already short, relevant snippets rather than raw search-engine
+// HTML. The key is read from the build's env var directly (not through the
+// Settings-managed apiKeys store the other tools use), matching how this tool
+// was specified: EXPO_PUBLIC_TAVILY_API_KEY or nothing.
+export async function searchInternet(query) {
+  const key = process.env.EXPO_PUBLIC_TAVILY_API_KEY;
+  if (!key) {
+    return {
+      ok: false,
+      error: "NO_API_KEY",
+      message:
+        "Web search isn't available — no Tavily API key is configured on this build. " +
+        "Apologize to the user and answer from what you already know instead, or say you can't look this up right now.",
+    };
+  }
+  if (!query || !String(query).trim()) {
+    return { ok: false, error: "NO_QUERY", message: "No search query was given." };
+  }
+
+  let res;
+  try {
+    res = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: key,
+        query,
+        search_depth: "basic",
+        include_answer: false,
+      }),
+    });
+  } catch (e) {
+    return {
+      ok: false,
+      error: "FETCH_FAILED",
+      message: `Could not reach the search service (${String(e?.message || e)}). Apologize and let the user know live search failed.`,
+    };
+  }
+
+  if (!res.ok) {
+    return {
+      ok: false,
+      error: "HTTP_ERROR",
+      message: `The search request failed (HTTP ${res.status}). Apologize and offer to answer without live search.`,
+    };
+  }
+
+  const json = await res.json();
+  const results = Array.isArray(json.results) ? json.results.slice(0, 5) : [];
+
+  if (!results.length) {
+    return { ok: true, query, resultCount: 0, summary: "No results found for this query." };
+  }
+
+  // Condensed to exactly title/url/content, dropping Tavily's score,
+  // raw_content and other fields — a full result object per hit is the
+  // "burns tokens for nothing" this tool exists to avoid.
+  const summary = results
+    .map((r, i) => `${i + 1}. ${r.title || "Untitled"}\n${r.url || ""}\n${String(r.content || "").trim()}`)
+    .join("\n\n");
+
+  return { ok: true, query, resultCount: results.length, summary };
+}
+
+export const searchInternetDeclaration = {
+  name: "searchInternet",
+  description:
+    "Search the live web for current information — news, prices, specs, or anything that changes over time or " +
+    "falls outside your own knowledge. Returns the top 5 results as condensed title/url/summary snippets. " +
+    "Use this for open-ended real-world lookups you cannot answer from the conversation or your own knowledge. " +
+    "Do NOT use it for public transit, nearby places, item costs or quota — those have their own, more specific tools.",
+  parameters: {
+    type: "object",
+    properties: {
+      query: {
+        type: "string",
+        description: "The search query, in whichever language is most likely to return good results.",
+      },
+    },
+    required: ["query"],
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Wiring
 // ---------------------------------------------------------------------------
 
@@ -230,6 +318,7 @@ export const NOA_TOOL_HANDLERS = {
   findLocalBusiness: (args = {}, options) => findLocalBusiness(args.query, args.location, options),
   saveItemCost: (args = {}) => saveItemCost(args.itemName, args.costPrice),
   checkQuota: () => checkQuota(),
+  searchInternet: (args = {}) => searchInternet(args.query),
 };
 
 export const NOA_TOOL_DECLARATIONS = [
@@ -238,6 +327,7 @@ export const NOA_TOOL_DECLARATIONS = [
   findLocalBusinessDeclaration,
   saveItemCostDeclaration,
   checkQuotaDeclaration,
+  searchInternetDeclaration,
 ];
 
 // The shape Gemini wants under `tools`.
