@@ -1,6 +1,11 @@
 import { fetchDirections, fetchPlaces, isGoogleMapsConfigured } from "./googleMaps";
-import { allCosts, saveCost } from "../utils/costStore";
+import { auth } from "./firebaseConfig";
+import { allCosts, costFor, saveCost } from "../utils/costStore";
+import { pushMany } from "../utils/cloudSync";
+import { monthKey, todayKey, uid } from "../utils/posStore";
 import { quotaSnapshot } from "../utils/quotaTracker";
+import { STORAGE_KEYS } from "../utils/storageKeys";
+import { readPersistent, writePersistent } from "../utils/usePersistentState";
 
 // Noa's toolkit: the things she can go and look up.
 //
@@ -306,6 +311,196 @@ export const searchInternetDeclaration = {
 };
 
 // ---------------------------------------------------------------------------
+// 7. Point of sale
+// ---------------------------------------------------------------------------
+
+// The second tool that writes rather than reads, and the more consequential
+// one: this rings up a real sale, straight into the same `posSales` record
+// the register itself writes at checkout, with no cart and no confirmation
+// screen in between. It has to write into the exact place the register reads
+// from — usePersistentState's module-level cache, not just AsyncStorage —
+// so a register left open on the counter shows the sale appear live, and the
+// dashboard's totals update without anyone reloading. That is what
+// readPersistent/writePersistent exist for: a plain module, outside React,
+// reaching into state that hooks elsewhere are watching.
+//
+// Every item needs a real price. Noa has no visibility into the deck's price
+// list from here, so the declaration below is explicit that a missing price
+// is a question to ask the user, never a number to invent — the same
+// discipline saveItemCost holds cost prices to.
+export async function addTransactionToPOS(items, discount = 0, paymentMethod = "cash") {
+  const list = Array.isArray(items) ? items : [];
+  if (!list.length) {
+    return { ok: false, error: "NO_ITEMS", message: "No items were given. At least one item with a name and price is required." };
+  }
+
+  const clean = [];
+  for (const raw of list) {
+    const name = String(raw?.name || "").trim();
+    const price = Number(raw?.price);
+    const qty = Number(raw?.qty) > 0 ? Math.floor(Number(raw.qty)) : 1;
+    if (!name) {
+      return { ok: false, error: "BAD_ITEM", message: "Every item needs a name." };
+    }
+    if (!Number.isFinite(price) || price < 0) {
+      return {
+        ok: false,
+        error: "BAD_PRICE",
+        message: `No usable price for "${name}". Ask the user what it sells for — never guess a price.`,
+      };
+    }
+    clean.push({ name, price, qty });
+  }
+
+  const discountValue = Number(discount) || 0;
+  if (discountValue < 0) {
+    return { ok: false, error: "BAD_DISCOUNT", message: "Discount cannot be negative." };
+  }
+
+  const gross = clean.reduce((n, it) => n + it.price * it.qty, 0);
+  if (discountValue > gross) {
+    return {
+      ok: false,
+      error: "DISCOUNT_TOO_LARGE",
+      message: `A discount of ${discountValue} exceeds the ${gross} total. Check the amount with the user.`,
+    };
+  }
+
+  const method = ["cash", "card", "bit", "other"].includes(String(paymentMethod || "").toLowerCase())
+    ? String(paymentMethod).toLowerCase()
+    : "cash";
+
+  const costs = await allCosts();
+  const ts = Date.now();
+  const eventId = uid();
+  const day = todayKey();
+  const month = monthKey();
+
+  // Same record shape the register's completeSale writes — Noa's sale has to
+  // be indistinguishable from one rung up by hand, or every screen that reads
+  // `posSales` (the dashboard, the Z-report) would need to special-case it.
+  const records = clean.map((it) => {
+    const cost = costFor(costs, it.name) ?? 0;
+    return {
+      id: uid(),
+      updatedAt: ts,
+      ts,
+      day,
+      month,
+      itemId: null,
+      name: it.name,
+      // No deck to read a category from here, so this defaults to the
+      // fast-sale side of the business rather than guessing at electronics.
+      category: "snacks",
+      qty: it.qty,
+      price: it.price,
+      cost,
+      total: it.price * it.qty,
+      profit: (it.price - cost) * it.qty,
+      kind: "sale",
+      eventId,
+      sku: `noa-${uid()}`,
+      paymentMethod: method,
+      source: "noa",
+    };
+  });
+
+  // The discount is its own line on the same event rather than a price
+  // adjustment spread across items, so the receipt (and every report reading
+  // these records) shows exactly what was charged and what was knocked off,
+  // rather than reverse-engineering it from altered per-item prices.
+  if (discountValue > 0) {
+    records.push({
+      id: uid(),
+      updatedAt: ts,
+      ts,
+      day,
+      month,
+      itemId: null,
+      name: "הנחה",
+      category: "discount",
+      qty: 1,
+      price: -discountValue,
+      cost: 0,
+      total: -discountValue,
+      profit: -discountValue,
+      kind: "sale",
+      eventId,
+      sku: `noa-discount-${eventId}`,
+      paymentMethod: method,
+      source: "noa",
+    });
+  }
+
+  const prevSales = (await readPersistent(STORAGE_KEYS.posSales, [])) || [];
+  await writePersistent(STORAGE_KEYS.posSales, [...prevSales, ...records]);
+
+  // Best-effort, same as the register: the sale is already committed to the
+  // state every screen reads from, so a failed or slow cloud write must not
+  // block confirming it to the user.
+  const uidNow = auth?.currentUser?.uid;
+  if (uidNow) pushMany(uidNow, "sales", records);
+
+  const total = gross - discountValue;
+  return {
+    ok: true,
+    eventId,
+    itemCount: clean.length,
+    unitCount: clean.reduce((n, it) => n + it.qty, 0),
+    gross,
+    discount: discountValue,
+    total,
+    paymentMethod: method,
+    message:
+      `Rang up ${clean.length} item(s) totalling ${total}` +
+      `${discountValue > 0 ? ` (${gross} minus a ${discountValue} discount)` : ""}, paid by ${method}. ` +
+      "Confirm the items and total back to the user.",
+  };
+}
+
+export const addTransactionToPOSDeclaration = {
+  name: "addTransactionToPOS",
+  description:
+    "Ring up a sale directly on the register — adds one or more items straight to today's sales record, " +
+    "with no cart and no manual entry required. Use this when the user asks you to ring up a sale, add an " +
+    "item to the register, or close out a sale for them by voice or text " +
+    "('תרשמי לי מכירה', 'תוסיפי 2 קולה ב-4 שקלים כל אחת', 'סגרי לי את זה בקופה'). " +
+    "Every item needs an exact selling price — if the user did not state one, ASK for it rather than " +
+    "guessing; never invent a price. " +
+    "Do NOT use this to log what an item cost the user to buy (that is saveItemCost, a different number), " +
+    "and do NOT use it for a sale the user is only describing hypothetically rather than asking you to " +
+    "actually record right now.",
+  parameters: {
+    type: "object",
+    properties: {
+      items: {
+        type: "array",
+        description: "The items being sold, in the order the user named them.",
+        items: {
+          type: "object",
+          properties: {
+            name: { type: "string", description: "The item's name, as the user said it." },
+            price: { type: "number", description: "The exact per-unit selling price. Required — never a guess." },
+            qty: { type: "number", description: "How many units. Defaults to 1 if not stated." },
+          },
+          required: ["name", "price"],
+        },
+      },
+      discount: {
+        type: "number",
+        description: "A flat shekel amount to take off the total, if the user asked for a discount. 0 or omitted if none.",
+      },
+      paymentMethod: {
+        type: "string",
+        enum: ["cash", "card", "bit", "other"],
+        description: "How the customer paid. Defaults to 'cash' if the user did not say.",
+      },
+    },
+    required: ["items"],
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Wiring
 // ---------------------------------------------------------------------------
 
@@ -319,6 +514,7 @@ export const NOA_TOOL_HANDLERS = {
   saveItemCost: (args = {}) => saveItemCost(args.itemName, args.costPrice),
   checkQuota: () => checkQuota(),
   searchInternet: (args = {}) => searchInternet(args.query),
+  addTransactionToPOS: (args = {}) => addTransactionToPOS(args.items, args.discount, args.paymentMethod),
 };
 
 export const NOA_TOOL_DECLARATIONS = [
@@ -328,6 +524,7 @@ export const NOA_TOOL_DECLARATIONS = [
   saveItemCostDeclaration,
   checkQuotaDeclaration,
   searchInternetDeclaration,
+  addTransactionToPOSDeclaration,
 ];
 
 // The shape Gemini wants under `tools`.

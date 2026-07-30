@@ -209,6 +209,10 @@ export default function LiveAiScreen({ navigation }) {
     }
   }, [recording, transcribing]);
 
+  // Hands-free: a transcript that came back clean is sent immediately,
+  // exactly as if it had been typed and the send button tapped — no second
+  // action required. A dictated note pending review in the composer would
+  // not be "hands-free", it would just move where the extra tap happens.
   const stopRecording = useCallback(async () => {
     const recorder = recorderRef.current;
     if (!recorder) return;
@@ -219,12 +223,15 @@ export default function LiveAiScreen({ navigation }) {
       const uri = recorder.uri;
       recorderRef.current = null;
       const res = await transcribe(uri);
-      if (res.ok) {
+      if (res.ok && res.text?.trim()) {
         hapticSuccess();
-        setDraft((d) => (d ? `${d} ${res.text}` : res.text));
+        send(res.text.trim());
       } else if (res.error) {
         hapticWarning();
         setError(res.error);
+      } else {
+        hapticWarning();
+        setError("לא זוהה דיבור בהקלטה.");
       }
     } catch {
       hapticWarning();
@@ -232,7 +239,7 @@ export default function LiveAiScreen({ navigation }) {
     } finally {
       setTranscribing(false);
     }
-  }, []);
+  }, [send]);
 
   const openCamera = useCallback(() => {
     hapticLight();
@@ -414,21 +421,30 @@ export default function LiveAiScreen({ navigation }) {
             textAlign="right"
           />
           {/* Hold to talk — press and hold rather than a toggle, so letting go
-              is always the way out and a forgotten recording cannot run on. */}
-          <Bounce
-            testID="live-mic"
-            style={[s.iconBtn, recording && s.iconBtnHot]}
-            scaleTo={0.9}
-            onPressIn={startRecording}
-            onPressOut={stopRecording}
-            disabled={transcribing}
-          >
-            {transcribing ? (
-              <ActivityIndicator size="small" color={UI.violet} />
-            ) : (
-              <Icon name="mic" size={18} color={recording ? "#FFFFFF" : UI.inkSoft} />
+              is always the way out and a forgotten recording cannot run on.
+              Hands-free: the transcript is sent the instant it comes back,
+              not dropped in the composer for a second tap. Sized and coloured
+              above the camera button — this is the second action in the row,
+              not a fourth icon competing with the rest. */}
+          <View style={s.micWrap}>
+            {!recording && !transcribing && (
+              <CustomText style={s.micHint}>החזק לדיבור</CustomText>
             )}
-          </Bounce>
+            <Bounce
+              testID="live-mic"
+              style={[s.micBtn, recording && s.micBtnActive]}
+              scaleTo={0.88}
+              onPressIn={startRecording}
+              onPressOut={stopRecording}
+              disabled={transcribing}
+            >
+              {transcribing ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Icon name="mic" size={21} color="#FFFFFF" />
+              )}
+            </Bounce>
+          </View>
           <Bounce testID="live-camera" style={s.iconBtn} scaleTo={0.9} onPress={openCamera}>
             <Icon name="camera" size={18} color={pendingImage ? UI.violet : UI.inkSoft} />
           </Bounce>
@@ -593,7 +609,30 @@ const s = StyleSheet.create({
     justifyContent: "center",
     ...BEVEL,
   },
-  iconBtnHot: { backgroundColor: UI.coral },
+  // The mic is the premium, hands-free action — larger than the other two
+  // composer icons and filled with the same royal blue as Noa's chat
+  // bubbles, rather than another outlined grey square.
+  micWrap: { alignItems: "center" },
+  micHint: {
+    position: "absolute",
+    bottom: "100%",
+    marginBottom: 6,
+    fontFamily: FONTS.medium,
+    fontSize: 10,
+    color: UI.inkMuted,
+    textAlign: "center",
+    width: 70,
+  },
+  micBtn: {
+    width: 50,
+    height: 50,
+    borderRadius: 20,
+    backgroundColor: UI.cyan,
+    alignItems: "center",
+    justifyContent: "center",
+    ...BUBBLE_SHADOW,
+  },
+  micBtnActive: { backgroundColor: UI.red },
   sendBtn: {
     width: 48,
     height: 48,
