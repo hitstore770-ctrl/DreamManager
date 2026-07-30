@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { I18nManager, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
+import Slider from "@react-native-community/slider";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
@@ -41,6 +42,27 @@ const SPLIT = { buying: 0.4, withdraw: 0.4, goal: 0.2 };
 
 const DEFAULT_GOAL = { name: "רחפן DJI", target: 2500 };
 
+// A rough per-sale profit for the time machine slider — not a real average
+// pulled from the log, just a plausible planning number so dragging the
+// slider gives an order-of-magnitude feel for "what if I sell N more".
+const AVG_PROFIT_PER_SALE = 20;
+
+/**
+ * Noa's read on the slider position, entirely local — no model call. Three
+ * bands, exact copy, so the bubble updates the instant the thumb moves
+ * instead of waiting on a round trip for text that would be the same three
+ * sentences anyway.
+ */
+function timeMachineInsight(futureSales) {
+  if (futureSales <= 20) {
+    return "צמיחה בטוחה ויציבה. הרחפן מתקרב לאט אבל בטוח.";
+  }
+  if (futureSales <= 60) {
+    return "קצב אש! בנקודת המכירות הזו אתה מתחיל לשבור שיאים.";
+  }
+  return "זהירות - דורש מלאי מסיבי והיערכות לוגיסטית. רמת סיכון עולה.";
+}
+
 // The first bucket has to be the one you see without scrolling.
 //
 // Under real RTL a `row` lays itself out right to left and a horizontal
@@ -59,9 +81,16 @@ export default function MoneyDashboardScreen({ navigation }) {
   const [goal, setGoal] = usePersistentState("@dreammanager/drone-goal", DEFAULT_GOAL);
   const [editGoal, setEditGoal] = useState(false);
   const [draftTarget, setDraftTarget] = useState("");
+  // The time machine. Local and ephemeral on purpose — this is a "what if",
+  // not a figure anyone should expect to survive a reload.
+  const [futureSales, setFutureSales] = useState(0);
 
   const stats = useMemo(() => computeStats(sales || [], entries || []), [sales, entries]);
   const target = Number(goal?.target) > 0 ? Number(goal.target) : DEFAULT_GOAL.target;
+
+  const projecting = futureSales > 0;
+  const projectedProfit = stats.net + futureSales * AVG_PROFIT_PER_SALE;
+  const timeMachineText = timeMachineInsight(futureSales);
 
   const buckets = {
     buying: Math.max(0, stats.net * SPLIT.buying),
@@ -116,13 +145,20 @@ export default function MoneyDashboardScreen({ navigation }) {
             <RiveVault size={172} tone={stats.net >= 0 ? UI.violet : UI.red} open={stats.net > 0} />
           </View>
 
-          <CustomText style={s.heroLabel}>רווח נקי כולל</CustomText>
+          <CustomText style={s.heroLabel}>
+            {projecting ? "רווח נקי (תחזית)" : "רווח נקי כולל"}
+          </CustomText>
           <CustomText
             testID="hero-net"
             weight="bold"
-            style={[s.heroValue, { color: stats.net >= 0 ? UI.ink : UI.red }]}
+            style={[
+              s.heroValue,
+              projecting
+                ? { color: UI.cyan, textShadowColor: tint(UI.cyan, 0.45), textShadowRadius: 14, textShadowOffset: { width: 0, height: 0 } }
+                : { color: stats.net >= 0 ? UI.ink : UI.red },
+            ]}
           >
-            {shekel(stats.net)}
+            {shekel(projecting ? projectedProfit : stats.net)}
           </CustomText>
 
           <View style={s.heroPills}>
@@ -133,6 +169,60 @@ export default function MoneyDashboardScreen({ navigation }) {
           {!VAULT_IS_RIVE && (
             <CustomText style={s.vaultNote}>הכספת מצוירת ב-SVG — אין קובץ Rive בפרויקט</CustomText>
           )}
+        </Animated.View>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* Financial time machine — a local "what if", no server round trip. */}
+        <Animated.View entering={FadeInDown.delay(140).springify().damping(15)} style={s.timeMachine}>
+          <View style={s.timeMachineHead}>
+            <View style={s.timeMachineBadge}>
+              <Icon name="fast-forward" size={15} color={UI.cyan} />
+            </View>
+            <CustomText weight="bold" style={s.timeMachineTitle}>מכונת זמן פיננסית</CustomText>
+            <CustomText testID="time-machine-value" style={s.timeMachineValue}>
+              {futureSales > 0 ? `+${futureSales}` : futureSales}
+            </CustomText>
+          </View>
+          <CustomText style={s.timeMachineHint}>מכירות נוספות בעתיד</CustomText>
+
+          <Slider
+            testID="time-machine-slider"
+            style={s.timeMachineSlider}
+            minimumValue={0}
+            maximumValue={100}
+            step={1}
+            value={futureSales}
+            onValueChange={setFutureSales}
+            minimumTrackTintColor={UI.cyan}
+            maximumTrackTintColor={UI.hairline}
+            thumbTintColor={UI.cyan}
+          />
+
+          {/* Glassmorphism: a white wash over the desk plus a hairline,
+              matching the smart-bucket cards below rather than a new look. */}
+          <View style={s.timeMachineInsight}>
+            <LinearGradient
+              colors={["rgba(255,255,255,0.94)", "rgba(255,255,255,0.68)"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0.4, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                { borderRadius: UI.radius, borderWidth: 1, borderColor: tint(UI.cyan, 0.2) },
+              ]}
+            />
+            <View style={s.insightHead}>
+              <View style={s.insightBadge}>
+                <Icon name="message-circle" size={15} color={UI.cyan} />
+              </View>
+              <CustomText weight="bold" style={s.insightTitle}>התובנה של נועה</CustomText>
+            </View>
+            <CustomText testID="time-machine-insight" style={s.insightBody}>
+              {timeMachineText}
+            </CustomText>
+          </View>
         </Animated.View>
 
         {/* ---------------------------------------------------------------- */}
@@ -557,6 +647,42 @@ const s = StyleSheet.create({
   },
   goalSave: { paddingHorizontal: 16, minHeight: 44, borderRadius: 12, backgroundColor: UI.violet, alignItems: "center", justifyContent: "center" },
   goalSaveText: { fontFamily: FONTS.bold, fontSize: 13.5, color: "#FFFFFF" },
+
+  timeMachine: {
+    marginHorizontal: UI.cardMarginH,
+    marginBottom: 22,
+    borderRadius: UI.radius,
+    padding: 16,
+    backgroundColor: UI.surface,
+    ...BEVEL,
+    ...CARD_SHADOW,
+  },
+  timeMachineHead: { flexDirection: ROW, alignItems: "center", gap: 9 },
+  timeMachineBadge: {
+    width: 30,
+    height: 30,
+    borderRadius: 11,
+    backgroundColor: tint(UI.cyan, 0.12),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  timeMachineTitle: { flex: 1, fontSize: 14.5, color: UI.ink, textAlign: "right" },
+  timeMachineValue: { fontFamily: FONTS.bold, fontSize: 15, color: UI.cyan },
+  timeMachineHint: {
+    fontFamily: FONTS.regular,
+    fontSize: 11.5,
+    color: UI.inkMuted,
+    textAlign: "right",
+    marginTop: 4,
+  },
+  timeMachineSlider: { width: "100%", height: 40, marginTop: 6 },
+  timeMachineInsight: {
+    marginTop: 10,
+    borderRadius: UI.radius,
+    padding: 14,
+    gap: 8,
+    overflow: "hidden",
+  },
 
   insight: {
     marginHorizontal: UI.cardMarginH,

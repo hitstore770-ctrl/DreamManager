@@ -9,6 +9,7 @@
     "@gorhom/bottom-sheet": "^5.2.14",
     "@lottiefiles/dotlottie-react": "^0.13.5",
     "@react-native-async-storage/async-storage": "^3.1.1",
+    "@react-native-community/slider": "^5.2.0",
     "@react-navigation/bottom-tabs": "^7.18.13",
     "@react-navigation/material-top-tabs": "^7.6.13",
     "@react-navigation/native": "^7.3.13",
