@@ -245,7 +245,7 @@ export default function ContextualAiChatScreen({ route, navigation }) {
             renderItem={({ item, index }) => <Bubble message={item} index={index} />}
             ListEmptyComponent={
               hydrated ? (
-                <Empty configured={isGeminiConfigured} onPick={(q) => send(q)} />
+                <Empty configured={isGeminiConfigured()} onPick={(q) => send(q)} />
               ) : null
             }
             ListFooterComponent={

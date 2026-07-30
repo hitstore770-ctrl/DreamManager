@@ -3,6 +3,7 @@ import "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, I18nManager, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { ReduceMotion, ReducedMotionConfig } from "react-native-reanimated";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { DefaultTheme, NavigationContainer } from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -24,6 +25,7 @@ import { CloudSyncProvider } from "./src/context/CloudSyncContext";
 import { NotesProvider } from "./src/context/NotesContext";
 import { SettingsProvider, useSettings } from "./src/context/SettingsContext";
 import AppNavigator from "./src/navigation/AppNavigator";
+import { loadApiKeys } from "./src/config/apiKeys";
 import { UI } from "./src/utils/ui";
 
 // React Navigation paints every scene container with theme.colors.background,
@@ -61,7 +63,22 @@ if (!I18nManager.isRTL) {
 // Inner shell: has access to the settings context, so it can theme the status
 // bar and gate the whole app behind the PIN lock overlay on launch.
 function Shell() {
-  const { theme, loaded, pinRequired, pin, setUnlocked } = useSettings();
+  const { theme, loaded, pinRequired, pin, setUnlocked, animations } = useSettings();
+
+  // The "animations" switch in Settings, applied at the one place that
+  // reaches every animation in the app.
+  //
+  // Reanimated already has a global reduce-motion flag, and honouring it is
+  // what every `entering=`, `layout=` and `withTiming` in this codebase does
+  // for free — so the switch flips that flag rather than threading a prop
+  // through forty-odd call sites (which would miss the ones inside worklets
+  // entirely). Off means animations resolve instantly to their end state:
+  // nothing disappears, it just stops moving.
+  //
+  // "Never" is not the on-state. With the switch on we defer to the OS
+  // accessibility setting, so a user who has asked their phone for reduced
+  // motion is not overridden by an app default.
+  const reduceMotion = animations === false ? ReduceMotion.Always : ReduceMotion.System;
 
   if (!loaded) {
     return (
@@ -73,6 +90,7 @@ function Shell() {
 
   return (
     <View style={{ flex: 1, backgroundColor: UI.bg }}>
+      <ReducedMotionConfig mode={reduceMotion} />
       <NavigationContainer theme={NAV_THEME}>
         <AppNavigator />
       </NavigationContainer>
@@ -122,6 +140,12 @@ export default function App() {
   // Eight seconds, not three: on a cold cellular connection the four files
   // regularly take longer than three, and cutting them off early guarantees
   // the unstyled flash this whole gate exists to prevent.
+  // Pull any keys saved in Settings out of the keystore before the first
+  // request can fire. Failing is fine — the .env values still apply.
+  useEffect(() => {
+    loadApiKeys().catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (fontsLoaded || fontError) return undefined;
     const t = setTimeout(() => setGaveUp(true), 8000);

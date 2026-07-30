@@ -9,6 +9,7 @@ import ScanCamera from "./ScanCamera";
 import VoiceOrderButton from "./VoiceOrderButton";
 import { useAuth } from "../../context/AuthContext";
 import { useBusiness } from "../../context/BusinessContext";
+import { useSettings } from "../../context/SettingsContext";
 import { costFor, useItemCosts } from "../../utils/costStore";
 import { pushMany } from "../../utils/cloudSync";
 import { hapticLight, hapticSuccess, hapticWarning } from "../../utils/haptics";
@@ -47,6 +48,11 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
   const { sales, setSales, setInventory } = useBusiness();
   const { user } = useAuth();
   const costs = useItemCosts();
+  // Settings → תצורת קופה. Off hides the manual line entirely, which is the
+  // point: a register that can invent items cannot be reconciled against the
+  // deck, and some days the owner wants exactly that discipline.
+  const { allowManualItems } = useSettings();
+  const manualAllowed = allowManualItems !== false;
 
   const [deckKey, setDeckKey] = useState("food");
   const [decks] = usePersistentState("@dreammanager/pos-decks", DEFAULT_DECK_ITEMS);
@@ -258,19 +264,21 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
               contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: cartHeight + bottomInset + 16 }}
               showsVerticalScrollIndicator={false}
               ListHeaderComponent={
-                <TouchableOpacity
-                  testID="manual-open"
-                  style={st.manualBtn}
-                  activeOpacity={0.85}
-                  onPress={() => {
-                    hapticLight();
-                    setManualOpen(true);
-                  }}
-                >
-                  <Icon name="edit-3" size={17} color={UI.violet} />
-                  <CustomText style={st.manualText}>פריט ידני</CustomText>
-                  <CustomText style={st.manualHint}>שם ומחיר, לפריט שלא בתפריט</CustomText>
-                </TouchableOpacity>
+                manualAllowed ? (
+                  <TouchableOpacity
+                    testID="manual-open"
+                    style={st.manualBtn}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      hapticLight();
+                      setManualOpen(true);
+                    }}
+                  >
+                    <Icon name="edit-3" size={17} color={UI.violet} />
+                    <CustomText style={st.manualText}>פריט ידני</CustomText>
+                    <CustomText style={st.manualHint}>שם ומחיר, לפריט שלא בתפריט</CustomText>
+                  </TouchableOpacity>
+                ) : null
               }
               renderItem={({ item, index }) => {
                 const inCart = cart.find((l) => l.sku === item.sku);
@@ -390,7 +398,11 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
         )}
       </Animated.View>
 
-      <ManualItemModal visible={manualOpen} onClose={() => setManualOpen(false)} onAdd={addManual} />
+      <ManualItemModal
+        visible={manualOpen && manualAllowed}
+        onClose={() => setManualOpen(false)}
+        onAdd={addManual}
+      />
       <ScanCamera visible={scanOpen} onScanned={addScanned} onClose={() => setScanOpen(false)} />
       <CheckoutSummary
         visible={summaryOpen}
@@ -500,6 +512,16 @@ function ManualItemModal({ visible, onClose, onAdd }) {
 function CheckoutSummary({ visible, totals, cart, lineCost, onClose, onComplete }) {
   const margin = totals.gross > 0 ? totals.profit / totals.gross : null;
 
+  // Ma'aser, at the rate set in Settings → תצורת קופה.
+  //
+  // Taken off the *profit*, not the revenue — the money that came in to cover
+  // the cost of the goods was never income. Shown only when there is a profit
+  // to take it from: a loss-making sale owes nothing, and rendering "₪0" or a
+  // negative figure here would just be noise.
+  const { maaserRate } = useSettings();
+  const maaserPct = Math.max(0, parseFloat(maaserRate) || 0);
+  const maaser = maaserPct > 0 && totals.profit > 0 ? (totals.profit * maaserPct) / 100 : 0;
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={st.backdrop} onPress={onClose}>
@@ -535,6 +557,15 @@ function CheckoutSummary({ visible, totals, cart, lineCost, onClose, onComplete 
               {margin != null && <CustomText style={st.sumMargin}>{Math.round(margin * 100)}% מתח רווח</CustomText>}
             </View>
           </View>
+
+          {maaser > 0 && (
+            <View style={st.sumRow}>
+              <CustomText testID="sum-maaser" style={[st.sumValue, { color: UI.cyan }]}>
+                {shekel(maaser)}
+              </CustomText>
+              <CustomText style={st.sumLabel}>מעשר ({maaserPct}% מהרווח)</CustomText>
+            </View>
+          )}
 
           {/* Which lines had no cost behind them. Without this the profit reads
               as precise on a cart where half the costs are simply unknown —

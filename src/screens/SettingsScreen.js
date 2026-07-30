@@ -23,6 +23,8 @@ import { IMPLEMENTED, TOOL_COUNT } from "../utils/toolsCatalog";
 import { buildSalesCsv } from "../utils/zReport";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import CustomText from "../components/CustomText";
+import { KEY_SLOTS, SECURE_STORE_AVAILABLE, apiKey, keySource, loadApiKeys, maskKey, onApiKeysChanged, saveApiKey } from "../config/apiKeys";
+import { STARTUP_SCREENS } from "../navigation/startupScreens";
 
 // הגדרות — an iOS-style grouped settings list on the 770JLM Light Modern
 // surface. Tapping the version line seven times in a row unlocks a developer
@@ -35,6 +37,7 @@ const INK_SOFT = "#6B7280";
 const INK_MUTED = "#9CA3AF";
 const BLUE = "#7C3AED";
 const GOLD = "#06B6D4";
+const GREEN = "#067647";
 const RED = "#EF4444";
 const HAIRLINE = "#EEF1F6";
 
@@ -96,7 +99,13 @@ export default function SettingsScreen() {
   const [confirmMode, setConfirmMode] = useState(null);
   const [crash, setCrash] = useState(false);
   const [vat, setVat] = useState(String(settings.vatRate ?? "17"));
+  const [maaser, setMaaser] = useState(String(settings.maaserRate ?? "10"));
   const [footer, setFooter] = useState(settings.receiptFooter ?? "");
+  // What is typed into the API key fields. Never seeded from the stored key:
+  // the row shows a mask instead, so an over-the-shoulder look or a screenshot
+  // of this screen cannot leak a working key.
+  const [keyDrafts, setKeyDrafts] = useState({});
+  const [keySources, setKeySources] = useState({});
   const [syncState, setSyncState] = useState(null);
   const [storage, setStorage] = useState({ total: 0, count: 0, rows: [] });
   // Snapshot of every app key, captured alongside the size measurement. Held
@@ -126,8 +135,63 @@ export default function SettingsScreen() {
     setVat(String(settings.vatRate ?? ""));
   }, [settings.vatRate]);
   useEffect(() => {
+    setMaaser(String(settings.maaserRate ?? ""));
+  }, [settings.maaserRate]);
+  useEffect(() => {
     setFooter(settings.receiptFooter ?? "");
   }, [settings.receiptFooter]);
+
+  // --- API keys -------------------------------------------------------------
+  // Read where each key currently comes from once the keystore has been
+  // opened, and again whenever one is saved or cleared.
+  const refreshKeySources = useCallback(async () => {
+    await loadApiKeys().catch(() => {});
+    setKeySources(
+      Object.fromEntries(Object.keys(KEY_SLOTS).map((id) => [id, keySource(id)]))
+    );
+  }, []);
+  useEffect(() => {
+    refreshKeySources();
+    return onApiKeysChanged(() => {
+      setKeySources(
+        Object.fromEntries(Object.keys(KEY_SLOTS).map((id) => [id, keySource(id)]))
+      );
+    });
+  }, [refreshKeySources]);
+
+  const saveKey = useCallback(
+    async (id) => {
+      const value = String(keyDrafts[id] ?? "").trim();
+      if (!value) return;
+      const res = await saveApiKey(id, value);
+      if (!res.ok) {
+        hapticWarning();
+        flash("שמירת המפתח נכשלה");
+        return;
+      }
+      hapticSuccess();
+      // Clear the field on success. The key is stored; leaving it on screen
+      // only creates another copy of it to be seen.
+      setKeyDrafts((prev) => ({ ...prev, [id]: "" }));
+      await refreshKeySources();
+      flash(`המפתח של ${KEY_SLOTS[id].label} נשמר`);
+    },
+    [keyDrafts, flash, refreshKeySources]
+  );
+
+  const clearKey = useCallback(
+    async (id) => {
+      await saveApiKey(id, "");
+      hapticWarning();
+      setKeyDrafts((prev) => ({ ...prev, [id]: "" }));
+      await refreshKeySources();
+      // Removing the saved key does not necessarily leave the feature dead —
+      // a build-time EXPO_PUBLIC_ value takes over if there is one, and the
+      // row will say so on its own.
+      flash(`המפתח של ${KEY_SLOTS[id].label} נמחק`);
+    },
+    [flash, refreshKeySources]
+  );
 
   // --- Storage health -------------------------------------------------------
   const measureStorage = useCallback(async () => {
@@ -321,6 +385,16 @@ export default function SettingsScreen() {
     const clean = text.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1").slice(0, 5);
     setVat(clean);
     update({ vatRate: clean });
+  };
+
+  // Same shape as saveVat: sanitize and commit on every keystroke rather than
+  // on blur. react-native-web's TextInput does not implement onEndEditing at
+  // all — a field wired to it looks fine on a real device and silently never
+  // saves in the browser preview.
+  const saveMaaser = (text) => {
+    const clean = text.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1").slice(0, 5);
+    setMaaser(clean);
+    update({ maaserRate: clean });
   };
 
   const saveFooter = (text) => {
@@ -656,8 +730,166 @@ export default function SettingsScreen() {
         </Group>
         </Section>
 
-        {/* ---------- Business ---------- */}
+        {/* ---------- Account & security ---------- */}
         <Section index={2}>
+        <Group title="חשבון ואבטחה" icon="shield">
+          <SwitchRow
+            label="נעילה ביומטרית"
+            hint={
+              "טביעת אצבע או זיהוי פנים בפתיחת האפליקציה. אם אין ביומטריה מוגדרת במכשיר — " +
+              "האפליקציה תיפתח רגיל, כדי שלא תינעל בחוץ בלי דרך חזרה."
+            }
+            icon="lock"
+            value={!!settings.biometricLock}
+            onValueChange={(v) => {
+              hapticLight();
+              update({ biometricLock: v });
+            }}
+            bounds={bounds}
+            compact={compact}
+          />
+          <ActionRow
+            label={settings.pin ? "שינוי קוד PIN" : "הגדרת קוד PIN"}
+            hint="נעילה נוספת שאינה תלויה בחומרה"
+            icon="hash"
+            actionLabel={settings.pin ? "שנה" : "הגדר"}
+            onPress={() => {
+              hapticLight();
+              setPinModal(true);
+            }}
+            bounds={bounds}
+            compact={compact}
+          />
+          <InfoRow
+            label="מזהה משתמש"
+            value={user?.uid ? `${user.uid.slice(0, 10)}…` : "—"}
+            icon="user"
+            last
+            bounds={bounds}
+            compact={compact}
+          />
+        </Group>
+        </Section>
+
+        {/* ---------- App preferences ---------- */}
+        <Section index={3}>
+        <Group title="העדפות אפליקציה" icon="sliders">
+          <View style={s.stackRow}>
+            <StackLabel icon="home" text="מסך פתיחה" />
+            <CustomText style={s.rowHint}>
+              {STARTUP_SCREENS.find((x) => x.name === settings.startupScreen)?.label || "נועה"}
+            </CustomText>
+            <Segment
+              options={STARTUP_SCREENS.map((x) => ({ key: x.name, label: x.label }))}
+              value={settings.startupScreen}
+              onChange={(v) => {
+                hapticLight();
+                update({ startupScreen: v });
+              }}
+              bounds={bounds}
+            />
+          </View>
+          <SwitchRow
+            label="אנימציות"
+            hint="כיבוי מוריד צריכת סוללה ועוזר למי שרגיש לתנועה. המסכים נטענים מיידית במקום להיכנס בהדרגה."
+            icon="zap"
+            value={settings.animations !== false}
+            onValueChange={(v) => {
+              hapticLight();
+              update({ animations: v });
+            }}
+            last
+            bounds={bounds}
+            compact={compact}
+          />
+        </Group>
+        </Section>
+
+        {/* ---------- POS configuration ---------- */}
+        <Section index={4}>
+        <Group title="תצורת קופה" icon="shopping-cart">
+          <View style={s.fieldRow}>
+            <CustomText style={s.rowLabel}>מע״מ (%)</CustomText>
+            <TextInput
+              testID="set-vat"
+              style={s.nameInput}
+              value={vat}
+              onChangeText={saveVat}
+              keyboardType="decimal-pad"
+              textAlign="center"
+              maxLength={5}
+            />
+          </View>
+          <View style={s.fieldRow}>
+            <CustomText style={s.rowLabel}>מעשר מהרווח (%)</CustomText>
+            <TextInput
+              testID="set-maaser"
+              style={s.nameInput}
+              value={maaser}
+              onChangeText={saveMaaser}
+              keyboardType="decimal-pad"
+              textAlign="center"
+              maxLength={5}
+            />
+          </View>
+          <SwitchRow
+            label="פריט ידני בקופה"
+            hint="כפתור להוספת פריט בשם ומחיר חופשיים. במצב אליאקספרס אין הזנה ידנית בכל מקרה — פריט נכנס רק בסריקה."
+            icon="edit-3"
+            value={settings.allowManualItems !== false}
+            onValueChange={(v) => {
+              hapticLight();
+              update({ allowManualItems: v });
+            }}
+            bounds={bounds}
+            compact={compact}
+          />
+          <SwitchRow
+            label="ניקוי עגלה אוטומטי"
+            hint="לרוקן את העגלה מיד אחרי חיוב"
+            icon="trash-2"
+            value={settings.autoClearCart !== false}
+            onValueChange={(v) => {
+              hapticLight();
+              update({ autoClearCart: v });
+            }}
+            last
+            bounds={bounds}
+            compact={compact}
+          />
+        </Group>
+        </Section>
+
+        {/* ---------- API keys ---------- */}
+        <Section index={5}>
+        <Group title="מפתחות API" icon="key">
+          <View style={s.noticeRow}>
+            <Icon name={SECURE_STORE_AVAILABLE ? "lock" : "alert-triangle"} size={14} color={SECURE_STORE_AVAILABLE ? GREEN : GOLD} />
+            <CustomText style={s.noticeText}>
+              {SECURE_STORE_AVAILABLE
+                ? "המפתחות נשמרים במאגר המאובטח של המכשיר (Keychain / Keystore) ולא נכנסים לקוד האפליקציה."
+                : "בדפדפן אין מאגר מאובטח — המפתח נשמר ב-localStorage בטקסט גלוי. במכשיר עצמו הוא נשמר מוצפן."}
+            </CustomText>
+          </View>
+
+          {Object.values(KEY_SLOTS).map((slot, i) => (
+            <ApiKeyRow
+              key={slot.id}
+              slot={slot}
+              value={keyDrafts[slot.id] ?? ""}
+              onChange={(v) => setKeyDrafts((prev) => ({ ...prev, [slot.id]: v }))}
+              onSave={() => saveKey(slot.id)}
+              onClear={() => clearKey(slot.id)}
+              source={keySources[slot.id]}
+              last={i === Object.values(KEY_SLOTS).length - 1}
+              bounds={bounds}
+            />
+          ))}
+        </Group>
+        </Section>
+
+        {/* ---------- Business ---------- */}
+        <Section index={6}>
         <Group title="הגדרות עסק וקופה" icon="shopping-bag">
           <View style={s.stackRow}>
             <StackLabel icon="folder" text="סביבת עבודה" />
@@ -761,7 +993,7 @@ export default function SettingsScreen() {
         </Section>
 
         {/* ---------- Notifications ---------- */}
-        <Section index={3}>
+        <Section index={7}>
         <Group title="התראות" icon="bell">
           <SwitchRow
             label="התראות מלאי נמוך"
@@ -786,7 +1018,7 @@ export default function SettingsScreen() {
         </Section>
 
         {/* ---------- Appearance ---------- */}
-        <Section index={4}>
+        <Section index={8}>
         <Group title="תצוגה" icon="droplet">
           <View style={[s.stackRow, bounds]}>
             <StackLabel icon="moon" text="ערכת נושא" />
@@ -817,7 +1049,7 @@ export default function SettingsScreen() {
         </Section>
 
         {/* ---------- Data & backup ---------- */}
-        <Section index={5}>
+        <Section index={9}>
         <Group title="גיבוי, נתונים ופרטיות" icon="save">
           <View style={s.stackRow}>
             <View style={s.storageHead}>
@@ -865,7 +1097,7 @@ export default function SettingsScreen() {
         </Section>
 
         {/* ---------- Danger zone ---------- */}
-        <Section index={6}>
+        <Section index={10}>
         <Group title="אזור סכנה" icon="alert-triangle" accent={RED}>
           <View style={s.dangerWrap}>
             <CustomText style={s.dangerText}>
@@ -880,7 +1112,7 @@ export default function SettingsScreen() {
         </Section>
 
         {/* ---------- System ---------- */}
-        <Section index={7}>
+        <Section index={11}>
         <Group title="מערכת" icon="tool">
           <SwitchRow
             label="משוב הפטי"
@@ -912,7 +1144,7 @@ export default function SettingsScreen() {
         </Section>
 
         {/* ---------- About & support ---------- */}
-        <Section index={8}>
+        <Section index={12}>
         <Group title="אודות ותמיכה" icon="message-circle">
           <ActionRow
             label="צור קשר בוואטסאפ"
@@ -1111,6 +1343,77 @@ function Segment({ options, value, onChange, disabled, bounds }) {
   );
 }
 
+// One API key. Shows what is installed and where it came from, takes a new
+// one, and never renders the stored value in full.
+function ApiKeyRow({ slot, value, onChange, onSave, onClear, source, last, bounds }) {
+  const [reveal, setReveal] = useState(false);
+  const installed = apiKey(slot.id);
+
+  // Three genuinely different states, and the row says which one it is in.
+  // "saved" and "env" both mean the feature works; only the first can be
+  // cleared from here, because the second lives in the build.
+  const status =
+    source === "saved"
+      ? { text: `נשמר במכשיר · ${maskKey(installed)}`, color: GREEN, icon: "check-circle" }
+      : source === "env"
+        ? { text: `מגיע מהבילד · ${maskKey(installed)}`, color: INK_MUTED, icon: "package" }
+        : { text: "לא מוגדר — התכונה כבויה", color: GOLD, icon: "alert-circle" };
+
+  return (
+    <>
+      <View style={[s.fieldRow, bounds]}>
+        <View style={s.keyHead}>
+          <CustomText style={s.rowLabel}>{slot.label}</CustomText>
+          <CustomText style={s.rowHint}>{slot.hint}</CustomText>
+        </View>
+
+        <View style={s.keyStatus}>
+          <Icon name={status.icon} size={13} color={status.color} />
+          <CustomText style={[s.keyStatusText, { color: status.color }]}>{status.text}</CustomText>
+        </View>
+
+        <View style={s.keyInputRow}>
+          <TextInput
+            testID={`key-input-${slot.id}`}
+            style={[s.nameInput, s.keyInput]}
+            value={value}
+            onChangeText={onChange}
+            placeholder={slot.placeholder}
+            placeholderTextColor={INK_MUTED}
+            // A key is not a word: autocorrect and auto-capitalisation will
+            // quietly corrupt one, and the keyboard's suggestion strip is one
+            // more place it gets cached.
+            secureTextEntry={!reveal}
+            autoCapitalize="none"
+            autoCorrect={false}
+            spellCheck={false}
+            textAlign="left"
+          />
+          <Bounce testID={`key-reveal-${slot.id}`} style={s.keyIconBtn} onPress={() => setReveal((r) => !r)}>
+            <Icon name={reveal ? "eye-off" : "eye"} size={16} color={INK_SOFT} />
+          </Bounce>
+        </View>
+
+        <View style={s.keyActions}>
+          <Bounce
+            testID={`key-save-${slot.id}`}
+            style={[s.keyBtn, !value.trim() && s.keyBtnOff]}
+            onPress={() => value.trim() && onSave()}
+          >
+            <CustomText style={[s.keyBtnText, !value.trim() && { color: INK_MUTED }]}>שמירה</CustomText>
+          </Bounce>
+          {source === "saved" && (
+            <Bounce testID={`key-clear-${slot.id}`} style={[s.keyBtn, s.keyBtnGhost]} onPress={onClear}>
+              <CustomText style={[s.keyBtnText, { color: RED }]}>מחיקה</CustomText>
+            </Bounce>
+          )}
+        </View>
+      </View>
+      <Divider last={last} />
+    </>
+  );
+}
+
 const SHADOW = {
   shadowColor: "#000",
   shadowOffset: { width: 0, height: 8 },
@@ -1195,6 +1498,58 @@ const s = StyleSheet.create({
   },
 
   stackRow: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14, gap: 8 },
+
+  // --- API keys ---
+  noticeRow: {
+    flexDirection: I18nManager.isRTL ? "row" : "row-reverse",
+    alignItems: "flex-start",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
+  },
+  noticeText: {
+    flex: 1,
+    fontFamily: FONTS.regular,
+    fontSize: 11.5,
+    lineHeight: 17,
+    color: INK_SOFT,
+    textAlign: "right",
+  },
+  keyHead: { gap: 2 },
+  keyStatus: {
+    flexDirection: I18nManager.isRTL ? "row" : "row-reverse",
+    alignItems: "center",
+    gap: 6,
+  },
+  keyStatusText: { fontFamily: FONTS.semibold, fontSize: 11.5, textAlign: "right" },
+  keyInputRow: {
+    flexDirection: I18nManager.isRTL ? "row" : "row-reverse",
+    alignItems: "center",
+    gap: 8,
+  },
+  // A key is Latin text and reads left-to-right even inside an RTL screen.
+  keyInput: { flex: 1, writingDirection: "ltr", fontSize: 13 },
+  keyIconBtn: {
+    width: 40,
+    height: 42,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: BG,
+  },
+  keyActions: { flexDirection: I18nManager.isRTL ? "row" : "row-reverse", gap: 8 },
+  keyBtn: {
+    flex: 1,
+    minHeight: 40,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: BLUE,
+  },
+  keyBtnOff: { backgroundColor: BG },
+  keyBtnGhost: { backgroundColor: BG },
+  keyBtnText: { fontFamily: FONTS.semibold, fontSize: 13, color: WHITE },
   segment: {
     flexDirection: I18nManager.isRTL ? "row" : "row-reverse",
     backgroundColor: BG,

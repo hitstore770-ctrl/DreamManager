@@ -65,7 +65,7 @@ function VoicePanel({ deck, label, onDone, onClose }) {
   const [busy, setBusy] = useState(false);
   const [recording, setRecording] = useState(false);
   const [error, setError] = useState(null);
-  const keyed = useRef(isWhisperConfigured).current;
+  const keyed = isWhisperConfigured();
 
   const parsed = parseOrderText(text, deck);
 

@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Platform, StyleSheet, View } from "react-native";
 
 import Bounce from "./Bounce";
 import CustomText from "./CustomText";
 import Icon from "./Icon";
 import { Card } from "./Paper";
+import { useSettings } from "../context/SettingsContext";
 import { hapticSuccess, hapticWarning } from "../utils/haptics";
 import { TYPE, UI, tint } from "../utils/ui";
 
@@ -35,11 +36,17 @@ try {
 }
 
 export default function BiometricGate({ children }) {
+  // Off unless the user turned it on in Settings, and off until settings have
+  // actually loaded — otherwise the first frame prompts for a fingerprint
+  // against the default value and then retracts it once the real one arrives.
+  const { biometricLock, loaded: settingsLoaded } = useSettings();
+  const enabled = settingsLoaded && biometricLock === true;
+
   const [state, setState] = useState("checking"); // checking | locked | open
   const [reason, setReason] = useState(null);
 
   const attempt = useCallback(async () => {
-    if (!LocalAuth || Platform.OS === "web") {
+    if (!enabled || !LocalAuth || Platform.OS === "web") {
       setState("open");
       return;
     }
@@ -75,11 +82,23 @@ export default function BiometricGate({ children }) {
       // A thrown check is not a refusal — treat it like absent hardware.
       setState("open");
     }
-  }, []);
+  }, [enabled]);
 
+  // Launch only.
+  //
+  // Once the gate has opened it stays open for the session. Re-running it when
+  // `biometricLock` flips would slam the lock screen over Settings the moment
+  // the switch is turned on — and if that prompt were then cancelled the user
+  // could not reach the switch to turn it back off. A lock you can enable but
+  // not disable is a lockout, not a feature.
+  const opened = useRef(false);
   useEffect(() => {
+    if (opened.current) return;
     attempt();
   }, [attempt]);
+  useEffect(() => {
+    if (state === "open") opened.current = true;
+  }, [state]);
 
   if (state === "open") return children;
 

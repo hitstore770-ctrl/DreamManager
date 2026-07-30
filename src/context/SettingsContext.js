@@ -46,6 +46,20 @@ export const DEFAULT_SETTINGS = {
   lowStockAlerts: true, // warn when an inventory item drops below its floor
   dailyZReminder: false, // nightly nudge to close the register
 
+  // --- Account & security ---
+  // Whether the biometric gate runs on launch. Off by default: a lock the
+  // user did not ask for, on a device that may have no enrolled biometric,
+  // is a wall in front of their own register.
+  biometricLock: false,
+
+  // --- App preferences ---
+  startupScreen: "Assistant", // which tab the app opens on
+  animations: true, // entrance/spring animations; off saves battery and helps motion sensitivity
+
+  // --- POS configuration ---
+  maaserRate: "10", // % of profit set aside, shown alongside the VAT figure
+  allowManualItems: true, // the "פריט ידני" button on the fast-food deck
+
   // --- Appearance ---
   themeMode: "light", // 'light' | 'dark' | 'system' — stored, not yet painted
   compactMode: false, // tighter list padding for tall/narrow screens

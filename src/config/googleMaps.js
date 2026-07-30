@@ -23,12 +23,15 @@
 // code. Web needs the Maps JavaScript API's DirectionsService instead, which
 // is a different client entirely and not worth carrying for a phone app.
 
-const KEY = process.env.EXPO_PUBLIC_GOOGLE_SERVICES_KEY || "";
+import { apiKey, hasApiKey } from "./apiKeys";
+
+const KEY = () => apiKey("google");
 
 const DIRECTIONS_URL = "https://maps.googleapis.com/maps/api/directions/json";
 const PLACES_TEXT_URL = "https://maps.googleapis.com/maps/api/place/textsearch/json";
 
-export const isGoogleMapsConfigured = KEY.trim().length > 0;
+// A function: a Maps key saved in Settings must work on the very next call.
+export const isGoogleMapsConfigured = () => hasApiKey("google");
 
 // Returned instead of data whenever a request cannot be made or comes back
 // unusable. It goes straight into the model, so it says plainly that there is
@@ -199,7 +202,7 @@ export function parseRide(json, mode) {
  * "next bus" is whatever the schedule says in the abstract.
  */
 export async function fetchDirections(origin, destination, mode, { signal, alternatives = false } = {}) {
-  if (!isGoogleMapsConfigured) return MISSING_KEY();
+  if (!isGoogleMapsConfigured()) return MISSING_KEY();
 
   const from = asPlace(origin);
   const to = asPlace(destination);
@@ -217,7 +220,7 @@ export async function fetchDirections(origin, destination, mode, { signal, alter
     alternatives: alternatives ? "true" : undefined,
     language: "he",
     region: "il",
-    key: KEY,
+    key: KEY(),
   });
 
   try {
@@ -284,7 +287,7 @@ export function parsePlaces(json, around) {
 }
 
 export async function fetchPlaces(query, location, { signal, radiusMeters = 5000 } = {}) {
-  if (!isGoogleMapsConfigured) return MISSING_KEY();
+  if (!isGoogleMapsConfigured()) return MISSING_KEY();
   if (!query) return failure("INVALID_REQUEST", "A search query is required.");
 
   const where = asPlace(location);
@@ -300,7 +303,7 @@ export async function fetchPlaces(query, location, { signal, radiusMeters = 5000
     radius: around ? radiusMeters : undefined,
     language: "he",
     region: "il",
-    key: KEY,
+    key: KEY(),
   });
 
   try {

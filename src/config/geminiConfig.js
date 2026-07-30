@@ -1,4 +1,5 @@
 import { NOA_TOOLS, runNoaTool } from "./NoaTools";
+import { apiKey, hasApiKey } from "./apiKeys";
 import { recordUsage } from "../utils/quotaTracker";
 
 // Gemini REST configuration, kept in one file so the key has exactly one home.
@@ -24,12 +25,14 @@ import { recordUsage } from "../utils/quotaTracker";
 // point Firestore rules also let you require a signed-in user, which stops a
 // stranger from spending your quota.
 
-// Read from .env first (EXPO_PUBLIC_GEMINI_API_KEY), falling back to the
-// literal below so the app still runs before a .env exists. Note that an
-// EXPO_PUBLIC_ variable is inlined into the bundle at build time — it is not
-// a secret either, and the server-side note above still applies.
-export const GEMINI_API_KEY =
-  process.env.EXPO_PUBLIC_GEMINI_API_KEY || "YOUR_GEMINI_API_KEY";
+// Read from Settings first (saved in the device keystore), then .env
+// (EXPO_PUBLIC_GEMINI_API_KEY), falling back to a placeholder so the app
+// still runs before either exists. Called fresh on every request rather than
+// read once — that is what lets a key typed into Settings take effect
+// immediately, with no rebuild and no app restart. Note that an EXPO_PUBLIC_
+// variable is inlined into the bundle at build time — it is not a secret
+// either, and the server-side note above still applies.
+export const geminiKey = () => apiKey("gemini") || "YOUR_GEMINI_API_KEY";
 
 // MODEL IDS ARE NOT STABLE
 // ------------------------
@@ -65,12 +68,11 @@ export const endpointFor = (model) =>
 
 export const GEMINI_ENDPOINT = endpointFor(GEMINI_MODEL);
 
-// True once a real key has been pasted in, so the UI can say what is wrong
-// instead of firing a request that is certain to fail.
-export const isGeminiConfigured =
-  typeof GEMINI_API_KEY === "string" &&
-  GEMINI_API_KEY.length > 0 &&
-  GEMINI_API_KEY !== "YOUR_GEMINI_API_KEY";
+// True once a real key exists — saved in Settings or from the build — so the
+// UI can say what is wrong instead of firing a request that is certain to
+// fail. A function, not a value: a key saved in Settings after launch must
+// flip this without a reload.
+export const isGeminiConfigured = () => hasApiKey("gemini");
 
 // The model that last answered successfully. Module-level, so every screen
 // shares one discovery rather than each paying for its own.
@@ -103,7 +105,7 @@ export async function callGemini(body, { signal } = {}) {
   let lastDetail = "";
 
   for (const model of order) {
-    const res = await fetch(`${endpointFor(model)}?key=${GEMINI_API_KEY}`, {
+    const res = await fetch(`${endpointFor(model)}?key=${geminiKey()}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -224,7 +226,7 @@ export async function callGeminiWithTools(base, { tools, signal, maxRounds = 3 }
 export async function listGeminiModels() {
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey()}`
     );
     const json = await res.json();
     if (!res.ok) return { ok: false, error: json?.error?.message || `HTTP ${res.status}` };

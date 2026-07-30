@@ -91,7 +91,7 @@ function toGeminiContents(messages) {
 }
 
 export async function askGemini({ messages, itemData, signal }) {
-  if (!isGeminiConfigured) {
+  if (!isGeminiConfigured()) {
     return {
       ok: false,
       reason: "no-key",

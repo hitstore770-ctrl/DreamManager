@@ -110,9 +110,9 @@ export default function TransitAssistantScreen({ navigation }) {
       setMessages(next);
       setLoading(true);
 
-      if (!isGeminiConfigured) {
+      if (!isGeminiConfigured()) {
         setLoading(false);
-        setError("לא הוגדר מפתח Gemini. הוסף EXPO_PUBLIC_GEMINI_API_KEY לקובץ .env.");
+        setError("לא הוגדר מפתח Gemini. אפשר להזין אותו במסך ההגדרות.");
         return;
       }
 
@@ -318,11 +318,11 @@ export default function TransitAssistantScreen({ navigation }) {
                 </Bounce>
               )}
 
-              {!isGeminiConfigured && (
+              {!isGeminiConfigured() && (
                 <View style={s.keyWarning}>
                   <Icon name="key" size={15} color="#8A6D00" />
                   <CustomText style={s.keyWarningText}>
-                    אין מפתח Gemini. הוסף EXPO_PUBLIC_GEMINI_API_KEY לקובץ .env כדי להפעיל את השיחה.
+                    אין מפתח Gemini. אפשר להזין אותו במסך ההגדרות כדי להפעיל את השיחה.
                   </CustomText>
                 </View>
               )}

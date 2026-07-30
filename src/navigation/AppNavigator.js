@@ -5,6 +5,8 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import Icon from "../components/Icon";
 import { withBack } from "../components/BackFab";
 import { useAuth } from "../context/AuthContext";
+import { useSettings } from "../context/SettingsContext";
+import { STARTUP_SCREENS, resolveStartupScreen } from "./startupScreens";
 import { MoneyProvider } from "../context/MoneyContext";
 import BusinessScreen from "../screens/BusinessScreen";
 import CashRegisterScreen from "../screens/CashRegisterScreen";
@@ -39,13 +41,20 @@ const Tab = createBottomTabNavigator();
 //
 // Declaration order is the RTL reading order: first declared sits rightmost,
 // because the app forces RTL and the bar is a flex row.
-const ZONES = [
-  { name: "Money", component: MyMoneyHubScreen, icon: "trending-up", label: "הכסף שלי" },
-  { name: "Library", component: DreamsNotesHubScreen, icon: "star", label: "חלומות" },
-  { name: "Assistant", component: LiveAiScreen, icon: "message-circle", label: "נועה" },
-  { name: "CashFlow", component: MoneyDashboardScreen, icon: "bar-chart-2", label: "תזרים" },
-  { name: "Workshop", component: ToolsWorkshopScreen, icon: "tool", label: "כלים" },
-];
+//
+// The names, icons and labels live in startupScreens.js so the Settings picker
+// and this navigator cannot drift apart; the components are attached here,
+// because that file must stay importable from Settings without dragging every
+// screen in the app into the bundle graph behind it.
+const COMPONENTS = {
+  Money: MyMoneyHubScreen,
+  Library: DreamsNotesHubScreen,
+  Assistant: LiveAiScreen,
+  CashFlow: MoneyDashboardScreen,
+  Workshop: ToolsWorkshopScreen,
+};
+
+const ZONES = STARTUP_SCREENS.map((z) => ({ ...z, component: COMPONENTS[z.name] }));
 
 // Under real RTL a flex row lays itself out right to left, so declaring in RTL
 // order is all it takes. react-native-web reports isRTL === false — forceRTL
@@ -116,10 +125,17 @@ const screenOptions = ({ route }) => ({
 });
 
 function ZoneTabs() {
-  // Noa is the landing tab as well as the centre one: she is the thing the app
-  // is for, and the Core screen this used to open no longer exists.
+  // Noa is the centre tab, and the default landing one — but "which screen do
+  // I open on" is now a preference, so the initial route comes from settings.
+  // resolveStartupScreen falls back to Noa if the stored name no longer names
+  // a zone, which matters because React Navigation silently ignores an
+  // initialRouteName that does not match a child.
+  const { startupScreen } = useSettings();
   return (
-    <Tab.Navigator initialRouteName="Assistant" screenOptions={screenOptions}>
+    <Tab.Navigator
+      initialRouteName={resolveStartupScreen(startupScreen)}
+      screenOptions={screenOptions}
+    >
       {ORDERED_ZONES.map((z) => (
         <Tab.Screen key={z.name} name={z.name} component={z.component} />
       ))}

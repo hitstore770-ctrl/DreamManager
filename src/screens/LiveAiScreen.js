@@ -112,9 +112,9 @@ export default function LiveAiScreen({ navigation }) {
       setMessages(next);
       setLoading(true);
 
-      if (!isGeminiConfigured) {
+      if (!isGeminiConfigured()) {
         setLoading(false);
-        setError("לא הוגדר מפתח Gemini. הוסף EXPO_PUBLIC_GEMINI_API_KEY לקובץ .env.");
+        setError("לא הוגדר מפתח Gemini. אפשר להזין אותו במסך ההגדרות.");
         return;
       }
 
@@ -187,8 +187,8 @@ export default function LiveAiScreen({ navigation }) {
   // fixable before it is asked.
   const startRecording = useCallback(async () => {
     if (recording || transcribing) return;
-    if (!isWhisperConfigured) {
-      setError("לא הוגדר מפתח OpenAI. הוסף EXPO_PUBLIC_OPENAI_API_KEY לקובץ .env.");
+    if (!isWhisperConfigured()) {
+      setError("לא הוגדר מפתח OpenAI. אפשר להזין אותו במסך ההגדרות.");
       return;
     }
     try {
@@ -340,11 +340,11 @@ export default function LiveAiScreen({ navigation }) {
 נועה — סגנית מנהל התפעול שלך. לוגיסטיקה, מספרים, תכנון. המיקום הנוכחי נשלח יחד עם
                 השאלה, כדי שהיא לא תצטרך לשאול איפה אתה.
               </CustomText>
-              {!isGeminiConfigured && (
+              {!isGeminiConfigured() && (
                 <View style={s.keyWarning}>
                   <Icon name="key" size={15} color="#8A6D00" />
                   <CustomText style={s.keyWarningText}>
-                    אין מפתח Gemini. הוסף EXPO_PUBLIC_GEMINI_API_KEY לקובץ .env.
+                    אין מפתח Gemini. אפשר להזין אותו במסך ההגדרות.
                   </CustomText>
                 </View>
               )}

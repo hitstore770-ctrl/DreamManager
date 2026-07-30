@@ -1,3 +1,5 @@
+import { apiKey, hasApiKey } from "./apiKeys";
+
 // Speech-to-text via OpenAI Whisper.
 //
 // SAME SECURITY CAVEAT AS THE GEMINI KEY, AND IT IS WORSE HERE
@@ -8,8 +10,7 @@
 // a function you control — the client sends audio to your endpoint, your
 // endpoint holds the key.
 
-export const OPENAI_API_KEY =
-  process.env.EXPO_PUBLIC_OPENAI_API_KEY || "YOUR_OPENAI_API_KEY";
+const openaiKey = () => apiKey("openai") || "YOUR_OPENAI_API_KEY";
 
 export const WHISPER_ENDPOINT = "https://api.openai.com/v1/audio/transcriptions";
 
@@ -17,10 +18,9 @@ export const WHISPER_ENDPOINT = "https://api.openai.com/v1/audio/transcriptions"
 // family it has not been rotated, so a single constant is honest here.
 export const WHISPER_MODEL = "whisper-1";
 
-export const isWhisperConfigured =
-  typeof OPENAI_API_KEY === "string" &&
-  OPENAI_API_KEY.length > 0 &&
-  OPENAI_API_KEY !== "YOUR_OPENAI_API_KEY";
+// A function, not a value, so a key saved in Settings mid-session is picked
+// up on the very next recording rather than needing a reload.
+export const isWhisperConfigured = () => hasApiKey("openai");
 
 /**
  * Transcribe a recorded file.
@@ -31,8 +31,8 @@ export const isWhisperConfigured =
  * detected as English and transliterated into nonsense.
  */
 export async function transcribe(uri, { signal, language = "he" } = {}) {
-  if (!isWhisperConfigured) {
-    return { ok: false, error: "לא הוגדר מפתח OpenAI. הוסף EXPO_PUBLIC_OPENAI_API_KEY לקובץ .env." };
+  if (!isWhisperConfigured()) {
+    return { ok: false, error: "לא הוגדר מפתח OpenAI. אפשר להזין אותו במסך ההגדרות." };
   }
   if (!uri) return { ok: false, error: "לא נמצאה הקלטה." };
 
@@ -49,7 +49,7 @@ export async function transcribe(uri, { signal, language = "he" } = {}) {
     const res = await fetch(WHISPER_ENDPOINT, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        Authorization: `Bearer ${openaiKey()}`,
         // Content-Type is deliberately unset: fetch has to append the
         // multipart boundary itself, and naming the type here strips it.
       },
