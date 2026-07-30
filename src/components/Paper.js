@@ -1,7 +1,7 @@
 import { StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
-import { BEVEL, CARD_SHADOW, GRAD, PASTEL, SHADOW_AMBIENT, SHADOW_CONTACT, UI, glow, pastelFor } from "../utils/ui";
+import { BEVEL, CARD_SHADOW, GRAD, PASTEL, SHADOW_AMBIENT, SHADOW_CONTACT, STICKY_SHADOW, UI, glow, pastelFor, tiltFor } from "../utils/ui";
 
 // The surfaces every screen is built from.
 //
@@ -45,7 +45,10 @@ export function Card({ children, style, radius = UI.radius, lifted = true }) {
   return <View style={[{ borderRadius: radius }, SHADOW_AMBIENT]}>{face}</View>;
 }
 
-// A sticky note: a pastel stock with its own matching edge, and a slight tilt.
+// A sticky note: a pastel stock with its own matching edge, a slight tilt,
+// and a shadow distinct enough to read as paper lifted off the surface
+// behind it — this is the one surface in the app that is meant to look
+// physical rather than flat.
 //
 // The tilt is what makes a board of these read as notes pinned to a surface
 // rather than as coloured rectangles in a grid. It is derived from the seed
@@ -54,7 +57,7 @@ export function Card({ children, style, radius = UI.radius, lifted = true }) {
 // that it stops looking placed and starts looking broken.
 export function Note({ children, style, tone, seed, radius = UI.radius, tilt = true, testID }) {
   const stock = tone || pastelFor(seed);
-  const angle = tilt ? deterministicTilt(seed) : 0;
+  const angle = tilt ? tiltFor(seed) : 0;
 
   return (
     <View
@@ -67,21 +70,13 @@ export function Note({ children, style, tone, seed, radius = UI.radius, tilt = t
           borderColor: stock.edge,
           transform: [{ rotate: `${angle}deg` }],
         },
-        CARD_SHADOW,
+        STICKY_SHADOW,
         style,
       ]}
     >
       {children}
     </View>
   );
-}
-
-function deterministicTilt(seed) {
-  const s = String(seed || "");
-  let h = 0;
-  for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  // -1.4 .. +1.4 degrees, in 0.4 steps.
-  return ((h % 8) - 3.5) * 0.4;
 }
 
 // A coloured slab, for the few surfaces that are objects rather than paper —

@@ -72,20 +72,22 @@ export const UI = {
   rowMinHeight: 56,
 };
 
-// Note stocks for the dreams board.
+// Note stocks — for the notes board and the chat bubbles.
 //
-// Desaturated hard: on a white fintech surface a full pastel reads as a
-// children's app, and six of them next to each other read as a toy. These are
-// tints — a few percent of hue over white — so the board stays legible as a
-// set of cards while a single note is still identifiable by colour.
+// Classic sticky-note colour, not the desaturated fintech tint: this is
+// deliberately the one place in the app that is allowed to look like paper
+// pinned to a corkboard rather than a financial statement. Ink is the same
+// dark, near-black tone on every stock rather than a colour matched to the
+// paper, the way a real pen writes the same colour on yellow, blue or green
+// paper.
 export const PASTEL = {
-  white: { bg: "#FFFFFF", edge: "#EAEAEA", ink: "#111111" },
-  butter: { bg: "#FDFBF3", edge: "#EDE6D2", ink: "#6B4E00" },
-  mint: { bg: "#F3FAF6", edge: "#D6EADF", ink: "#067647" },
-  sky: { bg: "#F4F8FE", edge: "#D9E5F7", ink: "#175CD3" },
-  blush: { bg: "#FDF5F7", edge: "#EFDCE2", ink: "#B42318" },
-  lilac: { bg: "#F7F6FB", edge: "#E2DFEE", ink: "#4A4458" },
-  peach: { bg: "#FDF7F3", edge: "#EFE0D4", ink: "#B54708" },
+  white: { bg: "#FFFFFF", edge: "#EAEAEA", ink: UI.ink },
+  butter: { bg: "#FFF3B0", edge: "#F0DA6B", ink: UI.ink },
+  mint: { bg: "#C9F2D6", edge: "#8FDDA8", ink: UI.ink },
+  sky: { bg: "#CFE8FB", edge: "#8FC7ED", ink: UI.ink },
+  blush: { bg: "#FBD6E0", edge: "#F0A8BE", ink: UI.ink },
+  lilac: { bg: "#E4D9F7", edge: "#C7AEEA", ink: UI.ink },
+  peach: { bg: "#FFDCB0", edge: "#F2B570", ink: UI.ink },
 };
 
 export const PASTEL_KEYS = Object.keys(PASTEL).filter((k) => k !== "white");
@@ -149,6 +151,32 @@ export const SHADOW_AMBIENT = {
 };
 
 export const SOFT_SHADOW = CARD_SHADOW;
+
+// The one deliberate exception to "nothing glows, nothing floats" — a sticky
+// note or a chat bubble styled as paper is supposed to look like it is lifted
+// off the surface behind it, not resting flush against it. The offset is
+// asymmetric (not straight down) so it reads as a corner lifting rather than
+// a flat card, and it is paired with a slight rotation wherever it is used.
+export const STICKY_SHADOW = {
+  shadowColor: "#000000",
+  shadowOffset: { width: 2, height: 4 },
+  shadowOpacity: 0.22,
+  shadowRadius: 6,
+  elevation: 8,
+};
+
+// Deterministic tilt from any string seed, in degrees within ±spread.
+//
+// Deterministic rather than Math.random() on purpose: a note or a chat bubble
+// keeps the same angle across re-renders (a new render is not a new "toss of
+// the note"), while still landing on a different, organic-looking angle from
+// its neighbours because the seed — a note id, a message id — differs.
+export function tiltFor(seed, spread = 1.5) {
+  const s = String(seed || "");
+  let h = 0;
+  for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return (((h % 1000) / 1000) * 2 - 1) * spread;
+}
 
 // For genuinely floating surfaces only — a bottom sheet, a modal. Still far
 // short of the old drop shadows.

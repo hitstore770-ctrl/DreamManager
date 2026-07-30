@@ -13,7 +13,7 @@ import { DEFAULT_SHORTCUTS, suggestShortcuts } from "../utils/noaShortcuts";
 import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import { Canvas } from "../components/Paper";
-import { BEVEL, CARD_SHADOW, TYPE, UI, tint } from "../utils/ui";
+import { BEVEL, CARD_SHADOW, PASTEL, STICKY_SHADOW, TYPE, UI, tint, tiltFor } from "../utils/ui";
 import CustomText from "../components/CustomText";
 
 // Zone 1 — Noa, the assistant. Every bubble is a small sheet of paper, quick
@@ -302,9 +302,16 @@ export default function LiveAiScreen({ navigation }) {
               style={[s.row, item.role === "user" ? s.rowMine : s.rowTheirs]}
             >
               <View style={{ maxWidth: "88%" }}>
-                <View style={[s.bubble, item.role === "user" ? s.userBubble : s.modelBubble]}>
+                <View
+                  style={[
+                    s.bubble,
+                    item.role === "user" ? s.userBubble : s.modelBubble,
+                    // Stable per message, not per render.
+                    { transform: [{ rotate: `${tiltFor(item.id)}deg` }] },
+                  ]}
+                >
                   {item.role === "user" ? (
-                    <CustomText style={[s.bubbleText, { color: "#FFFFFF" }]} selectable>
+                    <CustomText style={s.bubbleText} selectable>
                       {item.text}
                     </CustomText>
                   ) : (
@@ -487,15 +494,22 @@ const s = StyleSheet.create({
     marginTop: 5,
     marginLeft: 6,
   },
-  userBubble: { backgroundColor: UI.violet, borderBottomRightRadius: 8, ...CARD_SHADOW },
-  // The assistant's replies are white pages; the user's are violet cards. The
-  // squared-off corner on each is what keeps two stacked bubbles from reading
-  // as one long sheet.
+  // Sticky-note paper for both sides of the conversation, not the flat
+  // violet/white chat cards this used to be. The squared-off corner on each
+  // is what keeps two stacked bubbles from reading as one long sheet.
+  userBubble: {
+    backgroundColor: PASTEL.sky.bg,
+    borderWidth: 1,
+    borderColor: PASTEL.sky.edge,
+    borderBottomRightRadius: 8,
+    ...STICKY_SHADOW,
+  },
   modelBubble: {
-    backgroundColor: UI.surface,
-    ...BEVEL,
+    backgroundColor: PASTEL.butter.bg,
+    borderWidth: 1,
+    borderColor: PASTEL.butter.edge,
     borderBottomLeftRadius: 8,
-    ...CARD_SHADOW,
+    ...STICKY_SHADOW,
   },
   bubbleText: { fontFamily: FONTS.regular, fontSize: 15, color: UI.ink, textAlign: "right", lineHeight: 23 },
 
