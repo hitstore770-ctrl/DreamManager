@@ -8,7 +8,7 @@ import Icon from "../components/Icon";
 import { isGeminiConfigured } from "../config/geminiConfig";
 import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
-import { CARD_SHADOW, PASTEL, STICKY_SHADOW, TYPE, UI, tiltFor } from "../utils/ui";
+import { BUBBLE_SHADOW, CARD_SHADOW, TYPE, UI, tint } from "../utils/ui";
 import { askGemini, clearThread, loadThread, parseImageReply, saveThread } from "../utils/aiThread";
 import CustomText from "../components/CustomText";
 
@@ -302,18 +302,15 @@ function Bubble({ message, index }) {
   // "[IMAGE: ...]" should see their own text back, not a generated picture.
   const parsed = mine ? { hasImage: false, text: message.text } : parseImageReply(message.text);
   const [failed, setFailed] = useState(false);
-  // Stable per message, not per render — a bubble does not re-toss its angle
-  // every time the thread re-renders.
-  const tilt = tiltFor(message.id);
 
   return (
     <Animated.View
       entering={FadeInDown.delay(Math.min(index * 40, 240)).springify().damping(15)}
       style={[s.bubbleRow, mine ? s.rowMine : s.rowTheirs]}
     >
-      <View style={[s.bubble, mine ? s.userBubble : s.modelBubble, { transform: [{ rotate: `${tilt}deg` }] }]}>
+      <View style={[s.bubble, mine ? s.userBubble : s.modelBubble]}>
         {!!parsed.text && (
-          <CustomText style={s.bubbleText} selectable>
+          <CustomText style={[s.bubbleText, mine && s.bubbleTextMine]} selectable>
             {parsed.text}
           </CustomText>
         )}
@@ -421,25 +418,22 @@ const s = StyleSheet.create({
   bubbleRow: { flexDirection: "row" },
   rowMine: { justifyContent: "flex-end" },
   rowTheirs: { justifyContent: "flex-start" },
-  bubble: { maxWidth: "86%", borderRadius: 22, paddingHorizontal: 16, paddingVertical: 12 },
-  // Two sticky-note stocks, one per side of the conversation — paper pinned
-  // to the thread rather than the flat violet/white chat cards this used to
-  // be. The dark ink text stays the same colour on both.
-  userBubble: {
-    backgroundColor: PASTEL.sky.bg,
-    borderWidth: 1,
-    borderColor: PASTEL.sky.edge,
-    borderBottomRightRadius: 8,
-    ...STICKY_SHADOW,
-  },
+  // Sleek and premium rather than paper-textured: a soft shadow and a
+  // rounded, symmetric bubble instead of the sticky-note tilt used for Notes.
+  bubble: { maxWidth: "86%", borderRadius: 20, paddingHorizontal: 17, paddingVertical: 13, ...BUBBLE_SHADOW },
+  // The user's own words, in the deep royal blue that replaced this app's
+  // flat "informational" cyan — solid, so white text sits confidently on it.
+  userBubble: { backgroundColor: UI.cyan, borderBottomRightRadius: 7 },
+  // Noa's replies stay on the page itself: warm surface, a hairline touched
+  // with gold rather than a flat border.
   modelBubble: {
-    backgroundColor: PASTEL.butter.bg,
+    backgroundColor: UI.surface,
     borderWidth: 1,
-    borderColor: PASTEL.butter.edge,
-    borderBottomLeftRadius: 8,
-    ...STICKY_SHADOW,
+    borderColor: tint(UI.gold, 0.25),
+    borderBottomLeftRadius: 7,
   },
-  bubbleText: { fontFamily: FONTS.regular, fontSize: 15, color: UI.ink, textAlign: "right", lineHeight: 23 },
+  bubbleText: { fontFamily: FONTS.medium, fontSize: 15, color: UI.ink, textAlign: "right", lineHeight: 23 },
+  bubbleTextMine: { color: "#FFFFFF" },
 
   imageWrap: { borderRadius: 18, overflow: "hidden" },
   image: { width: 232, height: 232, borderRadius: 18 },

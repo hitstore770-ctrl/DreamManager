@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { I18nManager, Keyboard, KeyboardAvoidingView, Linking, Modal, Platform, ScrollView, Share, StyleSheet, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInUp, FadeOutDown } from "react-native-reanimated";
+import * as Clipboard from "expo-clipboard";
 
 import { FLUID } from "../utils/motion";
 import Bounce from "../components/Bounce";
@@ -71,6 +72,10 @@ export default function NoteEditorScreen({ route, navigation }) {
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const [preview, setPreview] = useState(false);
   const [savedAt, setSavedAt] = useState(null);
+  // Flips true for a moment after a copy, so the action bar's "Copy" button
+  // can confirm the tap did something — a clipboard write is invisible
+  // otherwise, and a silent button reads as broken.
+  const [copied, setCopied] = useState(false);
   const initedRef = useRef(false);
   const saveTimer = useRef(null);
 
@@ -250,6 +255,13 @@ export default function NoteEditorScreen({ route, navigation }) {
     return `${title || "הערה"}\n\n${content}`;
   };
 
+  const copyNote = async () => {
+    haptic("light");
+    await Clipboard.setStringAsync(noteAsText());
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1600);
+  };
+
   const shareNote = async () => {
     haptic("light");
     try {
@@ -416,6 +428,34 @@ export default function NoteEditorScreen({ route, navigation }) {
             <Icon name={note.locked ? "lock" : "unlock"} size={19} color={theme.textPrimary} />
           </TouchableOpacity>
         </View>
+      </View>
+
+      {/* Smart action bar — three quick actions distinct from the header's
+          per-note flags (pin-to-top, share, lock) and from the dense Pro
+          toolbar below: pin this note's title into the POS register banner,
+          copy its text, or hand it straight to WhatsApp. */}
+      <View style={s.actionBar}>
+        <TouchableOpacity
+          testID="note-pin-pos"
+          style={[s.actionBtn, note.isPinnedToPOS && s.actionBtnActive]}
+          onPress={() => { hapticLight(); patchNote({ isPinnedToPOS: !note.isPinnedToPOS }); }}
+          activeOpacity={0.8}
+        >
+          <Icon name="shopping-cart" size={16} color={note.isPinnedToPOS ? "#FFF" : theme.accent} />
+          <CustomText style={[s.actionBtnText, note.isPinnedToPOS && { color: "#FFF" }]}>
+            {note.isPinnedToPOS ? "מוצמד לקופה" : "הצמד לקופה"}
+          </CustomText>
+        </TouchableOpacity>
+        <TouchableOpacity testID="note-copy" style={s.actionBtn} onPress={copyNote} activeOpacity={0.8}>
+          <Icon name={copied ? "check" : "copy"} size={16} color={copied ? theme.gold : theme.accent} />
+          <CustomText style={[s.actionBtnText, copied && { color: theme.gold }]}>
+            {copied ? "הועתק" : "העתק"}
+          </CustomText>
+        </TouchableOpacity>
+        <TouchableOpacity testID="note-whatsapp" style={s.actionBtn} onPress={sendToWhatsApp} activeOpacity={0.8}>
+          <Icon name="logo-whatsapp" size={16} color={theme.accent} />
+          <CustomText style={s.actionBtnText}>וואטסאפ</CustomText>
+        </TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView
@@ -714,6 +754,22 @@ function makeStyles(t, fsScale) {
     headerActions: { flexDirection: "row", gap: 8 },
     iconBtn: { width: 42, height: 42, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: t.surfaceAlt },
     icon: { fontSize: 20, color: t.textPrimary, fontFamily: FONTS.bold },
+
+    actionBar: { flexDirection: "row-reverse", gap: 8, paddingHorizontal: 12, paddingBottom: 12 },
+    actionBtn: {
+      flex: 1,
+      flexDirection: "row-reverse",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      minHeight: 40,
+      borderRadius: 20,
+      backgroundColor: t.surfaceAlt,
+      borderWidth: 1,
+      borderColor: t.border,
+    },
+    actionBtnActive: { backgroundColor: t.accent, borderColor: t.accent },
+    actionBtnText: { fontFamily: FONTS.semibold, fontSize: 12.5, color: t.accent },
 
     modePill: {
       minHeight: 42,

@@ -9,6 +9,7 @@ import ScanCamera from "./ScanCamera";
 import VoiceOrderButton from "./VoiceOrderButton";
 import { useAuth } from "../../context/AuthContext";
 import { useBusiness } from "../../context/BusinessContext";
+import { useNotes } from "../../context/NotesContext";
 import { useSettings } from "../../context/SettingsContext";
 import { costFor, useItemCosts } from "../../utils/costStore";
 import { pushMany } from "../../utils/cloudSync";
@@ -53,6 +54,12 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
   // deck, and some days the owner wants exactly that discipline.
   const { allowManualItems } = useSettings();
   const manualAllowed = allowManualItems !== false;
+
+  // Notes pinned from the editor's "הצמד לקופה" toggle — a shift note, a
+  // supplier reminder — surfaced where the register is actually being used
+  // rather than left in the Notes tab where nobody checks mid-sale.
+  const { notes } = useNotes();
+  const pinnedNotes = (notes || []).filter((n) => n.isPinnedToPOS);
 
   const [deckKey, setDeckKey] = useState("food");
   const [decks] = usePersistentState("@dreammanager/pos-decks", DEFAULT_DECK_ITEMS);
@@ -221,6 +228,24 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
 
   return (
     <View style={st.wrap}>
+      {/* Notes pinned to the register — a compact banner, titles only. The
+          note's content is one tap away in the Notes tab; this exists to be
+          glanced at, not read. */}
+      {pinnedNotes.length > 0 && (
+        <Animated.View entering={FadeInDown.duration(220)} style={st.pinnedBanner}>
+          <Icon name="shopping-cart" size={13} color={UI.gold} />
+          <View style={st.pinnedChips}>
+            {pinnedNotes.slice(0, 4).map((n) => (
+              <View key={n.id} style={st.pinnedChip}>
+                <CustomText style={st.pinnedChipText} numberOfLines={1}>
+                  {n.title || "הערה ללא כותרת"}
+                </CustomText>
+              </View>
+            ))}
+          </View>
+        </Animated.View>
+      )}
+
       {/* Mode switch + today's takings */}
       <View style={st.topRow}>
         <View style={st.deckSwitch}>
@@ -606,6 +631,30 @@ function CheckoutSummary({ visible, totals, cart, lineCost, onClose, onComplete 
 
 const st = StyleSheet.create({
   wrap: { flex: 1 },
+
+  pinnedBanner: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 8,
+    marginHorizontal: 14,
+    marginTop: 10,
+    marginBottom: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
+    backgroundColor: tint(UI.gold, 0.1),
+    borderWidth: 1,
+    borderColor: tint(UI.gold, 0.28),
+  },
+  pinnedChips: { flex: 1, flexDirection: "row-reverse", flexWrap: "wrap", gap: 6 },
+  pinnedChip: {
+    maxWidth: 140,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 10,
+    backgroundColor: UI.surface,
+  },
+  pinnedChipText: { fontFamily: FONTS.medium, fontSize: 11, color: UI.ink },
 
   topRow: { flexDirection: "row-reverse", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingBottom: 10 },
   deckSwitch: { flex: 1, flexDirection: "row-reverse", gap: 6, backgroundColor: UI.surfaceHi, borderRadius: 14, padding: 4 },

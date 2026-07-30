@@ -13,7 +13,7 @@ import { DEFAULT_SHORTCUTS, suggestShortcuts } from "../utils/noaShortcuts";
 import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import { Canvas } from "../components/Paper";
-import { BEVEL, CARD_SHADOW, PASTEL, STICKY_SHADOW, TYPE, UI, tint, tiltFor } from "../utils/ui";
+import { BEVEL, BUBBLE_SHADOW, CARD_SHADOW, TYPE, UI, tint } from "../utils/ui";
 import CustomText from "../components/CustomText";
 
 // Zone 1 — Noa, the assistant. Every bubble is a small sheet of paper, quick
@@ -302,16 +302,9 @@ export default function LiveAiScreen({ navigation }) {
               style={[s.row, item.role === "user" ? s.rowMine : s.rowTheirs]}
             >
               <View style={{ maxWidth: "88%" }}>
-                <View
-                  style={[
-                    s.bubble,
-                    item.role === "user" ? s.userBubble : s.modelBubble,
-                    // Stable per message, not per render.
-                    { transform: [{ rotate: `${tiltFor(item.id)}deg` }] },
-                  ]}
-                >
+                <View style={[s.bubble, item.role === "user" ? s.userBubble : s.modelBubble]}>
                   {item.role === "user" ? (
-                    <CustomText style={s.bubbleText} selectable>
+                    <CustomText style={[s.bubbleText, s.bubbleTextMine]} selectable>
                       {item.text}
                     </CustomText>
                   ) : (
@@ -469,7 +462,9 @@ const s = StyleSheet.create({
   row: { flexDirection: "row" },
   rowMine: { justifyContent: "flex-end" },
   rowTheirs: { justifyContent: "flex-start" },
-  bubble: { borderRadius: UI.radius, paddingHorizontal: 16, paddingVertical: 12 },
+  // Sleek and premium rather than paper-textured: a soft shadow and rounded,
+  // symmetric corners instead of the sticky-note tilt used for Notes.
+  bubble: { borderRadius: 20, paddingHorizontal: 17, paddingVertical: 13, ...BUBBLE_SHADOW },
   // Sits under the sheet, not on it: an attribution line is metadata about
   // the note, not part of what the note says.
   badgeRow: { flexDirection: ROW, alignItems: "center", gap: 6, flexWrap: "wrap" },
@@ -494,24 +489,19 @@ const s = StyleSheet.create({
     marginTop: 5,
     marginLeft: 6,
   },
-  // Sticky-note paper for both sides of the conversation, not the flat
-  // violet/white chat cards this used to be. The squared-off corner on each
-  // is what keeps two stacked bubbles from reading as one long sheet.
-  userBubble: {
-    backgroundColor: PASTEL.sky.bg,
-    borderWidth: 1,
-    borderColor: PASTEL.sky.edge,
-    borderBottomRightRadius: 8,
-    ...STICKY_SHADOW,
-  },
+  // The user's own words, in the deep royal blue that replaced this app's
+  // flat "informational" cyan. Noa's replies stay on the page itself: warm
+  // surface, a hairline touched with gold. The squared-off corner on each is
+  // what keeps two stacked bubbles from reading as one long sheet.
+  userBubble: { backgroundColor: UI.cyan, borderBottomRightRadius: 7 },
   modelBubble: {
-    backgroundColor: PASTEL.butter.bg,
+    backgroundColor: UI.surface,
     borderWidth: 1,
-    borderColor: PASTEL.butter.edge,
-    borderBottomLeftRadius: 8,
-    ...STICKY_SHADOW,
+    borderColor: tint(UI.gold, 0.25),
+    borderBottomLeftRadius: 7,
   },
-  bubbleText: { fontFamily: FONTS.regular, fontSize: 15, color: UI.ink, textAlign: "right", lineHeight: 23 },
+  bubbleText: { fontFamily: FONTS.medium, fontSize: 15, color: UI.ink, textAlign: "right", lineHeight: 23 },
+  bubbleTextMine: { color: "#FFFFFF" },
 
   typing: { flexDirection: ROW, alignItems: "center", gap: 9, alignSelf: "flex-start" },
   typingText: { fontFamily: FONTS.medium, fontSize: 13.5, color: UI.inkSoft },

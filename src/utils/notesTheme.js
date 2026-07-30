@@ -7,11 +7,15 @@
 export const NOTES_THEME = {
   scheme: "light",
 
-  // Surfaces — clean whites and very soft greys, no heavy color blocks.
-  background: "#F4F6F9", // soft grey canvas
-  surface: "#FFFFFF", // clean white cards
-  surfaceAlt: "#F4F6F9", // subtle raised / input fill
-  surfaceMuted: "#EEF1F4", // chips / progress track
+  // Surfaces — warm cream and soft off-whites, no heavy color blocks and no
+  // cool grey. The values here used to be a blue-grey (#F4F6F9) despite the
+  // comment above claiming "ultra-clean whites and soft off-whites" — that
+  // mismatch between the stated intent and the actual hex is exactly the
+  // "generic, sterile" look this file is meant to avoid.
+  background: "#FBF7ED", // warm cream canvas
+  surface: "#FEFDFA", // clean cards, barely off pure white
+  surfaceAlt: "#F5EFDF", // subtle raised / input fill
+  surfaceMuted: "#EFE6D2", // chips / progress track
 
   // Ink.
   textPrimary: "#111827",
@@ -19,16 +23,19 @@ export const NOTES_THEME = {
   textMuted: "#9CA3AF",
 
   // Hairlines.
-  border: "#EEF1F6",
-  hairline: "#EEF1F6",
+  border: "#E8DEC7",
+  hairline: "#E8DEC7",
 
-  // Accents — used only on interactive elements.
-  accent: "#7C3AED", // deep blue (primary interactive)
-  brand: "#7C3AED",
-  gold: "#06B6D4", // refined gold (special touches)
+  // Accents — used only on interactive elements. `accent` really was a flat
+  // violet (#7C3AED) and `gold` really was cyan (#06B6D4) — the two names
+  // and their colours had swapped meaning somewhere, which is the other half
+  // of the same bug: this now actually is a deep blue and an actual gold.
+  accent: "#1E3A78", // deep royal blue (primary interactive)
+  brand: "#1E3A78",
+  gold: "#AD8A32", // refined gold (special touches)
 
   danger: "#EF4444",
-  warning: "#06B6D4",
+  warning: "#B54708",
   success: "#10B981",
   onAccent: "#FFFFFF",
   overlay: "rgba(16, 24, 40, 0.32)",
@@ -55,7 +62,7 @@ export const NOTES_FONTS = {
 
 // Soft, barely-there elevation per the spec (elevation 2, opacity 0.05).
 export const NOTES_SHADOW = {
-  shadowColor: "#7C3AED",
+  shadowColor: "#1E3A78",
   shadowOffset: { width: 0, height: 8 },
   shadowOpacity: 0.06,
   shadowRadius: 18,
@@ -63,7 +70,7 @@ export const NOTES_SHADOW = {
 };
 
 export const NOTES_SHADOW_LG = {
-  shadowColor: "#7C3AED",
+  shadowColor: "#1E3A78",
   shadowOffset: { width: 0, height: 8 },
   shadowOpacity: 0.06,
   shadowRadius: 18,

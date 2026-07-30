@@ -31,6 +31,11 @@ export function makeNote(overrides = {}) {
     bg: "white",
     fontSize: 16,
     pinned: false,
+    // A different pin from `pinned` above (which pins to the top of the
+    // notes board) — this one surfaces the note's title in a banner on the
+    // POS register screen, for the note that is actually about today's
+    // shift rather than the one the owner wants to see first.
+    isPinnedToPOS: false,
     readOnly: false,
     isChecklist: false,
     checklist: [], // [{ id, text, done }]

@@ -10,7 +10,7 @@ import DroneGoalIcon from "../components/money/DroneGoalIcon";
 import ProfitAllocationCard from "../components/money/ProfitAllocationCard";
 import CustomText from "../components/CustomText";
 import Icon from "../components/Icon";
-import RiveVault, { VAULT_IS_RIVE } from "../components/money/RiveVault";
+import RiveVault from "../components/money/RiveVault";
 import { Canvas } from "../components/Paper";
 import { hapticHeavy, hapticLight, hapticSuccess } from "../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
@@ -226,10 +226,6 @@ export default function MoneyDashboardScreen({ navigation }) {
             <HeroPill icon="arrow-up" tone={UI.green} label="הכנסות" value={shekel(stats.income)} testID="hero-income" />
             <HeroPill icon="arrow-down" tone={UI.amber} label="עלויות" value={shekel(stats.cost)} testID="hero-cost" />
           </View>
-
-          {!VAULT_IS_RIVE && (
-            <CustomText style={s.vaultNote}>הכספת מצוירת ב-SVG — אין קובץ Rive בפרויקט</CustomText>
-          )}
         </Animated.View>
 
         {/* ---------------------------------------------------------------- */}
@@ -673,7 +669,6 @@ const s = StyleSheet.create({
   },
   pillLabel: { fontFamily: FONTS.regular, fontSize: 11, color: UI.inkMuted },
   pillValue: { fontFamily: FONTS.bold, fontSize: 13 },
-  vaultNote: { fontFamily: FONTS.regular, fontSize: 10, color: UI.inkMuted, marginTop: 12 },
 
   sectionHead: {
     fontFamily: FONTS.bold,

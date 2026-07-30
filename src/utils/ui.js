@@ -20,14 +20,16 @@
 // file instead of forty screens.
 
 export const UI = {
-  // Surfaces. White, on white, on white — told apart by their rules.
-  bgDeep: "#F7F7F8",
-  bg: "#FFFFFF",
-  surface: "#FFFFFF",
-  surfaceAlt: "#FAFAFA", // wells, inputs, table stripes
-  surfaceHi: "#F2F2F3", // pressed states, chips
-  hairline: "#EAEAEA", // the one border colour
-  glass: "#FFFFFF", // the nav bar is opaque now; no blur, no translucency
+  // Surfaces. Warm cream, on cream, on cream — "770JLM": a paper the eye
+  // reads as premium rather than as a default Bootstrap white. Told apart by
+  // their rules, same as before; only the temperature changed.
+  bgDeep: "#F5F1E8",
+  bg: "#FCFBF9",
+  surface: "#FEFDFA",
+  surfaceAlt: "#F7F2E9", // wells, inputs, table stripes
+  surfaceHi: "#F0E9DC", // pressed states, chips
+  hairline: "#E8E1D2", // the one border colour
+  glass: "#FEFDFA", // the nav bar is opaque now; no blur, no translucency
 
   // Ink. A near-black rather than a true one: #000 on #FFF is harsh at body
   // size and is not what print or any good financial interface uses.
@@ -51,8 +53,15 @@ export const UI = {
   green: "#067647", // money in, positive change
   red: "#D92D20", // money out, destructive, error
   amber: "#B54708", // attention, unknown, degraded
-  cyan: "#175CD3", // informational / links
-  gold: "#B54708",
+  // A deep royal blue, not the flat Bootstrap/Material "informational" blue
+  // (#175CD3) this used to be — same job (links, informational badges,
+  // secondary accents), a genuinely richer colour to do it in.
+  cyan: "#1E3A78",
+  // A real gold, not a second copy of `amber`'s hex. Reserved for the
+  // premium touches — Noa's chat bubble, special badges — that this file's
+  // main discipline (colour only where it is functional) deliberately
+  // doesn't otherwise allow room for.
+  gold: "#AD8A32",
 
   // Was the floating-action pink. Eight screens still name it, and a token
   // that silently evaluates to undefined does not throw — it renders a
@@ -109,16 +118,16 @@ export function pastelFor(seed, keys = PASTEL_KEYS) {
 // most recognisable "AI product" signature there is, so every ramp here is now
 // a solid or a barely-there shift within one hue.
 export const GRAD = {
-  canvas: ["#FFFFFF", "#FFFFFF"],
-  surface: ["#FFFFFF", "#FFFFFF"],
+  canvas: ["#FCFBF9", "#FCFBF9"],
+  surface: ["#FEFDFA", "#FEFDFA"],
   violet: ["#1A1A1A", "#111111"],
   accent: ["#1A1A1A", "#111111"],
-  cyan: ["#175CD3", "#134FB8"],
+  cyan: ["#1E3A78", "#16295A"],
   coral: ["#D92D20", "#C0271B"],
   green: ["#067647", "#05633B"],
-  gold: ["#B54708", "#9C3D07"],
+  gold: ["#AD8A32", "#8F6F24"],
   ink: ["#1A1A1A", "#111111"],
-  glass: ["#FFFFFF", "#FFFFFF"],
+  glass: ["#FEFDFA", "#FEFDFA"],
 };
 
 // Nearly nothing. Present so a sheet or a menu still lifts off the page, but
@@ -153,10 +162,10 @@ export const SHADOW_AMBIENT = {
 export const SOFT_SHADOW = CARD_SHADOW;
 
 // The one deliberate exception to "nothing glows, nothing floats" — a sticky
-// note or a chat bubble styled as paper is supposed to look like it is lifted
-// off the surface behind it, not resting flush against it. The offset is
-// asymmetric (not straight down) so it reads as a corner lifting rather than
-// a flat card, and it is paired with a slight rotation wherever it is used.
+// note styled as paper is supposed to look like it is lifted off the surface
+// behind it, not resting flush against it. The offset is asymmetric (not
+// straight down) so it reads as a corner lifting rather than a flat card, and
+// it is paired with a slight rotation wherever it is used.
 export const STICKY_SHADOW = {
   shadowColor: "#000000",
   shadowOffset: { width: 2, height: 4 },
@@ -165,12 +174,24 @@ export const STICKY_SHADOW = {
   elevation: 8,
 };
 
+// A second, deliberately calmer exception — for Noa's chat bubbles. Sticky
+// paper is supposed to look tossed onto a desk; a chat bubble is supposed to
+// look like a considered, premium surface, so this is soft and symmetric
+// rather than sharp and off-kilter, with no rotation paired with it anywhere.
+export const BUBBLE_SHADOW = {
+  shadowColor: "#000000",
+  shadowOffset: { width: 0, height: 3 },
+  shadowOpacity: 0.08,
+  shadowRadius: 9,
+  elevation: 3,
+};
+
 // Deterministic tilt from any string seed, in degrees within ±spread.
 //
-// Deterministic rather than Math.random() on purpose: a note or a chat bubble
-// keeps the same angle across re-renders (a new render is not a new "toss of
-// the note"), while still landing on a different, organic-looking angle from
-// its neighbours because the seed — a note id, a message id — differs.
+// Deterministic rather than Math.random() on purpose: a note keeps the same
+// angle across re-renders (a new render is not a new "toss of the note"),
+// while still landing on a different, organic-looking angle from its
+// neighbours because the seed — a note id — differs.
 export function tiltFor(seed, spread = 1.5) {
   const s = String(seed || "");
   let h = 0;

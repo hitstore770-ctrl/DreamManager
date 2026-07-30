@@ -37,6 +37,7 @@ const IONICONS = new Set([
   "happy-outline",
   "warning-outline",
   "shield-checkmark-outline",
+  "logo-whatsapp",
 ]);
 
 export default function Icon({ name, size = 20, color = UI.inkSoft, style }) {
