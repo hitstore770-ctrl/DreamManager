@@ -16,6 +16,7 @@ import { BatchTimer, PackingChecklist, PrepQueue } from "./ops";
 import { LowStockRules, ShiftRoutine, ShipmentTracker } from "./autoTools";
 
 import BizDashboardScreen from "../../screens/BizDashboardScreen";
+import DeliveryScreen from "../../screens/DeliveryScreen";
 import PricingScreen from "../../screens/PricingScreen";
 import PromosScreen from "../../screens/PromosScreen";
 import SuppliersScreen from "../../screens/SuppliersScreen";
@@ -69,6 +70,7 @@ export const POS_SCREENS = {
   zreport: ZReportScreen,
   dash: BizDashboardScreen,
   promos: PromosScreen,
+  delivery: DeliveryScreen,
 };
 
 export function resolveTarget(target) {

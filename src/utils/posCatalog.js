@@ -66,6 +66,13 @@ export const POS_CATEGORIES = [
         target: { kind: "app", key: "route-planner" },
       },
       {
+        id: "delivery-router",
+        name: "משימות הפצה",
+        hint: "רשימת עצירות להיום, ממוינת לסבב חלוקה מקומי",
+        icon: "map-pin",
+        target: { kind: "screen", key: "delivery" },
+      },
+      {
         id: "transit-load",
         name: "עומס רכב",
         hint: "כמה ארגזים נכנסים ומה המשקל הכולל",

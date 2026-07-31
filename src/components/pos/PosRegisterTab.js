@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Modal, Pressable, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
+import { Linking, Modal, Pressable, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import Animated, { FadeIn, FadeInDown, Layout } from "react-native-reanimated";
 
@@ -65,6 +65,12 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
   const [decks] = usePersistentState("@dreammanager/pos-decks", DEFAULT_DECK_ITEMS);
   const [cart, setCart] = usePersistentState("@dreammanager/pos-register-cart", []);
   const [lastTotal, setLastTotal] = useState(null);
+  // Snapshot of the cart at the moment a sale closes, kept only so the
+  // checkout sheet can offer a WhatsApp receipt after completeSale has
+  // already cleared the live cart — the receipt reads from this, not from
+  // `cart`, so it stays correct even after the register resets for the next
+  // customer.
+  const [receipt, setReceipt] = useState(null);
   const [expanded, setExpanded] = useState(false);
 
   const [manualOpen, setManualOpen] = useState(false);
@@ -213,10 +219,10 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
       );
     }
 
+    setReceipt({ lines: cart, totals, ts });
     setLastTotal(totals.gross);
     setCart([]);
     setExpanded(false);
-    setSummaryOpen(false);
   };
 
   const todayGross = useMemo(() => {
@@ -434,7 +440,11 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
         totals={totals}
         cart={cart}
         lineCost={lineCost}
-        onClose={() => setSummaryOpen(false)}
+        receipt={receipt}
+        onClose={() => {
+          setSummaryOpen(false);
+          setReceipt(null);
+        }}
         onComplete={completeSale}
       />
     </View>
@@ -534,18 +544,79 @@ function ManualItemModal({ visible, onClose, onAdd }) {
 // ---------------------------------------------------------------------------
 // The checkout summary.
 
-function CheckoutSummary({ visible, totals, cart, lineCost, onClose, onComplete }) {
+// Itemized text for the WhatsApp receipt — no fabricated store name or
+// address, since nothing in this app's data actually holds one.
+function formatReceiptText(receipt) {
+  const lines = receipt.lines
+    .map((l) => `${l.qty}× ${l.name} — ${shekel(l.price * l.qty)}`)
+    .join("\n");
+  return `📋 קבלה\n\n${lines}\n\nסה"כ לתשלום: ${shekel(receipt.totals.gross)}\n\nתודה על הקנייה! 🙏`;
+}
+
+function CheckoutSummary({ visible, totals, cart, lineCost, receipt, onClose, onComplete }) {
   const margin = totals.gross > 0 ? totals.profit / totals.gross : null;
 
-  // Ma'aser, at the rate set in Settings → תצורת קופה.
-  //
-  // Taken off the *profit*, not the revenue — the money that came in to cover
-  // the cost of the goods was never income. Shown only when there is a profit
-  // to take it from: a loss-making sale owes nothing, and rendering "₪0" or a
-  // negative figure here would just be noise.
+  // Called unconditionally, above the receipt/summary branch below — both
+  // views are the same mounted component instance (the modal's `visible`
+  // prop hides it, it doesn't unmount it), so a hook called on only one of
+  // the two branches would change hook count mid-lifetime and break React.
   const { maaserRate } = useSettings();
   const maaserPct = Math.max(0, parseFloat(maaserRate) || 0);
   const maaser = maaserPct > 0 && totals.profit > 0 ? (totals.profit * maaserPct) / 100 : 0;
+
+  const sendReceiptToWhatsApp = async () => {
+    if (!receipt) return;
+    hapticLight();
+    const url = `whatsapp://send?text=${encodeURIComponent(formatReceiptText(receipt))}`;
+    try {
+      const ok = await Linking.canOpenURL(url);
+      if (ok) {
+        await Linking.openURL(url);
+        return;
+      }
+    } catch {
+      /* fall through */
+    }
+    Linking.openURL(`https://wa.me/?text=${encodeURIComponent(formatReceiptText(receipt))}`).catch(() => {});
+  };
+
+  if (receipt) {
+    return (
+      <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+        <Pressable style={st.backdrop} onPress={onClose}>
+          <Pressable style={st.sheet} onPress={(e) => e.stopPropagation()}>
+            <View style={st.sheetHead}>
+              <TouchableOpacity testID="summary-close" style={st.sheetBtn} onPress={onClose}>
+                <Icon name="x" size={18} color={UI.ink} />
+              </TouchableOpacity>
+              <CustomText style={st.sheetTitle}>העסקה נסגרה</CustomText>
+            </View>
+
+            <View style={st.receiptDone}>
+              <Icon name="check-circle" size={40} color={UI.green} />
+              <CustomText testID="receipt-total" style={st.receiptDoneTotal}>
+                {shekel(receipt.totals.gross)}
+              </CustomText>
+              <CustomText style={st.receiptDoneSub}>נגבה בהצלחה</CustomText>
+            </View>
+
+            <TouchableOpacity
+              testID="send-whatsapp-receipt"
+              style={st.whatsappBtn}
+              onPress={sendReceiptToWhatsApp}
+            >
+              <Icon name="message-circle" size={17} color="#FFFFFF" />
+              <CustomText style={st.primaryText}>שליחת קבלה בוואטסאפ</CustomText>
+            </TouchableOpacity>
+
+            <TouchableOpacity testID="summary-done" style={st.secondaryBtn} onPress={onClose}>
+              <CustomText style={st.secondaryText}>סיום</CustomText>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    );
+  }
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -836,6 +907,22 @@ const st = StyleSheet.create({
     marginTop: 6,
   },
   primaryText: { fontFamily: FONTS.bold, fontSize: 15.5, color: "#FFFFFF" },
+
+  receiptDone: { alignItems: "center", gap: 6, paddingVertical: 18 },
+  receiptDoneTotal: { fontFamily: FONTS.bold, fontSize: 30, color: UI.ink },
+  receiptDoneSub: { fontFamily: FONTS.medium, fontSize: 13.5, color: UI.inkMuted },
+  whatsappBtn: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    minHeight: 54,
+    borderRadius: 16,
+    backgroundColor: "#25D366",
+    marginTop: 6,
+  },
+  secondaryBtn: { alignItems: "center", justifyContent: "center", minHeight: 46 },
+  secondaryText: { fontFamily: FONTS.semibold, fontSize: 14, color: UI.inkMuted },
 
   sumRow: { flexDirection: "row-reverse", alignItems: "center", gap: 12, minHeight: 40 },
   sumLabel: { flex: 1, fontFamily: FONTS.medium, fontSize: 14, color: UI.inkSoft, textAlign: "right" },
