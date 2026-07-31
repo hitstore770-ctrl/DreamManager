@@ -87,6 +87,39 @@ const STEALTH = {
   accent: "#3A3A3C",
 };
 
+// Live Commission Bar — falls back to this when an agent was created before
+// commissionGoal existed, or left the field blank.
+const DEFAULT_COMMISSION_GOAL = 100;
+
+// Debt Ceiling — an agent's own outstanding "Put on Tab" balance, summed
+// across their debtors. At or past this, the tab option locks until the
+// agent collects (or the Admin settles it from DebtsScreen).
+const DEBT_CEILING = 50;
+
+const debtBalance = (d) => Math.max(0, (Number(d?.owed) || 0) - (Number(d?.paid) || 0));
+
+// Tactical routing: group same-building stops together, then work down the
+// corridor floor by floor and room by room. No map SDK is wired into this
+// app, so this is an honest Building→Floor→Room grouping rather than a
+// distance estimate it can't actually back up.
+function sortAgentOrders(orders) {
+  return [...orders].sort((a, b) => {
+    const byBuilding = String(a.building || "").localeCompare(String(b.building || ""), "he", { numeric: true });
+    if (byBuilding !== 0) return byBuilding;
+    const byFloor = (parseFloat(a.floor) || 0) - (parseFloat(b.floor) || 0);
+    if (byFloor !== 0) return byFloor;
+    return (parseFloat(a.room) || 0) - (parseFloat(b.room) || 0);
+  });
+}
+
+function composeOrderAddress(o) {
+  const parts = [];
+  if (o.building) parts.push(`בניין ${o.building}`);
+  if (o.floor) parts.push(`קומה ${o.floor}`);
+  if (o.room) parts.push(`חדר ${o.room}`);
+  return parts.join(" · ") || "ללא כתובת";
+}
+
 // Shared by the live estimate shown while the cart is still open and by the
 // number actually swept into the agent's balance at completeSale — one
 // formula, so the two can never drift apart.
@@ -112,8 +145,18 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
   // Franchise layer: which sub-agent (if any) is currently operating the
   // register. A sub-agent's cart draws from their own backpack, not the
   // shared deck — this is the single switch every gate below reads.
-  const { agents, setAgents, agentInventory, setAgentInventory, auditLog, setAuditLog, activeAgentId, setActiveAgentId } =
-    useAgents() || {};
+  const {
+    agents,
+    setAgents,
+    agentInventory,
+    setAgentInventory,
+    auditLog,
+    setAuditLog,
+    agentOrders,
+    setAgentOrders,
+    activeAgentId,
+    setActiveAgentId,
+  } = useAgents() || {};
   const activeAgent = (agents || []).find((a) => a.id === activeAgentId) || null;
   const myBackpack = useMemo(
     () => (activeAgent ? (agentInventory || []).filter((r) => r.agentId === activeAgent.id) : []),
@@ -164,6 +207,80 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
       `${row.name} × ${amount} — ${shekel((row.cost || 0) * amount)} עלות שקועה, לא נכנס לקופה`
     );
     setDamageRow(null);
+  };
+
+  // Live Commission Bar — this-shift commission only, never the lifetime
+  // total: the gap between the running counter and the snapshot taken at the
+  // agent's last handover, the same subtraction AgentsScreen.js's Close Shift
+  // math uses, so the two screens can never disagree about what a shift paid.
+  const shiftCommission = activeAgent
+    ? Math.max(0, (Number(activeAgent.commissionEarned) || 0) - (Number(activeAgent.commissionAtLastHandover) || 0))
+    : 0;
+  const commissionGoal = Math.max(1, Number(activeAgent?.commissionGoal) || DEFAULT_COMMISSION_GOAL);
+  const commissionProgress = Math.min(1, shiftCommission / commissionGoal);
+
+  // Tactical Delivery & Routing — this agent's remote-order queue, sorted
+  // Building → Floor → Room (not a distance guess: grouping the exact same
+  // building together, then working down the corridor floor by floor, is the
+  // one thing about a stop's location this data can say for certain).
+  const [ordersOpen, setOrdersOpen] = useState(false);
+  const myOrders = useMemo(
+    () =>
+      activeAgent
+        ? sortAgentOrders((agentOrders || []).filter((o) => o.agentId === activeAgent.id && o.status !== "done"))
+        : [],
+    [agentOrders, activeAgent]
+  );
+  const notifyImHere = async (order) => {
+    feedback.light();
+    const text = "היי, אני עם ההזמנה שלך מחוץ לחדר, אפשר לצאת.";
+    const url = `whatsapp://send?text=${encodeURIComponent(text)}`;
+    try {
+      const ok = await Linking.canOpenURL(url);
+      if (ok) {
+        await Linking.openURL(url);
+      } else {
+        await Linking.openURL(`https://wa.me/?text=${encodeURIComponent(text)}`);
+      }
+    } catch {
+      /* no WhatsApp reachable — the agent still sees the order in the queue */
+    }
+    setAgentOrders((prev) =>
+      (prev || []).map((o) => (o.id === order.id ? { ...o, status: "notified", notifiedAt: Date.now() } : o))
+    );
+  };
+  const markOrderDelivered = (order) => {
+    feedback.success();
+    setAgentOrders((prev) =>
+      (prev || []).map((o) => (o.id === order.id ? { ...o, status: "done", deliveredAt: Date.now() } : o))
+    );
+  };
+
+  // Debt Ceiling — an agent's own "Put on Tab" customers, scoped to debts
+  // this agent personally created (agentId stamped at checkout below), never
+  // the shop-wide הקפות ledger the Main Admin runs from DebtsScreen.
+  const myDebtors = useMemo(
+    () => (activeAgent ? (debts || []).filter((d) => d.agentId === activeAgent.id && debtBalance(d) > 0) : []),
+    [debts, activeAgent]
+  );
+  const agentOutstandingDebt = useMemo(() => myDebtors.reduce((sum, d) => sum + debtBalance(d), 0), [myDebtors]);
+  const tabLocked = !!activeAgent && agentOutstandingDebt >= DEBT_CEILING;
+  const [debtorsOpen, setDebtorsOpen] = useState(false);
+  const sendDebtReminder = async (debtor) => {
+    feedback.light();
+    const amount = shekel(debtBalance(debtor)).replace(/[^\d.,]/g, "");
+    const text = `היי, יתרת החוב שלך אצלי היא ${amount} ש״ח. אפשר להסדיר בקלות דרך PayBox: ${PAYBOX_LINK}`;
+    const url = `whatsapp://send?text=${encodeURIComponent(text)}`;
+    try {
+      const ok = await Linking.canOpenURL(url);
+      if (ok) {
+        await Linking.openURL(url);
+        return;
+      }
+    } catch {
+      /* fall through */
+    }
+    Linking.openURL(`https://wa.me/?text=${encodeURIComponent(text)}`).catch(() => {});
   };
 
   // The drone fund — same two keys MoneyDashboardScreen.js reads, so every
@@ -218,6 +335,12 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
   // to a customer's running balance in DebtsScreen instead of collecting now.
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [tabCustomerName, setTabCustomerName] = useState("");
+  // Debt Ceiling — a tab already selected before the agent's debt crossed
+  // the line doesn't stay silently selected; it drops back to cash the
+  // moment the ceiling is hit, same as any other payment method going away.
+  useEffect(() => {
+    if (tabLocked && paymentMethod === "tab") setPaymentMethod("cash");
+  }, [tabLocked, paymentMethod]);
 
   const items = decks?.[deckKey] || DEFAULT_DECK_ITEMS[deckKey] || [];
   const isImport = deckKey === "import";
@@ -419,9 +542,10 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
 
   const completeSale = () => {
     if (!cart.length) return;
-    // A tab sale needs someone to put it on — the button below is already
-    // disabled in this state, so reaching here means a stray call.
-    if (paymentMethod === "tab" && !tabCustomerName.trim()) return;
+    // A tab sale needs someone to put it on, and an agent already at the
+    // debt ceiling can't open a new one — the button below is already
+    // disabled in both states, so reaching here means a stray call.
+    if (paymentMethod === "tab" && (!tabCustomerName.trim() || tabLocked)) return;
     feedback.success();
     const txId = uid();
     const ts = Date.now();
@@ -519,14 +643,21 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
     // added to the customer's running balance in DebtsScreen for collection.
     if (paymentMethod === "tab") {
       const name = tabCustomerName.trim();
+      // Stamped with the agent who ran the sale, so the Debt Ceiling and the
+      // "My Debtors" collection list read this agent's own book — not the
+      // shop-wide הקפות ledger — and never merge into an Admin-run tab for a
+      // customer of the same name.
+      const debtAgentId = activeAgent?.id || null;
       setDebts((prev) => {
-        const existing = (prev || []).find((d) => d.name.trim().toLowerCase() === name.toLowerCase());
+        const existing = (prev || []).find(
+          (d) => d.name.trim().toLowerCase() === name.toLowerCase() && (d.agentId || null) === debtAgentId
+        );
         if (existing) {
           return prev.map((d) =>
             d.id === existing.id ? { ...d, owed: (Number(d.owed) || 0) + totals.amountDue } : d
           );
         }
-        return [...(prev || []), { id: uid(), name, owed: totals.amountDue, paid: 0 }];
+        return [...(prev || []), { id: uid(), name, owed: totals.amountDue, paid: 0, agentId: debtAgentId }];
       });
     }
 
@@ -640,7 +771,7 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
   const liveCommission = computeCommission(activeAgent, totals);
 
   const cartHeight = expanded ? 300 : cart.length ? 132 : 74;
-  const canComplete = paymentMethod !== "tab" || tabCustomerName.trim().length > 0;
+  const canComplete = paymentMethod !== "tab" || (tabCustomerName.trim().length > 0 && !tabLocked);
   const debtorNames = useMemo(
     () => [...new Set((debts || []).map((d) => d.name.trim()).filter(Boolean))],
     [debts]
@@ -774,13 +905,65 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
           <CustomText testID="pos-today" style={st.todayValue}>
             {shekel(activeAgent ? agentTodayGross : todayGross)}
           </CustomText>
-          {activeAgent && (
-            <CustomText testID="pos-commission-earned" style={st.todayCommission}>
-              עמלה שנצברה: {shekel(activeAgent.commissionEarned || 0)}
-            </CustomText>
-          )}
         </View>
       </View>
+
+      {/* Live Commission Bar + tactical shortcuts — agent-only, and the one
+          place in the register that keeps working the same in Stealth Mode
+          (a bar and two chips have nothing to glare at night). */}
+      {activeAgent && (
+        <View style={st.agentToolsRow}>
+          <View style={st.commissionBar}>
+            <View style={st.commissionBarHead}>
+              <CustomText testID="pos-commission-earned" style={[st.commissionBarLabel, muted && { color: STEALTH.ink }]}>
+                עמלת משמרת: {shekel(shiftCommission)} / {shekel(commissionGoal)}
+              </CustomText>
+              <Icon name="trending-up" size={13} color={muted ? STEALTH.inkMuted : UI.green} />
+            </View>
+            <View style={[st.commissionTrack, muted && { backgroundColor: STEALTH.surfaceHi }]}>
+              <View
+                style={[
+                  st.commissionFill,
+                  { width: `${Math.round(commissionProgress * 100)}%` },
+                  commissionProgress >= 1 && { backgroundColor: UI.gold },
+                ]}
+              />
+            </View>
+          </View>
+          <TouchableOpacity
+            testID="orders-open"
+            style={[st.toolChip, muted && { backgroundColor: STEALTH.surface }]}
+            activeOpacity={0.8}
+            onPress={() => {
+              feedback.light();
+              setOrdersOpen(true);
+            }}
+          >
+            <Icon name="map-pin" size={16} color={muted ? STEALTH.ink : UI.violet} />
+            {myOrders.length > 0 && (
+              <View style={st.toolChipBadge}>
+                <CustomText style={st.toolChipBadgeText}>{myOrders.length}</CustomText>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            testID="debtors-open"
+            style={[st.toolChip, muted && { backgroundColor: STEALTH.surface }]}
+            activeOpacity={0.8}
+            onPress={() => {
+              feedback.light();
+              setDebtorsOpen(true);
+            }}
+          >
+            <Icon name="book-open" size={16} color={muted ? STEALTH.ink : UI.amber} />
+            {myDebtors.length > 0 && (
+              <View style={[st.toolChipBadge, { backgroundColor: UI.red }]}>
+                <CustomText style={st.toolChipBadgeText}>{myDebtors.length}</CustomText>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
 
       <View style={{ flex: 1 }}>
         {activeAgent ? (
@@ -1011,13 +1194,127 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
         loyaltyCustomers={loyaltyCustomers}
         canComplete={canComplete}
         activeAgent={activeAgent}
+        tabLocked={tabLocked}
         onClose={() => {
           setSummaryOpen(false);
           setReceipt(null);
         }}
         onComplete={completeSale}
       />
+      <OrderQueueModal
+        visible={ordersOpen}
+        orders={myOrders}
+        onClose={() => setOrdersOpen(false)}
+        onImHere={notifyImHere}
+        onDelivered={markOrderDelivered}
+      />
+      <AgentDebtorsModal
+        visible={debtorsOpen}
+        debtors={myDebtors}
+        onClose={() => setDebtorsOpen(false)}
+        onSend={sendDebtReminder}
+      />
     </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tactical Delivery & Routing — this agent's queue, already sorted
+// Building → Floor → Room. "I'm here" fires the WhatsApp template and flags
+// the stop as notified without removing it; "נמסר" is the only action that
+// actually closes it out.
+
+function OrderQueueModal({ visible, orders, onClose, onImHere, onDelivered }) {
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={st.backdrop} onPress={onClose}>
+        <Pressable style={st.sheet} onPress={(e) => e.stopPropagation()}>
+          <View style={st.sheetHead}>
+            <TouchableOpacity testID="orders-close" style={st.sheetBtn} onPress={onClose}>
+              <Icon name="x" size={18} color={UI.ink} />
+            </TouchableOpacity>
+            <CustomText style={st.sheetTitle}>משימות הפצה</CustomText>
+          </View>
+
+          {orders.length === 0 ? (
+            <CustomText style={st.ordersEmpty}>אין משימות פתוחות — הכל נמסר.</CustomText>
+          ) : (
+            <>
+              <CustomText style={st.ordersHint}>ממוין אוטומטית לפי בניין וקומה, למינימום הליכה</CustomText>
+              {orders.map((o, index) => (
+                <View key={o.id} style={st.orderRow}>
+                  <View style={st.orderRowNum}>
+                    <CustomText style={st.orderRowNumText}>{index + 1}</CustomText>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <CustomText style={st.orderAddress}>{composeOrderAddress(o)}</CustomText>
+                    {o.status === "notified" && <CustomText style={st.orderNotified}>הודעה נשלחה</CustomText>}
+                  </View>
+                  <TouchableOpacity
+                    testID={`order-here-${o.id}`}
+                    style={st.orderHereBtn}
+                    activeOpacity={0.8}
+                    onPress={() => onImHere(o)}
+                  >
+                    <Icon name="message-circle" size={16} color="#FFFFFF" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    testID={`order-done-${o.id}`}
+                    style={st.orderDoneBtn}
+                    activeOpacity={0.8}
+                    onPress={() => onDelivered(o)}
+                  >
+                    <Icon name="check" size={16} color={UI.green} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </>
+          )}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Risk management, agent-side — this agent's own debtors, with a one-tap
+// WhatsApp nudge quoting the exact balance and the PayBox link to settle it.
+
+function AgentDebtorsModal({ visible, debtors, onClose, onSend }) {
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={st.backdrop} onPress={onClose}>
+        <Pressable style={st.sheet} onPress={(e) => e.stopPropagation()}>
+          <View style={st.sheetHead}>
+            <TouchableOpacity testID="debtors-close" style={st.sheetBtn} onPress={onClose}>
+              <Icon name="x" size={18} color={UI.ink} />
+            </TouchableOpacity>
+            <CustomText style={st.sheetTitle}>החייבים שלי</CustomText>
+          </View>
+
+          {debtors.length === 0 ? (
+            <CustomText style={st.ordersEmpty}>אין חובות פתוחים על שמכם.</CustomText>
+          ) : (
+            debtors.map((d) => (
+              <View key={d.id} style={st.orderRow}>
+                <View style={{ flex: 1 }}>
+                  <CustomText style={st.orderAddress}>{d.name}</CustomText>
+                  <CustomText style={st.debtorBalance}>{shekel(debtBalance(d))} חוב פתוח</CustomText>
+                </View>
+                <TouchableOpacity
+                  testID={`debtor-whatsapp-${d.id}`}
+                  style={st.orderHereBtn}
+                  activeOpacity={0.8}
+                  onPress={() => onSend(d)}
+                >
+                  <Icon name="message-circle" size={16} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+            ))
+          )}
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -1418,6 +1715,7 @@ function CheckoutSummary({
   loyaltyCustomers,
   canComplete,
   activeAgent,
+  tabLocked,
   onClose,
   onComplete,
 }) {
@@ -1626,22 +1924,39 @@ function CheckoutSummary({
           <View style={st.paymentRow}>
             {PAYMENT_METHODS.map((m) => {
               const on = m.key === paymentMethod;
+              // Debt Ceiling — this agent's own tab is locked once their
+              // outstanding customer debt hits DEBT_CEILING; every other
+              // payment method stays open regardless.
+              const locked = m.key === "tab" && tabLocked;
               return (
                 <TouchableOpacity
                   key={m.key}
                   testID={`payment-${m.key}`}
-                  style={[st.paymentChip, on && st.paymentChipOn]}
+                  style={[st.paymentChip, on && st.paymentChipOn, locked && st.paymentChipLocked]}
+                  disabled={locked}
                   onPress={() => {
+                    if (locked) {
+                      hapticWarning();
+                      return;
+                    }
                     hapticLight();
                     setPaymentMethod(m.key);
                   }}
                 >
-                  <Icon name={m.icon} size={15} color={on ? "#FFFFFF" : UI.inkSoft} />
+                  <Icon name={locked ? "lock" : m.icon} size={15} color={on ? "#FFFFFF" : UI.inkSoft} />
                   <CustomText style={[st.paymentChipText, on && { color: "#FFFFFF" }]}>{m.label}</CustomText>
                 </TouchableOpacity>
               );
             })}
           </View>
+          {tabLocked && (
+            <View style={st.debtCeilingNote}>
+              <Icon name="alert-triangle" size={13} color={UI.red} />
+              <CustomText style={st.debtCeilingNoteText}>
+                תקרת חוב סוכן ({shekel(DEBT_CEILING)}) הושגה — הקפה חסומה עד שהחייבים יסולקו
+              </CustomText>
+            </View>
+          )}
 
           {/* PayBox QR — the customer scans this straight off the agent's
               screen; nothing here is a real payment confirmation, the agent
@@ -1808,7 +2123,91 @@ const st = StyleSheet.create({
   todayBox: { alignItems: "flex-end" },
   todayLabel: { fontFamily: FONTS.regular, fontSize: 10.5, color: UI.inkMuted },
   todayValue: { fontFamily: FONTS.bold, fontSize: 16, color: UI.green },
-  todayCommission: { fontFamily: FONTS.medium, fontSize: 10, color: UI.violet, marginTop: 1 },
+
+  agentToolsRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingBottom: 10,
+  },
+  commissionBar: { flex: 1 },
+  commissionBarHead: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  commissionBarLabel: { fontFamily: FONTS.semibold, fontSize: 11.5, color: UI.ink },
+  commissionTrack: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: UI.surfaceHi,
+    overflow: "hidden",
+  },
+  commissionFill: { height: 8, borderRadius: 4, backgroundColor: UI.green },
+  toolChip: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: UI.surfaceHi,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  toolChipBadge: {
+    position: "absolute",
+    top: -4,
+    left: -4,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: 9,
+    backgroundColor: UI.violet,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  toolChipBadgeText: { fontFamily: FONTS.bold, fontSize: 10, color: "#FFFFFF" },
+
+  ordersEmpty: { fontFamily: FONTS.regular, fontSize: 13, color: UI.inkMuted, textAlign: "center", paddingVertical: 20 },
+  ordersHint: { fontFamily: FONTS.regular, fontSize: 11.5, color: UI.inkMuted, textAlign: "right", marginBottom: 8 },
+  orderRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: UI.surfaceAlt,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    minHeight: 58,
+    marginBottom: 8,
+  },
+  orderRowNum: {
+    width: 26,
+    height: 26,
+    borderRadius: 9,
+    backgroundColor: UI.surfaceHi,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  orderRowNumText: { fontFamily: FONTS.bold, fontSize: 12, color: UI.inkSoft },
+  orderAddress: { fontFamily: FONTS.semibold, fontSize: 13.5, color: UI.ink, textAlign: "right" },
+  orderNotified: { fontFamily: FONTS.medium, fontSize: 10.5, color: UI.green, textAlign: "right", marginTop: 2 },
+  orderHereBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: "#25D366",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  orderDoneBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: tint(UI.green, 0.12),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  debtorBalance: { fontFamily: FONTS.semibold, fontSize: 12.5, color: UI.red, textAlign: "right", marginTop: 2 },
 
   manualBtn: {
     flexDirection: "row-reverse",
@@ -2045,6 +2444,18 @@ const st = StyleSheet.create({
   },
   paymentChipOn: { backgroundColor: UI.ink },
   paymentChipText: { fontFamily: FONTS.semibold, fontSize: 12.5, color: UI.inkSoft },
+  paymentChipLocked: { opacity: 0.4 },
+  debtCeilingNote: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: tint(UI.red, 0.08),
+  },
+  debtCeilingNoteText: { flex: 1, fontFamily: FONTS.medium, fontSize: 11.5, color: UI.red, textAlign: "right" },
   payboxBox: {
     alignItems: "center",
     gap: 8,

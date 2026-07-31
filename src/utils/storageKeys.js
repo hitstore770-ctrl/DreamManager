@@ -43,4 +43,7 @@ export const STORAGE_KEYS = {
   agentInventory: "@dreammanager/agent-inventory",
   agentAuditLog: "@dreammanager/agent-audit-log",
   activeAgentId: "@dreammanager/active-agent-id",
+  // Remote delivery tasks the Admin hands an agent — Building/Floor/Room, not
+  // a street address, same micro-local unit DeliveryScreen.js uses.
+  agentOrders: "@dreammanager/agent-orders",
 };

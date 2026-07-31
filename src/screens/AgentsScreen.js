@@ -36,19 +36,42 @@ const SHADOW = {
 
 const HANDOVER_TYPE = "dm-shift-handover";
 
+// Default daily commission target when an agent is created without picking
+// one — enough for the Live Commission Bar in the agent's own POS to have
+// something to fill toward from the first shift.
+const DEFAULT_COMMISSION_GOAL = 100;
+
 function commissionLabel(agent) {
   return agent.commissionType === "flat"
     ? `${shekel(agent.commissionValue)} לכל יחידה נמכרת`
     : `${agent.commissionValue}% מהרווח על כל מכירה`;
 }
 
+// The agent's *this-shift* commission is never stored on its own — it's the
+// gap between the lifetime running total and the snapshot taken the last
+// time a shift closed, so it can never drift from the number completeSale
+// actually accrues.
+function shiftCommissionOf(agent) {
+  return Math.max(0, (Number(agent?.commissionEarned) || 0) - (Number(agent?.commissionAtLastHandover) || 0));
+}
+
 export default function AgentsScreen() {
   const { inventory, setInventory, sales } = useBusiness();
-  const { agents, setAgents, agentInventory, setAgentInventory, auditLog, setAuditLog } = useAgents();
+  const {
+    agents,
+    setAgents,
+    agentInventory,
+    setAgentInventory,
+    auditLog,
+    setAuditLog,
+    agentOrders,
+    setAgentOrders,
+  } = useAgents();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [transferAgentId, setTransferAgentId] = useState(null);
   const [closeShiftAgentId, setCloseShiftAgentId] = useState(null);
+  const [assignOrderAgentId, setAssignOrderAgentId] = useState(null);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [reconcileResult, setReconcileResult] = useState(null);
   const [auditOpen, setAuditOpen] = useState(false);
@@ -67,7 +90,7 @@ export default function AgentsScreen() {
       .filter((r) => r.agentId === agent.id && r.paymentMethod === "cash" && r.ts > (agent.lastHandoverAt || 0))
       .reduce((sum, r) => sum + (r.total || 0), 0);
 
-  const createAgent = ({ name, commissionType, commissionValue }) => {
+  const createAgent = ({ name, commissionType, commissionValue, commissionGoal }) => {
     hapticSuccess();
     setAgents((prev) => [
       ...(prev || []),
@@ -77,6 +100,11 @@ export default function AgentsScreen() {
         commissionType,
         commissionValue,
         commissionEarned: 0,
+        // Snapshot of commissionEarned at the last handover — the baseline
+        // shiftCommissionOf subtracts from, so a brand-new agent's first
+        // shift starts counting from zero.
+        commissionAtLastHandover: 0,
+        commissionGoal: commissionGoal > 0 ? commissionGoal : DEFAULT_COMMISSION_GOAL,
         lastHandoverAt: 0,
         createdAt: Date.now(),
       },
@@ -135,12 +163,25 @@ export default function AgentsScreen() {
     );
     setAgentInventory((prev) => (prev || []).filter((r) => r.agentId !== agent.id));
     const now = Date.now();
-    setAgents((prev) => (prev || []).map((a) => (a.id === agent.id ? { ...a, lastHandoverAt: now } : a)));
+    // Snapshotting commissionEarned here — not resetting it — is what lets
+    // shiftCommissionOf keep reading a single authoritative running total
+    // instead of a second counter that could drift from it.
+    setAgents((prev) =>
+      (prev || []).map((a) =>
+        a.id === agent.id ? { ...a, lastHandoverAt: now, commissionAtLastHandover: a.commissionEarned || 0 } : a
+      )
+    );
     const returnedUnits = backpack.reduce((n, b) => n + (Number(b.qty) || 0), 0);
     const cash = Number(payload.cashExpected) || 0;
-    logAudit(agent, "סגירת משמרת והתאמה", `מזומן שהתקבל ${shekel(cash)} · ${returnedUnits} יח' הוחזרו למלאי הראשי`);
+    const commissionKept = Number(payload.commissionKept) || 0;
+    const netCash = payload.netCashOwed != null ? Number(payload.netCashOwed) : Math.max(0, cash - commissionKept);
+    logAudit(
+      agent,
+      "סגירת משמרת והתאמה",
+      `מזומן שהתקבל ${shekel(cash)} · עמלת סוכן ${shekel(commissionKept)} · נטו למנהל ${shekel(netCash)} · ${returnedUnits} יח' הוחזרו למלאי הראשי`
+    );
     hapticSuccess();
-    setReconcileResult({ ok: true, agentName: agent.name, cash, returnedUnits });
+    setReconcileResult({ ok: true, agentName: agent.name, cash, commissionKept, netCash, returnedUnits });
     setScannerOpen(false);
   };
 
@@ -163,6 +204,7 @@ export default function AgentsScreen() {
 
   const transferAgent = (agents || []).find((a) => a.id === transferAgentId) || null;
   const closeShiftAgent = (agents || []).find((a) => a.id === closeShiftAgentId) || null;
+  const assignOrderAgent = (agents || []).find((a) => a.id === assignOrderAgentId) || null;
 
   return (
     <View style={{ flex: 1, backgroundColor: WHITE }}>
@@ -176,7 +218,7 @@ export default function AgentsScreen() {
           <Icon name={reconcileResult.ok ? "check-circle" : "alert-triangle"} size={17} color={reconcileResult.ok ? GREEN_DARK : RED} />
           <CustomText style={s.resultText}>
             {reconcileResult.ok
-              ? `משמרת של ${reconcileResult.agentName} נסגרה: ${shekel(reconcileResult.cash)} מזומן, ${reconcileResult.returnedUnits} יח' חזרו למלאי.`
+              ? `משמרת של ${reconcileResult.agentName} נסגרה: ${shekel(reconcileResult.cash)} מזומן · עמלת סוכן ${shekel(reconcileResult.commissionKept || 0)} · נטו למנהל ${shekel(reconcileResult.netCash ?? reconcileResult.cash)} · ${reconcileResult.returnedUnits} יח' חזרו למלאי.`
               : reconcileResult.message}
           </CustomText>
           <TouchableOpacity onPress={() => setReconcileResult(null)} hitSlop={10}>
@@ -274,6 +316,17 @@ export default function AgentsScreen() {
                     <CustomText style={s.actionBtnText}>סגירת משמרת</CustomText>
                   </TouchableOpacity>
                   <TouchableOpacity
+                    testID={`agent-assign-order-${agent.id}`}
+                    style={s.iconBtn}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      hapticLight();
+                      setAssignOrderAgentId(agent.id);
+                    }}
+                  >
+                    <Icon name="map-pin" size={16} color={BLUE} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
                     testID={`agent-remove-${agent.id}`}
                     style={s.removeBtn}
                     activeOpacity={0.7}
@@ -330,6 +383,19 @@ export default function AgentsScreen() {
         onClose={() => setCloseShiftAgentId(null)}
       />
 
+      <AssignOrderModal
+        visible={!!assignOrderAgent}
+        agent={assignOrderAgent}
+        agentOrders={agentOrders}
+        onClose={() => setAssignOrderAgentId(null)}
+        onAssign={(agent, order) => {
+          setAgentOrders((prev) => [
+            ...(prev || []),
+            { id: uid(), agentId: agent.id, ...order, status: "pending", createdAt: Date.now() },
+          ]);
+        }}
+      />
+
       <ShiftHandoverScanner visible={scannerOpen} onScanned={handleScanned} onClose={() => setScannerOpen(false)} />
     </View>
   );
@@ -341,11 +407,13 @@ function CreateAgentModal({ visible, onClose, onCreate }) {
   const [name, setName] = useState("");
   const [commissionType, setCommissionType] = useState("pct");
   const [value, setValue] = useState("");
+  const [goal, setGoal] = useState("");
 
   const close = () => {
     setName("");
     setCommissionType("pct");
     setValue("");
+    setGoal("");
     onClose();
   };
 
@@ -356,7 +424,12 @@ function CreateAgentModal({ visible, onClose, onCreate }) {
       hapticWarning();
       return;
     }
-    onCreate({ name: name.trim(), commissionType, commissionValue: parseFloat(value) || 0 });
+    onCreate({
+      name: name.trim(),
+      commissionType,
+      commissionValue: parseFloat(value) || 0,
+      commissionGoal: parseFloat(goal) || 0,
+    });
     close();
   };
 
@@ -401,6 +474,17 @@ function CreateAgentModal({ visible, onClose, onCreate }) {
                 onChangeText={setValue}
                 keyboardType="decimal-pad"
                 placeholder={commissionType === "pct" ? "אחוז, למשל 10" : "₪ ליחידה, למשל 2"}
+                placeholderTextColor={INK_MUTED}
+                textAlign="center"
+              />
+
+              <TextInput
+                testID="agent-commission-goal"
+                style={s.amountInput}
+                value={goal}
+                onChangeText={setGoal}
+                keyboardType="decimal-pad"
+                placeholder={`יעד עמלה יומי (₪, ברירת מחדל ${DEFAULT_COMMISSION_GOAL})`}
                 placeholderTextColor={INK_MUTED}
                 textAlign="center"
               />
@@ -516,12 +600,16 @@ function TransferModal({ visible, agent, inventory, onClose, onTransfer }) {
 
 function CloseShiftModal({ visible, agent, backpack, cashExpected, onClose }) {
   if (!agent) return null;
+  const commissionKept = shiftCommissionOf(agent);
+  const netCashOwed = Math.max(0, cashExpected - commissionKept);
   const payload = {
     type: HANDOVER_TYPE,
     agentId: agent.id,
     agentName: agent.name,
     ts: Date.now(),
     cashExpected,
+    commissionKept,
+    netCashOwed,
     backpack: backpack.map((r) => ({ itemId: r.itemId, name: r.name, qty: r.qty })),
   };
   const value = JSON.stringify(payload);
@@ -535,9 +623,27 @@ function CloseShiftModal({ visible, agent, backpack, cashExpected, onClose }) {
             <View style={s.card}>
               <CustomText style={s.cardTitle}>סגירת משמרת · {agent.name}</CustomText>
 
-              <View style={s.cardBalRow}>
-                <CustomText style={[s.cardBalValue, { color: GREEN_DARK }]}>{shekel(cashExpected)}</CustomText>
-                <CustomText style={s.cardBalLabel}>מזומן צפוי למסירה</CustomText>
+              {/* The math, in the open, before the QR — cash collected minus
+                  what the agent keeps as commission is what actually changes
+                  hands at handover. */}
+              <View style={s.mathBox}>
+                <View style={s.mathRow}>
+                  <CustomText testID="shift-cash-received" style={s.mathValue}>{shekel(cashExpected)}</CustomText>
+                  <CustomText style={s.mathLabel}>סה״כ מזומן שנגבה</CustomText>
+                </View>
+                <View style={s.mathRow}>
+                  <CustomText testID="shift-commission-kept" style={[s.mathValue, { color: BLUE }]}>
+                    − {shekel(commissionKept)}
+                  </CustomText>
+                  <CustomText style={s.mathLabel}>עמלת הסוכן (נשארת אצלו)</CustomText>
+                </View>
+                <View style={s.mathDivider} />
+                <View style={s.mathRow}>
+                  <CustomText testID="shift-net-owed" style={[s.mathValue, s.mathTotal, { color: GREEN_DARK }]}>
+                    {shekel(netCashOwed)}
+                  </CustomText>
+                  <CustomText style={[s.mathLabel, s.mathTotalLabel]}>נטו למסירה למנהל</CustomText>
+                </View>
               </View>
 
               <CustomText style={s.qrHint}>
@@ -554,6 +660,144 @@ function CloseShiftModal({ visible, agent, backpack, cashExpected, onClose }) {
 
               <TouchableOpacity testID="close-shift-done" style={s.secondaryBtn} onPress={onClose} activeOpacity={0.8}>
                 <CustomText style={s.secondaryBtnText}>סגור</CustomText>
+              </TouchableOpacity>
+            </View>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Assign a remote delivery task to an agent — Building/Floor/Room chips
+// rather than a free-text address, and the modal stays open after each add
+// so the Admin can hand over several stops from one sitting.
+
+const QUICK_FLOORS = ["0", "1", "2", "3", "4", "5"];
+
+function AssignOrderModal({ visible, agent, agentOrders, onClose, onAssign }) {
+  const [building, setBuilding] = useState("");
+  const [floor, setFloor] = useState("");
+  const [room, setRoom] = useState("");
+  const [queuedCount, setQueuedCount] = useState(0);
+
+  const knownBuildings = useMemo(() => {
+    const set = new Set((agentOrders || []).map((o) => o.building).filter(Boolean));
+    return Array.from(set).sort((a, b) => String(a).localeCompare(String(b), "he", { numeric: true }));
+  }, [agentOrders]);
+
+  const close = () => {
+    setBuilding("");
+    setFloor("");
+    setRoom("");
+    setQueuedCount(0);
+    onClose();
+  };
+
+  const valid = building.trim().length > 0;
+
+  const addOne = () => {
+    if (!valid || !agent) {
+      hapticWarning();
+      return;
+    }
+    hapticSuccess();
+    onAssign(agent, { building: building.trim(), floor: floor.trim(), room: room.trim() });
+    setQueuedCount((n) => n + 1);
+    setFloor("");
+    setRoom("");
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={close}>
+      <TouchableWithoutFeedback onPress={close}>
+        <View style={s.backdrop}>
+          <TouchableWithoutFeedback onPress={() => {}}>
+            <View style={s.card}>
+              <CustomText style={s.cardTitle}>משימת הפצה ל{agent?.name || ""}</CustomText>
+
+              <CustomText style={s.fieldLabel}>בניין</CustomText>
+              {knownBuildings.length > 0 && (
+                <View style={s.chipRow}>
+                  {knownBuildings.map((b) => (
+                    <TouchableOpacity
+                      key={b}
+                      testID={`assign-building-${b}`}
+                      style={[s.chip, building === b && s.chipOn]}
+                      onPress={() => {
+                        hapticLight();
+                        setBuilding(b);
+                      }}
+                    >
+                      <CustomText style={[s.chipText, building === b && s.chipTextOn]}>{b}</CustomText>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+              <TextInput
+                testID="assign-building-input"
+                style={s.amountInput}
+                value={building}
+                onChangeText={setBuilding}
+                placeholder="מספר/שם בניין"
+                placeholderTextColor={INK_MUTED}
+                textAlign="center"
+              />
+
+              <CustomText style={s.fieldLabel}>קומה</CustomText>
+              <View style={s.chipRow}>
+                {QUICK_FLOORS.map((f) => (
+                  <TouchableOpacity
+                    key={f}
+                    testID={`assign-floor-${f}`}
+                    style={[s.chip, floor === f && s.chipOn]}
+                    onPress={() => {
+                      hapticLight();
+                      setFloor(f);
+                    }}
+                  >
+                    <CustomText style={[s.chipText, floor === f && s.chipTextOn]}>{f}</CustomText>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TextInput
+                testID="assign-floor-input"
+                style={s.amountInput}
+                value={floor}
+                onChangeText={setFloor}
+                keyboardType="number-pad"
+                placeholder="קומה אחרת"
+                placeholderTextColor={INK_MUTED}
+                textAlign="center"
+              />
+
+              <CustomText style={s.fieldLabel}>חדר</CustomText>
+              <TextInput
+                testID="assign-room-input"
+                style={s.amountInput}
+                value={room}
+                onChangeText={setRoom}
+                keyboardType="number-pad"
+                placeholder="מספר חדר"
+                placeholderTextColor={INK_MUTED}
+                textAlign="center"
+              />
+
+              <TouchableOpacity
+                testID="assign-order-add"
+                style={[s.actionBtnWide, { backgroundColor: BLUE }, !valid && { opacity: 0.35 }]}
+                disabled={!valid}
+                onPress={addOne}
+                activeOpacity={0.8}
+              >
+                <CustomText style={s.actionBtnText}>
+                  {queuedCount > 0 ? `הוסף עוד (${queuedCount} שויכו)` : "שייך משימה"}
+                </CustomText>
+              </TouchableOpacity>
+
+              <TouchableOpacity testID="assign-order-done" style={s.secondaryBtn} onPress={close} activeOpacity={0.8}>
+                <CustomText style={s.secondaryBtnText}>סיום</CustomText>
               </TouchableOpacity>
             </View>
           </TouchableWithoutFeedback>
@@ -643,6 +887,14 @@ const s = StyleSheet.create({
   actionBtnWide: { minHeight: 52, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   actionBtnText: { fontFamily: FONTS.bold, fontSize: 12.5, color: WHITE },
   removeBtn: { width: 42, height: 42, alignItems: "center", justifyContent: "center" },
+  iconBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: BLUE + "14",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
   auditToggle: {
     flexDirection: "row-reverse",
@@ -680,18 +932,27 @@ const s = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(16,20,26,0.45)", alignItems: "center", justifyContent: "center", padding: 24 },
   card: { width: "100%", maxHeight: "86%", backgroundColor: WHITE, borderRadius: 24, padding: 20, ...SHADOW },
   cardTitle: { fontFamily: FONTS.bold, fontSize: 18, color: INK, textAlign: "right", marginBottom: 12 },
-  cardBalRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+
+  mathBox: { backgroundColor: CARD, borderRadius: 16, padding: 14, marginBottom: 10, gap: 6 },
+  mathRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  mathLabel: { fontFamily: FONTS.medium, fontSize: 12.5, color: INK_SOFT },
+  mathValue: { fontFamily: FONTS.bold, fontSize: 15, color: INK },
+  mathDivider: { height: 1, backgroundColor: "#E5E7EB", marginVertical: 2 },
+  mathTotal: { fontSize: 20 },
+  mathTotalLabel: { fontFamily: FONTS.bold, fontSize: 13, color: INK },
+
+  chipRow: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 6, marginBottom: 8 },
+  chip: {
+    paddingHorizontal: 12,
+    minHeight: 36,
+    borderRadius: 10,
     backgroundColor: CARD,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    minHeight: 52,
-    marginBottom: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  cardBalLabel: { fontFamily: FONTS.medium, fontSize: 13, color: INK_SOFT },
-  cardBalValue: { fontFamily: FONTS.bold, fontSize: 19 },
+  chipOn: { backgroundColor: BLUE },
+  chipText: { fontFamily: FONTS.semibold, fontSize: 12.5, color: INK_SOFT },
+  chipTextOn: { color: WHITE },
   amountInput: {
     minHeight: 50,
     backgroundColor: CARD,
