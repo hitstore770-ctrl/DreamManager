@@ -1,7 +1,8 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Linking, Modal, Pressable, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import Animated, { FadeIn, FadeInDown, FadeOut, Layout } from "react-native-reanimated";
+import QRCode from "react-native-qrcode-svg";
 
 import Icon from "../Icon";
 import CustomText from "../CustomText";
@@ -67,6 +68,25 @@ function isLateNightNow() {
   return h >= 23 || h < 4;
 }
 
+// PayBox QR — a hardcoded personal payment link so a customer can scan the
+// agent's screen directly at checkout instead of the agent handling cash.
+// Replace with the real PayBox personal link before shipping.
+const PAYBOX_LINK = "https://links.payboxapp.com/DreamManagerAgent";
+
+// Stealth Mode: a strict dark palette for night deliveries, applied only to
+// the sub-agent's own register surfaces (backpack grid + docked cart) — the
+// Main Admin's register never goes dark, it has no glare problem to solve.
+const STEALTH = {
+  bg: "#000000",
+  surface: "#1C1C1E",
+  surfaceHi: "#2C2C2E",
+  ink: "#FFFFFF",
+  inkSoft: "#A0A0A5",
+  inkMuted: "#6E6E73",
+  hairline: "#2C2C2E",
+  accent: "#3A3A3C",
+};
+
 // Shared by the live estimate shown while the cart is still open and by the
 // number actually swept into the agent's balance at completeSale — one
 // formula, so the two can never drift apart.
@@ -109,6 +129,41 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
       { id: uid(), ts: Date.now(), agentId: activeAgent.id, agentName: activeAgent.name, action, detail },
       ...(prev || []),
     ]);
+  };
+
+  // Stealth Mode — a night-delivery dark theme + suppressed tap feedback,
+  // scoped to whichever sub-agent is on the register right now. Persisted so
+  // a shift spanning an app restart doesn't need re-toggling, and force-off
+  // the instant nobody is signed in as an agent — the Main Admin's register
+  // never goes dark and never mutes.
+  const [stealthMode, setStealthMode] = usePersistentState("@dreammanager/pos-stealth-mode", false);
+  useEffect(() => {
+    if (!activeAgent && stealthMode) setStealthMode(false);
+  }, [activeAgent, stealthMode]);
+  const muted = !!(activeAgent && stealthMode);
+  const feedback = {
+    light: () => { if (!muted) hapticLight(); },
+    success: () => { if (!muted) hapticSuccess(); },
+    warning: () => { if (!muted) hapticWarning(); },
+  };
+
+  // Damage Control — a backpack item long-pressed and confirmed as broken or
+  // lost never reaches the register: it's deducted straight from the
+  // backpack and written to the audit log as a sunk cost, with no sale line
+  // and no cash involved.
+  const [damageRow, setDamageRow] = useState(null);
+  const reportDamage = (row, qty) => {
+    if (!activeAgent || !row) return;
+    const amount = Math.max(1, Math.min(qty, row.qty));
+    feedback.warning();
+    setAgentInventory((prev) =>
+      (prev || []).map((r) => (r.id === row.id ? { ...r, qty: Math.max(0, r.qty - amount) } : r))
+    );
+    logAudit(
+      "פריט פגום בתיק",
+      `${row.name} × ${amount} — ${shekel((row.cost || 0) * amount)} עלות שקועה, לא נכנס לקופה`
+    );
+    setDamageRow(null);
   };
 
   // The drone fund — same two keys MoneyDashboardScreen.js reads, so every
@@ -209,7 +264,7 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
   }, [cart, costs]);
 
   const add = (item, qty = 1) => {
-    hapticLight();
+    feedback.light();
     setCart((prev) => {
       const found = prev.find((l) => l.sku === item.sku);
       if (found) return prev.map((l) => (l.sku === item.sku ? { ...l, qty: l.qty + qty } : l));
@@ -244,7 +299,7 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
   const addFromBackpack = (row) => {
     const inCartQty = cart.find((l) => l.backpackId === row.id)?.qty || 0;
     if (inCartQty >= row.qty) {
-      hapticWarning();
+      feedback.warning();
       return;
     }
     add({
@@ -319,8 +374,8 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
   };
 
   const bump = (sku, delta) => {
-    if (delta < 0) hapticWarning();
-    else hapticLight();
+    if (delta < 0) feedback.warning();
+    else feedback.light();
     setCart((prev) => {
       const line = prev.find((l) => l.sku === sku);
       if (!line) return prev;
@@ -329,7 +384,7 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
       if (delta > 0 && line.backpackId) {
         const row = myBackpack.find((r) => r.id === line.backpackId);
         if (nextQty > (row?.qty || 0)) {
-          hapticWarning();
+          feedback.warning();
           return prev;
         }
       }
@@ -345,7 +400,7 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
 
   const clear = () => {
     if (!cart.length) return;
-    hapticWarning();
+    feedback.warning();
     if (activeAgent) {
       logAudit("ביטול עסקה", `${cart.length} שורות נוקו מהעגלה, סה"כ ${shekel(totals.amountDue)}`);
     }
@@ -358,7 +413,7 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
   // it is still a decision.
   const openSummary = () => {
     if (!cart.length) return;
-    hapticLight();
+    feedback.light();
     setSummaryOpen(true);
   };
 
@@ -367,7 +422,7 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
     // A tab sale needs someone to put it on — the button below is already
     // disabled in this state, so reaching here means a stray call.
     if (paymentMethod === "tab" && !tabCustomerName.trim()) return;
-    hapticSuccess();
+    feedback.success();
     const txId = uid();
     const ts = Date.now();
 
@@ -600,7 +655,7 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
   const [loyaltyCustomers, setLoyaltyCustomers] = usePersistentState(STORAGE_KEYS.loyaltyCustomers, []);
 
   return (
-    <View style={st.wrap}>
+    <View style={[st.wrap, muted && st.wrapStealth]}>
       {/* Notes pinned to the register — a compact banner, titles only. The
           note's content is one tap away in the Notes tab; this exists to be
           glanced at, not read. */}
@@ -674,10 +729,25 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
       {/* Mode switch + today's takings */}
       <View style={st.topRow}>
         {activeAgent ? (
-          <View style={st.agentModeBadge}>
-            <Icon name="briefcase" size={15} color={UI.violet} />
-            <CustomText style={st.agentModeBadgeText}>מוכר מתוך התיק של {activeAgent.name}</CustomText>
-          </View>
+          <>
+            <View style={[st.agentModeBadge, muted && st.agentModeBadgeStealth]}>
+              <Icon name="briefcase" size={15} color={muted ? STEALTH.ink : UI.violet} />
+              <CustomText style={[st.agentModeBadgeText, muted && { color: STEALTH.ink }]}>
+                מוכר מתוך התיק של {activeAgent.name}
+              </CustomText>
+            </View>
+            <TouchableOpacity
+              testID="stealth-toggle"
+              style={[st.stealthToggle, stealthMode && st.stealthToggleOn]}
+              activeOpacity={0.8}
+              onPress={() => {
+                hapticLight();
+                setStealthMode((v) => !v);
+              }}
+            >
+              <Icon name="moon" size={16} color={stealthMode ? "#FFFFFF" : UI.inkSoft} />
+            </TouchableOpacity>
+          </>
         ) : (
           <View style={st.deckSwitch}>
             {DECKS.map((d) => {
@@ -719,6 +789,11 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
             rows={myBackpack}
             cart={cart}
             onAdd={addFromBackpack}
+            onLongPressItem={(row) => {
+              feedback.light();
+              setDamageRow(row);
+            }}
+            stealth={muted}
             bottomPad={cartHeight + bottomInset}
           />
         ) : isImport ? (
@@ -819,22 +894,25 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
       </View>
 
       {/* The cart, docked */}
-      <Animated.View layout={Layout.springify().damping(18)} style={[st.cart, { height: cartHeight, paddingBottom: bottomInset }]}>
+      <Animated.View
+        layout={Layout.springify().damping(18)}
+        style={[st.cart, { height: cartHeight, paddingBottom: bottomInset }, muted && st.cartStealth]}
+      >
         <TouchableOpacity
           testID="cart-toggle"
           activeOpacity={0.9}
           style={st.cartHead}
           onPress={() => {
             if (!cart.length) return;
-            hapticLight();
+            feedback.light();
             setExpanded((e) => !e);
           }}
         >
-          <View style={st.cartCount}>
-            <CustomText style={st.cartCountText}>{totals.units}</CustomText>
+          <View style={[st.cartCount, muted && { backgroundColor: STEALTH.surfaceHi }]}>
+            <CustomText style={[st.cartCountText, muted && { color: STEALTH.ink }]}>{totals.units}</CustomText>
           </View>
           <View style={{ flex: 1 }}>
-            <CustomText style={st.cartTitle}>
+            <CustomText style={[st.cartTitle, muted && { color: STEALTH.ink }]}>
               {cart.length
                 ? `${cart.length} שורות בעגלה`
                 : lastTotal != null
@@ -842,7 +920,7 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
                   : "העגלה ריקה"}
             </CustomText>
             {cart.length > 0 && (
-              <CustomText testID="cart-profit" style={st.cartSub}>
+              <CustomText testID="cart-profit" style={[st.cartSub, muted && { color: STEALTH.inkSoft }]}>
                 רווח צפוי {shekel(totals.profit)} · עלות {shekel(totals.cost)}
                 {totals.comboDiscount > 0 ? ` · 🎉 קומבו -${shekel(totals.comboDiscount)}` : ""}
                 {totals.lateNightSurcharge > 0 ? ` · תוספת לילה +${shekel(totals.lateNightSurcharge)}` : ""}
@@ -850,10 +928,12 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
               </CustomText>
             )}
           </View>
-          <CustomText testID="cart-total" style={st.cartTotal}>
+          <CustomText testID="cart-total" style={[st.cartTotal, muted && { color: STEALTH.ink }]}>
             {shekel(totals.amountDue)}
           </CustomText>
-          {cart.length > 0 && <Icon name={expanded ? "chevron-down" : "chevron-up"} size={18} color={UI.inkMuted} />}
+          {cart.length > 0 && (
+            <Icon name={expanded ? "chevron-down" : "chevron-up"} size={18} color={muted ? STEALTH.inkMuted : UI.inkMuted} />
+          )}
         </TouchableOpacity>
 
         {expanded && (
@@ -864,19 +944,19 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
               showsVerticalScrollIndicator={false}
               renderItem={({ item: l }) => (
                 <Animated.View entering={FadeInDown.duration(160)} style={st.line}>
-                  <View style={st.qtyGroup}>
-                    <TouchableOpacity style={st.qtyBtn} onPress={() => bump(l.sku, -1)}>
-                      <Icon name="minus" size={14} color={UI.inkSoft} />
+                  <View style={[st.qtyGroup, muted && { backgroundColor: STEALTH.surfaceHi }]}>
+                    <TouchableOpacity style={[st.qtyBtn, muted && { backgroundColor: STEALTH.surface }]} onPress={() => bump(l.sku, -1)}>
+                      <Icon name="minus" size={14} color={muted ? STEALTH.inkSoft : UI.inkSoft} />
                     </TouchableOpacity>
-                    <CustomText style={st.qtyText}>{l.qty}</CustomText>
-                    <TouchableOpacity style={st.qtyBtn} onPress={() => bump(l.sku, 1)}>
-                      <Icon name="plus" size={14} color={UI.inkSoft} />
+                    <CustomText style={[st.qtyText, muted && { color: STEALTH.ink }]}>{l.qty}</CustomText>
+                    <TouchableOpacity style={[st.qtyBtn, muted && { backgroundColor: STEALTH.surface }]} onPress={() => bump(l.sku, 1)}>
+                      <Icon name="plus" size={14} color={muted ? STEALTH.inkSoft : UI.inkSoft} />
                     </TouchableOpacity>
                   </View>
-                  <CustomText style={st.lineName} numberOfLines={1}>
+                  <CustomText style={[st.lineName, muted && { color: STEALTH.ink }]} numberOfLines={1}>
                     {l.name}
                   </CustomText>
-                  <CustomText style={st.lineTotal}>{shekel(l.price * l.qty)}</CustomText>
+                  <CustomText style={[st.lineTotal, muted && { color: STEALTH.ink }]}>{shekel(l.price * l.qty)}</CustomText>
                 </Animated.View>
               )}
             />
@@ -889,7 +969,7 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
               <Icon name="check" size={18} color="#FFFFFF" />
               <CustomText style={st.chargeText}>חייב {shekel(totals.amountDue)}</CustomText>
             </TouchableOpacity>
-            <TouchableOpacity testID="cart-clear" style={st.clear} onPress={clear}>
+            <TouchableOpacity testID="cart-clear" style={[st.clear, muted && { backgroundColor: "#3A1416" }]} onPress={clear}>
               <Icon name="trash-2" size={17} color={UI.red} />
             </TouchableOpacity>
           </View>
@@ -902,6 +982,12 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
         onAdd={addManual}
       />
       <ScanCamera visible={scanOpen} onScanned={addScanned} onClose={() => setScanOpen(false)} />
+      <DamageReportModal
+        visible={!!damageRow}
+        row={damageRow}
+        onClose={() => setDamageRow(null)}
+        onConfirm={reportDamage}
+      />
       <AddNewProductModal
         visible={newProductOpen}
         barcode={pendingBarcode}
@@ -940,14 +1026,16 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
 // whatever quantity is still unsold in it. No manual line and no scanner:
 // the whole point of the backpack is that they can't sell outside it.
 
-function BackpackMode({ agent, rows, cart, onAdd, bottomPad }) {
+function BackpackMode({ agent, rows, cart, onAdd, onLongPressItem, stealth, bottomPad }) {
   const inStock = rows.filter((r) => r.qty > 0);
   if (inStock.length === 0) {
     return (
-      <View style={[st.scanWrap, { paddingBottom: bottomPad }]}>
-        <Icon name="briefcase" size={34} color={UI.inkMuted} />
-        <CustomText style={st.scanTitle}>התיק ריק</CustomText>
-        <CustomText style={st.scanNote}>בקשו מהמנהל להעביר מלאי לתיק שלכם דרך "סוכנים".</CustomText>
+      <View style={[st.scanWrap, { paddingBottom: bottomPad }, stealth && { backgroundColor: STEALTH.bg }]}>
+        <Icon name="briefcase" size={34} color={stealth ? STEALTH.inkMuted : UI.inkMuted} />
+        <CustomText style={[st.scanTitle, stealth && { color: STEALTH.ink }]}>התיק ריק</CustomText>
+        <CustomText style={[st.scanNote, stealth && { color: STEALTH.inkSoft }]}>
+          בקשו מהמנהל להעביר מלאי לתיק שלכם דרך "סוכנים".
+        </CustomText>
       </View>
     );
   }
@@ -958,8 +1046,17 @@ function BackpackMode({ agent, rows, cart, onAdd, bottomPad }) {
       numColumns={NUM_COLUMNS}
       keyExtractor={(row) => row.id}
       extraData={cart}
+      style={stealth ? { backgroundColor: STEALTH.bg } : null}
       contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: bottomPad + 16, paddingTop: 8 }}
       showsVerticalScrollIndicator={false}
+      ListHeaderComponent={
+        <View style={[st.damageHint, stealth && { backgroundColor: STEALTH.surface }]}>
+          <Icon name="alert-triangle" size={13} color={stealth ? STEALTH.inkSoft : UI.amber} />
+          <CustomText style={[st.damageHintText, stealth && { color: STEALTH.inkSoft }]}>
+            לחיצה ארוכה על פריט מדווחת עליו כפגום ומורידה אותו מהתיק, בלי לעבור בקופה
+          </CustomText>
+        </View>
+      }
       renderItem={({ item: row, index }) => {
         const inCart = cart.find((l) => l.backpackId === row.id);
         return (
@@ -967,27 +1064,94 @@ function BackpackMode({ agent, rows, cart, onAdd, bottomPad }) {
             <TouchableOpacity
               testID={`backpack-item-${row.id}`}
               activeOpacity={0.8}
-              style={[st.tile, inCart && { borderColor: UI.violet, backgroundColor: tint(UI.violet, 0.05) }]}
+              delayLongPress={420}
+              style={[
+                st.tile,
+                stealth && { backgroundColor: STEALTH.surface, borderColor: STEALTH.hairline },
+                inCart && { borderColor: UI.violet, backgroundColor: tint(UI.violet, 0.05) },
+                inCart && stealth && { borderColor: STEALTH.accent, backgroundColor: STEALTH.surfaceHi },
+              ]}
               onPress={() => onAdd(row)}
+              onLongPress={() => onLongPressItem?.(row)}
             >
               {!!inCart && (
-                <View style={st.tileBadge}>
+                <View style={[st.tileBadge, stealth && { backgroundColor: STEALTH.accent }]}>
                   <CustomText style={st.tileBadgeText}>{inCart.qty}</CustomText>
                 </View>
               )}
-              <View style={[st.tileIconWrap, { backgroundColor: tint(UI.violet, 0.14) }]}>
-                <Icon name="package" size={22} color={UI.violet} />
+              <View style={[st.tileIconWrap, { backgroundColor: stealth ? STEALTH.surfaceHi : tint(UI.violet, 0.14) }]}>
+                <Icon name="package" size={22} color={stealth ? STEALTH.ink : UI.violet} />
               </View>
-              <CustomText style={st.tileName} numberOfLines={2}>
+              <CustomText style={[st.tileName, stealth && { color: STEALTH.ink }]} numberOfLines={2}>
                 {row.name}
               </CustomText>
-              <CustomText style={st.tilePrice}>{shekel(row.price)}</CustomText>
-              <CustomText style={st.tileMargin}>{row.qty - (inCart?.qty || 0)} נותרו בתיק</CustomText>
+              <CustomText style={[st.tilePrice, stealth && { color: STEALTH.ink }]}>{shekel(row.price)}</CustomText>
+              <CustomText style={[st.tileMargin, stealth && { color: STEALTH.inkMuted }]}>
+                {row.qty - (inCart?.qty || 0)} נותרו בתיק
+              </CustomText>
             </TouchableOpacity>
           </Animated.View>
         );
       }}
     />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Damage Control — confirms a long-pressed backpack item as broken or lost.
+// Deducts straight from the backpack and writes the audit log; no cart line,
+// no sale, no cash register involvement at all.
+
+function DamageReportModal({ visible, row, onClose, onConfirm }) {
+  const [qty, setQty] = useState(1);
+  useEffect(() => {
+    if (row) setQty(1);
+  }, [row]);
+
+  if (!row) return null;
+  const max = row.qty;
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={st.backdrop} onPress={onClose}>
+        <Pressable style={st.sheet} onPress={(e) => e.stopPropagation()}>
+          <View style={st.sheetHead}>
+            <TouchableOpacity testID="damage-close" style={st.sheetBtn} onPress={onClose}>
+              <Icon name="x" size={18} color={UI.ink} />
+            </TouchableOpacity>
+            <CustomText style={st.sheetTitle}>דיווח פריט פגום</CustomText>
+          </View>
+
+          <View style={st.damageWarnBox}>
+            <Icon name="alert-triangle" size={18} color={UI.red} />
+            <CustomText style={st.damageWarnText}>
+              {row.name} ירד מהתיק כפחת — ללא מכירה וללא כניסה לקופה.
+            </CustomText>
+          </View>
+
+          <CustomText style={st.fieldLabel}>כמות פגומה</CustomText>
+          <View style={[st.qtyGroup, { alignSelf: "center", marginTop: 6 }]}>
+            <TouchableOpacity testID="damage-qty-minus" style={st.qtyBtn} onPress={() => setQty((q) => Math.max(1, q - 1))}>
+              <Icon name="minus" size={16} color={UI.inkSoft} />
+            </TouchableOpacity>
+            <CustomText style={st.qtyText}>{qty}</CustomText>
+            <TouchableOpacity testID="damage-qty-plus" style={st.qtyBtn} onPress={() => setQty((q) => Math.min(max, q + 1))}>
+              <Icon name="plus" size={16} color={UI.inkSoft} />
+            </TouchableOpacity>
+          </View>
+          <CustomText style={st.damageMax}>מתוך {max} יח׳ שנותרו בתיק</CustomText>
+
+          <TouchableOpacity
+            testID="damage-confirm"
+            style={[st.primaryBtn, { backgroundColor: UI.red }]}
+            onPress={() => onConfirm(row, qty)}
+          >
+            <Icon name="alert-triangle" size={17} color="#FFFFFF" />
+            <CustomText style={st.primaryText}>אישור דיווח נזק</CustomText>
+          </TouchableOpacity>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -1236,6 +1400,7 @@ function formatReceiptText(receipt) {
 const PAYMENT_METHODS = [
   { key: "cash", label: "מזומן", icon: "dollar-sign" },
   { key: "card", label: "אשראי", icon: "credit-card" },
+  { key: "paybox", label: "PayBox QR", icon: "maximize" },
   { key: "tab", label: "הקפה", icon: "book-open" },
 ];
 
@@ -1478,6 +1643,16 @@ function CheckoutSummary({
             })}
           </View>
 
+          {/* PayBox QR — the customer scans this straight off the agent's
+              screen; nothing here is a real payment confirmation, the agent
+              still taps "close sale" once the scan/transfer went through. */}
+          {paymentMethod === "paybox" && (
+            <View style={st.payboxBox}>
+              <QRCode value={PAYBOX_LINK} size={190} color={UI.ink} backgroundColor="#FFFFFF" ecl="M" />
+              <CustomText style={st.payboxHint}>הראו את הקוד ללקוח לסריקה ותשלום ב-PayBox</CustomText>
+            </View>
+          )}
+
           {/* Customer name — required to complete a "tab" sale, optional
               (but tracked toward the loyalty club) for every other method. */}
           <CustomText style={st.fieldLabel}>
@@ -1536,6 +1711,7 @@ function CheckoutSummary({
 
 const st = StyleSheet.create({
   wrap: { flex: 1 },
+  wrapStealth: { backgroundColor: "#000000" },
 
   pinnedBanner: {
     flexDirection: "row-reverse",
@@ -1619,6 +1795,16 @@ const st = StyleSheet.create({
     paddingHorizontal: 12,
   },
   agentModeBadgeText: { flex: 1, fontFamily: FONTS.semibold, fontSize: 12.5, color: UI.violet, textAlign: "right" },
+  agentModeBadgeStealth: { backgroundColor: "#2C2C2E" },
+  stealthToggle: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: UI.surfaceHi,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stealthToggleOn: { backgroundColor: "#000000" },
   todayBox: { alignItems: "flex-end" },
   todayLabel: { fontFamily: FONTS.regular, fontSize: 10.5, color: UI.inkMuted },
   todayValue: { fontFamily: FONTS.bold, fontSize: 16, color: UI.green },
@@ -1694,6 +1880,29 @@ const st = StyleSheet.create({
   tilePrice: { fontFamily: FONTS.bold, fontSize: 16, color: UI.ink },
   tileMargin: { fontFamily: FONTS.medium, fontSize: 9.5 },
 
+  damageHint: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 6,
+    marginHorizontal: 5,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: tint(UI.amber, 0.08),
+  },
+  damageHintText: { flex: 1, fontFamily: FONTS.regular, fontSize: 11, color: UI.amber, textAlign: "right" },
+  damageWarnBox: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: tint(UI.red, 0.08),
+    borderRadius: 14,
+    padding: 12,
+  },
+  damageWarnText: { flex: 1, fontFamily: FONTS.medium, fontSize: 12.5, color: UI.red, textAlign: "right", lineHeight: 18 },
+  damageMax: { fontFamily: FONTS.regular, fontSize: 11, color: UI.inkMuted, textAlign: "center", marginTop: 2 },
+
   scanWrap: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 26, gap: 20 },
   scanBtn: {
     width: "100%",
@@ -1731,6 +1940,7 @@ const st = StyleSheet.create({
     elevation: 12,
     overflow: "hidden",
   },
+  cartStealth: { backgroundColor: "#1C1C1E", borderColor: "#2C2C2E" },
   cartHead: { flexDirection: "row-reverse", alignItems: "center", gap: 10, paddingHorizontal: 16, height: 62 },
   cartCount: {
     minWidth: 34,
@@ -1835,6 +2045,15 @@ const st = StyleSheet.create({
   },
   paymentChipOn: { backgroundColor: UI.ink },
   paymentChipText: { fontFamily: FONTS.semibold, fontSize: 12.5, color: UI.inkSoft },
+  payboxBox: {
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: UI.surfaceAlt,
+    borderRadius: 16,
+    paddingVertical: 16,
+    marginTop: 8,
+  },
+  payboxHint: { fontFamily: FONTS.medium, fontSize: 12, color: UI.inkSoft, textAlign: "center" },
   tabBox: { marginTop: 8, gap: 8 },
   tabSuggestRow: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 6 },
   tabSuggestChip: {
