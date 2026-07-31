@@ -141,3 +141,17 @@ export function buildCatalogText(inventory) {
   const lines = inStock.map((i) => `🔥 ${i.name} - ${shekel(i.price || 0)}`).join("\n");
   return `📦 הקטלוג שלנו\n\n${lines}\n\nלהזמנות, כתבו לנו כאן! 📩`;
 }
+
+// Everything sitting below LOW_STOCK, formatted for the next AliExpress
+// order or a text to someone traveling abroad who can bring stock back.
+// Suggests topping each line up to double the low-stock line — a plain
+// enough rule that it needs no per-item sales history to justify.
+export function buildRestockText(inventory) {
+  const low = (inventory || []).filter((i) => (i.qty || 0) < LOW_STOCK);
+  if (low.length === 0) return "";
+  const target = LOW_STOCK * 2;
+  const lines = low
+    .map((i) => `📦 ${i.name} — במלאי: ${i.qty || 0} · להזמין: ${Math.max(target - (i.qty || 0), 1)}`)
+    .join("\n");
+  return `🚨 רשימת חידוש מלאי\n\n${lines}\n\nלהזמנה הבאה מאליאקספרס, או למישהו שטס בקרוב 🧳`;
+}

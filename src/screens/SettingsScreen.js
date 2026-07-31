@@ -100,6 +100,7 @@ export default function SettingsScreen() {
   const [crash, setCrash] = useState(false);
   const [vat, setVat] = useState(String(settings.vatRate ?? "17"));
   const [maaser, setMaaser] = useState(String(settings.maaserRate ?? "10"));
+  const [droneAlloc, setDroneAlloc] = useState(String(settings.droneAllocPct ?? "15"));
   const [footer, setFooter] = useState(settings.receiptFooter ?? "");
   // What is typed into the API key fields. Never seeded from the stored key:
   // the row shows a mask instead, so an over-the-shoulder look or a screenshot
@@ -137,6 +138,9 @@ export default function SettingsScreen() {
   useEffect(() => {
     setMaaser(String(settings.maaserRate ?? ""));
   }, [settings.maaserRate]);
+  useEffect(() => {
+    setDroneAlloc(String(settings.droneAllocPct ?? ""));
+  }, [settings.droneAllocPct]);
   useEffect(() => {
     setFooter(settings.receiptFooter ?? "");
   }, [settings.receiptFooter]);
@@ -395,6 +399,12 @@ export default function SettingsScreen() {
     const clean = text.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1").slice(0, 5);
     setMaaser(clean);
     update({ maaserRate: clean });
+  };
+
+  const saveDroneAlloc = (text) => {
+    const clean = text.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1").slice(0, 5);
+    setDroneAlloc(clean);
+    update({ droneAllocPct: clean });
   };
 
   const saveFooter = (text) => {
@@ -827,6 +837,18 @@ export default function SettingsScreen() {
               style={s.nameInput}
               value={maaser}
               onChangeText={saveMaaser}
+              keyboardType="decimal-pad"
+              textAlign="center"
+              maxLength={5}
+            />
+          </View>
+          <View style={s.fieldRow}>
+            <CustomText style={s.rowLabel}>הפרשה אוטומטית לרחפן (%)</CustomText>
+            <TextInput
+              testID="set-drone-alloc"
+              style={s.nameInput}
+              value={droneAlloc}
+              onChangeText={saveDroneAlloc}
               keyboardType="decimal-pad"
               textAlign="center"
               maxLength={5}

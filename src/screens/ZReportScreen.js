@@ -1,14 +1,65 @@
-import { useMemo } from "react";
-import { ScrollView, Share, StyleSheet, TouchableOpacity, View } from "react-native";
+import { useMemo, useState } from "react";
+import { ActivityIndicator, Modal, Pressable, ScrollView, Share, StyleSheet, TouchableOpacity, View } from "react-native";
 
 import Icon from "../components/Icon";
 import { useBusiness } from "../context/BusinessContext";
+import { callGemini, isGeminiConfigured } from "../config/geminiConfig";
 import { hapticHeavy, hapticLight } from "../utils/haptics";
 import { shekel, todayKey, uid } from "../utils/posStore";
 import { useSettings } from "../context/SettingsContext";
+import { DEFAULT_GOAL } from "./MoneyDashboardScreen";
+import { STORAGE_KEYS } from "../utils/storageKeys";
+import { usePersistentState } from "../utils/usePersistentState";
 import { aggregateDay, buildZReportText, lastCloseTs } from "../utils/zReport";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
+import { UI, tint } from "../utils/ui";
 import CustomText from "../components/CustomText";
+
+// Noa's end-of-shift recap: takes the same numbers the cards above already
+// show, plus today's operational expenses (a separate ledger — cashFlow, not
+// posSales), and turns them into two warm sentences instead of a spreadsheet
+// row. Falls back to a locally-templated sentence if Gemini is unreachable or
+// unconfigured, so closing a shift is never blocked on a network call.
+async function generateShiftSummary({ revenue, profit, expenses, topItem, dronePct, goalName }) {
+  const fallback = () => {
+    const parts = [`עבודה טובה היום! הרווח הנקי עמד על ${shekel(profit)}`];
+    if (topItem) parts.push(`, ו${topItem.name} היה המוצר המוביל`);
+    parts.push(".");
+    if (dronePct > 0) parts.push(` המשמרת קרבה אתכם ב-${dronePct}% נוספים ליעד ${goalName}.`);
+    return parts.join("");
+  };
+
+  if (!isGeminiConfigured()) return fallback();
+
+  const facts = [
+    `פדיון: ${shekel(revenue)}`,
+    `רווח נקי: ${shekel(profit)}`,
+    `הוצאות תפעוליות היום: ${shekel(expenses)}`,
+  ];
+  if (topItem) facts.push(`המוצר המוביל: ${topItem.name} (${topItem.qty} יח')`);
+  if (dronePct > 0) facts.push(`המשמרת קרבה את קרן "${goalName}" ב-${dronePct}% נוספים ליעד`);
+
+  const prompt =
+    "אתה נועה, עוזרת AI פיננסית חמה ותכליתית לעסק קטן של נער בפנימייה. " +
+    "סכמי את המשמרת שהסתיימה כרגע ב-2-3 משפטים קצרים בעברית, בטון מעודד כמו הודעת וואטסאפ — " +
+    "בלי כותרות, בלי רשימות, לכל היותר אימוג'י אחד. הנתונים:\n" +
+    facts.map((f) => `- ${f}`).join("\n");
+
+  try {
+    const res = await callGemini({ contents: [{ role: "user", parts: [{ text: prompt }] }] });
+    if (res.ok) {
+      const text = (res.json?.candidates?.[0]?.content?.parts || [])
+        .map((p) => p.text)
+        .filter(Boolean)
+        .join("")
+        .trim();
+      if (text) return text;
+    }
+  } catch {
+    /* fall through to the local sentence */
+  }
+  return fallback();
+}
 
 // דוח משמרת — live daily aggregation of the shared sales ledger. "Closing the
 // register" archives the current shift's stats and (because everything here
@@ -27,11 +78,39 @@ export default function ZReportScreen() {
   const { sales, closes, setCloses } = useBusiness();
   const { receiptFooter } = useSettings();
 
+  // Read-only here — the same cash-flow ledger CashFlowScreen.js owns, and
+  // the same drone-fund keys MoneyDashboardScreen.js and completeSale
+  // (PosRegisterTab.js) write, all reached the usual way: the exact same
+  // storage key, no context, no prop-drilling between three unrelated tabs.
+  const [cashEntries] = usePersistentState(STORAGE_KEYS.cashFlow, []);
+  const [goal] = usePersistentState(STORAGE_KEYS.droneGoal, DEFAULT_GOAL);
+  const [droneAutoDaily] = usePersistentState(STORAGE_KEYS.droneAutoDaily, { day: "", amount: 0 });
+
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [summaryText, setSummaryText] = useState("");
+  const [summaryLoading, setSummaryLoading] = useState(false);
+
   const since = lastCloseTs(closes);
   const stats = useMemo(() => aggregateDay(sales, new Date(), since), [sales, since]);
   const topItem = stats.top[0] || null;
   const hasActivity = stats.txCount > 0 || stats.revenue > 0 || stats.dmgUnits > 0;
   const closedToday = since > 0;
+
+  const today = todayKey();
+  // Cash-flow entries are stamped `at` (a raw timestamp), not `day` — same
+  // day-string conversion the sales ledger's own records carry, applied here
+  // since this ledger never got one.
+  const todayExpenses = useMemo(
+    () =>
+      (cashEntries || [])
+        .filter((e) => e.kind === "expense" && todayKey(new Date(e.at || 0)) === today)
+        .reduce((s, e) => s + (Number(e.amount) || 0), 0),
+    [cashEntries, today]
+  );
+
+  const target = Number(goal?.target) > 0 ? Number(goal.target) : DEFAULT_GOAL.target;
+  const autoToday = droneAutoDaily?.day === today ? Number(droneAutoDaily.amount) || 0 : 0;
+  const dronePct = target > 0 ? Math.round((autoToday / target) * 1000) / 10 : 0;
 
   const shareZ = async () => {
     hapticLight();
@@ -42,9 +121,10 @@ export default function ZReportScreen() {
     }
   };
 
-  // Archive the shift and reset the live counters (aggregation cutoff moves
-  // to "now"). The sales ledger itself is never modified.
-  const closeRegister = () => {
+  // Archive the shift, reset the live counters (aggregation cutoff moves to
+  // "now"), then ask Noa for the recap. The sales ledger itself is never
+  // modified — closing is purely a cursor moving forward.
+  const closeRegister = async () => {
     if (!hasActivity) return;
     hapticHeavy();
     setCloses((prev) => [
@@ -54,11 +134,25 @@ export default function ZReportScreen() {
         day: todayKey(),
         ts: Date.now(),
         revenue: stats.revenue,
+        profit: stats.profit,
         txCount: stats.txCount,
         units: stats.units,
         topItem: topItem ? { name: topItem.name, qty: topItem.qty } : null,
       },
     ]);
+
+    setSummaryOpen(true);
+    setSummaryLoading(true);
+    const text = await generateShiftSummary({
+      revenue: stats.revenue,
+      profit: stats.profit,
+      expenses: todayExpenses,
+      topItem,
+      dronePct,
+      goalName: goal?.name || DEFAULT_GOAL.name,
+    });
+    setSummaryText(text);
+    setSummaryLoading(false);
   };
 
   const history = useMemo(() => [...closes].sort((a, b) => b.ts - a.ts).slice(0, 6), [closes]);
@@ -135,6 +229,38 @@ export default function ZReportScreen() {
           <CustomText style={s.closeBtnText}>סגור משמרת</CustomText>
         </TouchableOpacity>
       </View>
+
+      {/* Noa's end-of-shift recap. */}
+      <Modal visible={summaryOpen} transparent animationType="fade" onRequestClose={() => setSummaryOpen(false)}>
+        <Pressable style={s.summaryBackdrop} onPress={() => setSummaryOpen(false)}>
+          <Pressable style={s.summaryCard} onPress={(e) => e.stopPropagation()}>
+            <View style={s.summaryAvatar}>
+              <Icon name="sparkles-outline" size={22} color={WHITE} />
+            </View>
+            <CustomText style={s.summaryTitle}>סיכום המשמרת מנועה</CustomText>
+
+            {summaryLoading ? (
+              <View style={s.summaryLoading}>
+                <ActivityIndicator color={UI.violet} />
+                <CustomText style={s.summaryLoadingText}>נועה מסכמת את המשמרת…</CustomText>
+              </View>
+            ) : (
+              <CustomText testID="shift-summary-text" style={s.summaryText}>
+                {summaryText}
+              </CustomText>
+            )}
+
+            <TouchableOpacity
+              testID="summary-done"
+              style={s.summaryCloseBtn}
+              onPress={() => setSummaryOpen(false)}
+              activeOpacity={0.85}
+            >
+              <CustomText style={s.summaryCloseBtnText}>סיום</CustomText>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -228,4 +354,55 @@ const s = StyleSheet.create({
     elevation: 3,
   },
   closeBtnText: { fontFamily: FONTS.bold, fontSize: 17, color: WHITE },
+
+  summaryBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(16,20,26,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  summaryCard: {
+    width: "100%",
+    maxWidth: 380,
+    backgroundColor: WHITE,
+    borderRadius: 28,
+    padding: 24,
+    alignItems: "center",
+    gap: 4,
+    shadowColor: BLUE,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.18,
+    shadowRadius: 32,
+    elevation: 8,
+  },
+  summaryAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: BLUE,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 6,
+  },
+  summaryTitle: { fontFamily: FONTS.bold, fontSize: 17, color: INK, marginBottom: 10 },
+  summaryLoading: { minHeight: 90, alignItems: "center", justifyContent: "center", gap: 10 },
+  summaryLoadingText: { fontFamily: FONTS.medium, fontSize: 13, color: INK_MUTED },
+  summaryText: {
+    fontFamily: FONTS.medium,
+    fontSize: 15,
+    lineHeight: 24,
+    color: INK,
+    textAlign: "center",
+    marginBottom: 14,
+  },
+  summaryCloseBtn: {
+    minHeight: 50,
+    minWidth: 140,
+    borderRadius: 16,
+    backgroundColor: CARD,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  summaryCloseBtnText: { fontFamily: FONTS.bold, fontSize: 14, color: INK },
 });

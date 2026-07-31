@@ -501,6 +501,73 @@ export const addTransactionToPOSDeclaration = {
 };
 
 // ---------------------------------------------------------------------------
+// 8. Cash flow — operational expenses
+// ---------------------------------------------------------------------------
+
+// The other half of "Noa as POS controller": addTransactionToPOS rings up
+// what came IN, this logs what went OUT that was not the cost of a product —
+// a flat tire, a bag of ice, a bus fare for a supply run. Writes to the same
+// cash-flow ledger the "תזרים" screen reads/writes by hand, in the exact
+// shape it already uses ({ id, at, kind, amount, label, category }), so a
+// Noa-logged expense shows up in that screen's monthly totals identically to
+// one typed in there directly — it has no idea, and does not need to, which
+// one wrote it.
+export async function logExpense(description, amount) {
+  const label = String(description || "").trim();
+  if (!label) {
+    return { ok: false, error: "NO_DESCRIPTION", message: "An expense needs a short description of what it was for." };
+  }
+  const value = Number(amount);
+  if (!Number.isFinite(value) || value <= 0) {
+    return {
+      ok: false,
+      error: "BAD_AMOUNT",
+      message: `No usable amount for "${label}". Ask the user how much it cost — never guess a number.`,
+    };
+  }
+
+  const entry = {
+    id: `e-${Date.now()}`,
+    at: Date.now(),
+    kind: "expense",
+    amount: value,
+    label,
+    category: "other",
+  };
+
+  const prevEntries = (await readPersistent(STORAGE_KEYS.cashFlow, [])) || [];
+  await writePersistent(STORAGE_KEYS.cashFlow, [...prevEntries, entry]);
+
+  return {
+    ok: true,
+    id: entry.id,
+    amount: value,
+    label,
+    message: `Logged an expense of ${value} for "${label}". Confirm it back to the user.`,
+  };
+}
+
+export const logExpenseDeclaration = {
+  name: "logExpense",
+  description:
+    "Log a real-world operational expense directly to the cash-flow ledger — something spent that was not " +
+    "the wholesale cost of a product for resale (that is saveItemCost, a different tool). Use this when the " +
+    "user tells you they spent money on something, by voice or text " +
+    "('הוצאתי 10 שקל על תיקון גלגל', 'קניתי קרח ב-15 שקל', 'שילמתי 20 שקל על דלק'). " +
+    "Needs both a short description and an exact amount — if either is missing, ASK rather than guessing. " +
+    "Do NOT use this for the cost of goods being resold, and do NOT use it for an expense the user is only " +
+    "describing hypothetically rather than asking you to actually record right now.",
+  parameters: {
+    type: "object",
+    properties: {
+      description: { type: "string", description: "A short label for what the money was spent on, as the user said it." },
+      amount: { type: "number", description: "The exact amount spent. Required — never a guess." },
+    },
+    required: ["description", "amount"],
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Wiring
 // ---------------------------------------------------------------------------
 
@@ -515,6 +582,7 @@ export const NOA_TOOL_HANDLERS = {
   checkQuota: () => checkQuota(),
   searchInternet: (args = {}) => searchInternet(args.query),
   addTransactionToPOS: (args = {}) => addTransactionToPOS(args.items, args.discount, args.paymentMethod),
+  logExpense: (args = {}) => logExpense(args.description, args.amount),
 };
 
 export const NOA_TOOL_DECLARATIONS = [
@@ -525,6 +593,7 @@ export const NOA_TOOL_DECLARATIONS = [
   checkQuotaDeclaration,
   searchInternetDeclaration,
   addTransactionToPOSDeclaration,
+  logExpenseDeclaration,
 ];
 
 // The shape Gemini wants under `tools`.

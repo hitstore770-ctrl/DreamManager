@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { I18nManager, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 import Slider from "@react-native-community/slider";
 import { LinearGradient } from "expo-linear-gradient";
@@ -12,6 +12,7 @@ import CustomText from "../components/CustomText";
 import Icon from "../components/Icon";
 import RiveVault from "../components/money/RiveVault";
 import { Canvas } from "../components/Paper";
+import { useSettings } from "../context/SettingsContext";
 import { hapticHeavy, hapticLight, hapticSuccess } from "../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import { shekel } from "../utils/posStore";
@@ -41,7 +42,10 @@ import { BEVEL, CARD_SHADOW, GRAD, TYPE, UI, tint } from "../utils/ui";
 // number came from is a number nobody can act on.
 const SPLIT = { buying: 0.4, withdraw: 0.4, goal: 0.2 };
 
-const DEFAULT_GOAL = { name: "רחפן DJI", target: 2500 };
+// Exported so any other screen that needs "what is the drone goal called
+// before the user has ever set one" (the shift-summary modal, for one) reads
+// the same literal instead of risking a second copy drifting from this one.
+export const DEFAULT_GOAL = { name: "רחפן DJI", target: 2500 };
 
 // A rough per-sale profit for the time machine slider — not a real average
 // pulled from the log, just a plausible planning number so dragging the
@@ -86,10 +90,12 @@ const orderBuckets = (list) => (I18nManager.isRTL ? list : [...list].reverse());
 
 export default function MoneyDashboardScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const { droneAllocPct } = useSettings();
+  const allocPct = Math.max(0, parseFloat(droneAllocPct) || 0);
 
   const [sales] = usePersistentState(STORAGE_KEYS.posSales, []);
   const [entries] = usePersistentState(STORAGE_KEYS.cashFlow, []);
-  const [goal, setGoal] = usePersistentState("@dreammanager/drone-goal", DEFAULT_GOAL);
+  const [goal, setGoal] = usePersistentState(STORAGE_KEYS.droneGoal, DEFAULT_GOAL);
   const [editGoal, setEditGoal] = useState(false);
   const [draftTarget, setDraftTarget] = useState("");
   // The time machine. Local and ephemeral on purpose — this is a "what if",
@@ -101,7 +107,12 @@ export default function MoneyDashboardScreen({ navigation }) {
   // question every morning. What has actually flown to the drone goal is a
   // separate, cumulative pool: a savings goal does not reset at midnight.
   const [dailyAlloc, setDailyAlloc] = usePersistentState("@dreammanager/dashboard-daily-alloc", EMPTY_ALLOC);
-  const [droneSaved, setDroneSaved] = usePersistentState("@dreammanager/drone-saved", 0);
+  const [droneSaved, setDroneSaved] = usePersistentState(STORAGE_KEYS.droneSaved, 0);
+  // Every sale with positive profit already swept its own cut here the
+  // instant it was rung up (see completeSale in PosRegisterTab.js) — this is
+  // just today's running total of that, read so the manual card below never
+  // offers profit a sale already sent on ahead of it.
+  const [droneAutoToday] = usePersistentState(STORAGE_KEYS.droneAutoDaily, EMPTY_ALLOC);
   // Bumped whenever an allocation pushes the drone goal to 100%; the icon
   // watches this to fire its takeoff sequence exactly once per crossing.
   const [takeoffToken, setTakeoffToken] = useState(0);
@@ -121,7 +132,10 @@ export default function MoneyDashboardScreen({ navigation }) {
   const droneProgress = target > 0 ? droneAmount / target : 0;
 
   const today = todayKey();
-  const dailyProfit = Math.max(0, stats.todayProfit);
+  const autoToday = droneAutoToday?.day === today ? Number(droneAutoToday.amount) || 0 : 0;
+  // Today's profit minus whatever already left automatically — the manual
+  // card below is offering a choice about what's left, not the whole day.
+  const dailyProfit = Math.max(0, stats.todayProfit - autoToday);
   const allocatedToday = dailyAlloc?.day === today ? dailyAlloc : null;
   const showProfitCard = dailyProfit > 0 && !allocatedToday;
 
@@ -131,15 +145,13 @@ export default function MoneyDashboardScreen({ navigation }) {
       if (amount <= 0) return;
 
       if (destination === "goal") {
-        const next = droneAmount + amount;
         hapticHeavy();
-        setDroneSaved(next);
+        setDroneSaved(droneAmount + amount);
         setDailyAlloc({ day: today, destination: "goal", amount });
-        if (target > 0 && next >= target) {
-          // The token only has to change, not count anything — the icon
-          // reacts to it changing, not to its value.
-          setTakeoffToken((t) => t + 1);
-        }
+        // Crossing the target is detected by the effect below, not here —
+        // completeSale's automatic sweep can push droneSaved past target too,
+        // from a screen that has no idea this takeoff token exists, so one
+        // watcher on the number itself is the only place that sees both paths.
         return;
       }
       if (destination === "buying") {
@@ -150,7 +162,7 @@ export default function MoneyDashboardScreen({ navigation }) {
       hapticSuccess();
       setDailyAlloc({ day: today, destination: "withdraw", amount });
     },
-    [dailyProfit, droneAmount, target, today, setDroneSaved, setDailyAlloc]
+    [dailyProfit, droneAmount, today, setDroneSaved, setDailyAlloc]
   );
 
   // A drone goal that has just flown away starts the next one from zero
@@ -159,6 +171,24 @@ export default function MoneyDashboardScreen({ navigation }) {
   const onDroneTakeoffComplete = useCallback(() => {
     setDroneSaved(0);
   }, [setDroneSaved]);
+
+  // Single detector for "the goal just filled up", regardless of whether a
+  // manual allocation or a sale's automatic sweep (completeSale, elsewhere,
+  // has no reference to this screen's local takeoffToken) was what pushed it
+  // over. The ref guards against re-firing every render once past target —
+  // it resets only when the amount dips back below, which happens exactly
+  // once per crossing: onDroneTakeoffComplete zeroes it out right after.
+  const takeoffFired = useRef(false);
+  useEffect(() => {
+    if (target > 0 && droneAmount >= target) {
+      if (!takeoffFired.current) {
+        takeoffFired.current = true;
+        setTakeoffToken((t) => t + 1);
+      }
+    } else {
+      takeoffFired.current = false;
+    }
+  }, [droneAmount, target]);
 
   const insight = useMemo(() => buildInsight(stats), [stats]);
   const log = useMemo(() => buildLog(sales || [], entries || []), [sales, entries]);
@@ -328,7 +358,10 @@ export default function MoneyDashboardScreen({ navigation }) {
               icon: "target",
               tone: UI.violet,
               title: goal?.name || DEFAULT_GOAL.name,
-              hint: `יעד ${shekel(target)}`,
+              hint:
+                allocPct > 0
+                  ? `יעד ${shekel(target)} · ${allocPct}% מכל מכירה נכנס אוטומטית`
+                  : `יעד ${shekel(target)}`,
               value: shekel(droneAmount),
               onPress: () => {
                 hapticLight();

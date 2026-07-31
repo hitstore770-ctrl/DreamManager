@@ -5,7 +5,7 @@ import Icon from "../components/Icon";
 import ToolsSheet, { SheetRow, ToolsFab } from "../components/business/ToolsSheet";
 import { useBusiness } from "../context/BusinessContext";
 import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
-import { CATEGORIES, LOW_STOCK, applyDamage, buildCatalogText, catOf, shekel, suggestRetailPrice, uid } from "../utils/posStore";
+import { CATEGORIES, LOW_STOCK, applyDamage, buildCatalogText, buildRestockText, catOf, shekel, suggestRetailPrice, uid } from "../utils/posStore";
 import { buildZReportText, lastCloseTs } from "../utils/zReport";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import CustomText from "../components/CustomText";
@@ -31,6 +31,8 @@ export default function WarehouseScreen({ onGoToPos }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [defectMode, setDefectMode] = useState(false);
+
+  const lowStockCount = (inventory || []).filter((i) => (i.qty || 0) < LOW_STOCK).length;
 
   const restock = (id) => {
     hapticSuccess();
@@ -74,6 +76,24 @@ export default function WarehouseScreen({ onGoToPos }) {
     hapticLight();
     setSheetOpen(false);
     const text = buildCatalogText(inventory);
+    if (!text) return;
+    const url = `whatsapp://send?text=${encodeURIComponent(text)}`;
+    try {
+      const ok = await Linking.canOpenURL(url);
+      if (ok) {
+        await Linking.openURL(url);
+        return;
+      }
+    } catch {
+      /* fall through */
+    }
+    Linking.openURL(`https://wa.me/?text=${encodeURIComponent(text)}`).catch(() => {});
+  };
+
+  const shareRestockList = async () => {
+    hapticLight();
+    setSheetOpen(false);
+    const text = buildRestockText(inventory);
     if (!text) return;
     const url = `whatsapp://send?text=${encodeURIComponent(text)}`;
     try {
@@ -277,6 +297,13 @@ export default function WarehouseScreen({ onGoToPos }) {
         />
         <SheetRow icon="file-text" label="ייצוא דוח Z ל-WhatsApp" sub="סיכום פדיון, עסקאות ופחת להיום" onPress={shareZ} />
         <SheetRow icon="share-2" label="שיתוף קטלוג ב-WhatsApp" sub="רשימת כל המוצרים שבמלאי, מוכנה להעתקה" onPress={shareCatalog} />
+        <SheetRow
+          icon="refresh-cw"
+          label="הפקת רשימת חידוש מלאי"
+          sub={lowStockCount > 0 ? `${lowStockCount} מוצרים מתחת לסף — מוכן לשליחה ב-WhatsApp` : "אין כרגע מוצרים מתחת לסף המלאי הנמוך"}
+          disabled={lowStockCount === 0}
+          onPress={shareRestockList}
+        />
       </ToolsSheet>
     </View>
   );

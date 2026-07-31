@@ -58,6 +58,7 @@ export const DEFAULT_SETTINGS = {
 
   // --- POS configuration ---
   maaserRate: "10", // % of profit set aside, shown alongside the VAT figure
+  droneAllocPct: "15", // % of each sale's net profit auto-swept to the savings goal
   allowManualItems: true, // the "פריט ידני" button on the fast-food deck
 
   // --- Appearance ---

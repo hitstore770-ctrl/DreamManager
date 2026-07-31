@@ -34,7 +34,15 @@ export function aggregateDay(sales, d = new Date(), sinceTs = 0) {
     .map(([name, v]) => ({ name, ...v }));
 
   const dmgUnits = damages.reduce((s, r) => s + (r.qty || 0), 0);
-  return { revenue, txCount, units, top, dmgUnits };
+
+  // Every record's own `profit` field, damage rows included — a damage row
+  // already carries a negative profit equal to its cost (see applyDamage in
+  // posStore.js), which is what makes "net profit" here the same figure
+  // MoneyDashboardScreen's todayProfit computes, not a revenue-only number
+  // that ignores what the shift actually lost.
+  const profit = todays.reduce((s, r) => s + (Number(r.profit) || 0), 0);
+
+  return { revenue, txCount, units, top, dmgUnits, profit };
 }
 
 // WhatsApp-friendly shareable summary (emoji headers, short lines).

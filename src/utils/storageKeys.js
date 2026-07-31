@@ -26,4 +26,14 @@ export const STORAGE_KEYS = {
   moneyLiquid: "@dreammanager/money-liquid",
   moneyDeposits: "@dreammanager/money-deposits",
   moneyLedger: "@dreammanager/money-ledger",
+  // Same key text MoneyDashboardScreen.js already used inline — named here so
+  // completeSale (PosRegisterTab.js) can write to the exact goal the
+  // dashboard reads, without either file guessing the other's string.
+  droneGoal: "@dreammanager/drone-goal",
+  droneSaved: "@dreammanager/drone-saved",
+  // How much of today's profit auto-swept to the goal already, so the
+  // dashboard's manual allocation card offers what's left rather than
+  // double-counting. Resets on day change, same convention as dailyAlloc.
+  droneAutoDaily: "@dreammanager/drone-auto-daily",
+  loyaltyCustomers: "@dreammanager/loyalty-customers",
 };

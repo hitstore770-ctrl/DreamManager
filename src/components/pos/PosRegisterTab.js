@@ -16,6 +16,7 @@ import { pushMany } from "../../utils/cloudSync";
 import { hapticLight, hapticSuccess, hapticWarning } from "../../utils/haptics";
 import { DECKS, DEFAULT_DECK_ITEMS, marginOf } from "../../utils/posCatalog";
 import { crossSellSuggestion, monthKey, shekel, suggestRetailPrice, todayKey, uid } from "../../utils/posStore";
+import { STORAGE_KEYS } from "../../utils/storageKeys";
 import { usePersistentState } from "../../utils/usePersistentState";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
 import { BEVEL, CARD_SHADOW, UI, tint } from "../../utils/ui";
@@ -72,8 +73,18 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
   // Settings → תצורת קופה. Off hides the manual line entirely, which is the
   // point: a register that can invent items cannot be reconciled against the
   // deck, and some days the owner wants exactly that discipline.
-  const { allowManualItems } = useSettings();
+  const { allowManualItems, droneAllocPct } = useSettings();
   const manualAllowed = allowManualItems !== false;
+  const allocPct = Math.max(0, parseFloat(droneAllocPct) || 0);
+
+  // The drone fund — same two keys MoneyDashboardScreen.js reads, so every
+  // sale's automatic sweep shows up there live via usePersistentState's
+  // cross-hook broadcast, with no context or navigation involved.
+  const [droneSaved, setDroneSaved] = usePersistentState(STORAGE_KEYS.droneSaved, 0);
+  const [droneAutoDaily, setDroneAutoDaily] = usePersistentState(STORAGE_KEYS.droneAutoDaily, {
+    day: "",
+    amount: 0,
+  });
 
   // Notes pinned from the editor's "הצמד לקופה" toggle — a shift note, a
   // supplier reminder — surfaced where the register is actually being used
@@ -380,6 +391,20 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
       });
     }
 
+    // Loyalty count — tracked whenever a customer name was given at
+    // checkout, regardless of payment method (the field is available for
+    // all of them, required only for "tab").
+    const loyaltyName = tabCustomerName.trim();
+    if (loyaltyName) {
+      setLoyaltyCustomers((prev) => {
+        const existing = (prev || []).find((c) => c.name.trim().toLowerCase() === loyaltyName.toLowerCase());
+        if (existing) {
+          return prev.map((c) => (c.id === existing.id ? { ...c, count: (c.count || 0) + 1, lastAt: ts } : c));
+        }
+        return [...(prev || []), { id: uid(), name: loyaltyName, count: 1, lastAt: ts }];
+      });
+    }
+
     // Deck lines only touch stock when explicitly linked to a warehouse item.
     // Matching on name would be a guess, and a guess that silently decrements
     // the wrong row is worse than not decrementing.
@@ -394,7 +419,26 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
       );
     }
 
+    // Automated Profit Allocation — a slice of THIS sale's own net profit
+    // goes straight to the drone fund the instant the sale closes, rather
+    // than waiting for someone to notice today's total and swipe a card
+    // later (that manual card, on the Money Dashboard, still exists — it
+    // now offers what's left after this sweep, not the whole day's profit).
+    // A loss-making sale (totals.profit <= 0, e.g. a heavily discounted
+    // line) sends nothing: there is no profit to take a percentage of.
+    const autoAllocAmount =
+      totals.profit > 0 && allocPct > 0 ? Math.round(totals.profit * (allocPct / 100) * 100) / 100 : 0;
+    if (autoAllocAmount > 0) {
+      setDroneSaved((prev) => Math.round(((Number(prev) || 0) + autoAllocAmount) * 100) / 100);
+      setDroneAutoDaily((prev) => {
+        const day = todayKey();
+        const base = prev?.day === day ? Number(prev.amount) || 0 : 0;
+        return { day, amount: Math.round((base + autoAllocAmount) * 100) / 100 };
+      });
+    }
+
     setReceipt({
+      droneAlloc: autoAllocAmount,
       lines: cart,
       totals,
       ts,
@@ -419,6 +463,14 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
     () => [...new Set((debts || []).map((d) => d.name.trim()).filter(Boolean))],
     [debts]
   );
+
+  // Loyalty club — purchase counts by name, independent of payment method:
+  // a cash customer racks up the same count a tab customer does. A separate
+  // ledger from `debts` on purpose — owing money and having bought five times
+  // are unrelated facts about a customer, and folding them into one record
+  // would mean a fully-paid-up regular's history vanishes the moment their
+  // balance clears back to zero.
+  const [loyaltyCustomers, setLoyaltyCustomers] = usePersistentState(STORAGE_KEYS.loyaltyCustomers, []);
 
   return (
     <View style={st.wrap}>
@@ -684,6 +736,7 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
         tabCustomerName={tabCustomerName}
         setTabCustomerName={setTabCustomerName}
         debtorNames={debtorNames}
+        loyaltyCustomers={loyaltyCustomers}
         canComplete={canComplete}
         onClose={() => {
           setSummaryOpen(false);
@@ -954,11 +1007,21 @@ function CheckoutSummary({
   tabCustomerName,
   setTabCustomerName,
   debtorNames,
+  loyaltyCustomers,
   canComplete,
   onClose,
   onComplete,
 }) {
   const margin = totals.gross > 0 ? totals.profit / totals.gross : null;
+
+  // Loyalty milestone check, live as the name is typed — every 5th purchase
+  // (5th, 10th, 15th…) for whoever this name matches in the loyalty ledger.
+  const loyaltyTrimmed = tabCustomerName.trim();
+  const loyaltyMatch = loyaltyTrimmed
+    ? (loyaltyCustomers || []).find((c) => c.name.trim().toLowerCase() === loyaltyTrimmed.toLowerCase())
+    : null;
+  const upcomingPurchaseCount = (loyaltyMatch?.count || 0) + 1;
+  const isLoyaltyMilestone = loyaltyTrimmed.length > 0 && upcomingPurchaseCount % 5 === 0;
 
   // Called unconditionally, above the receipt/summary branch below — both
   // views are the same mounted component instance (the modal's `visible`
@@ -1004,6 +1067,14 @@ function CheckoutSummary({
               <CustomText style={st.receiptDoneSub}>
                 {receipt.paymentMethod === "tab" ? `נרשם בהקפה על שם ${receipt.tabCustomerName}` : "נגבה בהצלחה"}
               </CustomText>
+              {receipt.droneAlloc > 0 && (
+                <View style={st.droneAllocChip}>
+                  <Icon name="target" size={13} color={UI.violet} />
+                  <CustomText style={st.droneAllocChipText}>
+                    {shekel(receipt.droneAlloc)} נשלחו אוטומטית לקרן הרחפן
+                  </CustomText>
+                </View>
+              )}
             </View>
 
             <TouchableOpacity
@@ -1145,35 +1216,46 @@ function CheckoutSummary({
             })}
           </View>
 
-          {paymentMethod === "tab" && (
-            <View style={st.tabBox}>
-              <TextInput
-                testID="tab-customer-name"
-                style={st.input}
-                value={tabCustomerName}
-                onChangeText={setTabCustomerName}
-                placeholder="שם הלקוח"
-                placeholderTextColor={UI.inkMuted}
-                textAlign="right"
-              />
-              {debtorNames.length > 0 && (
-                <View style={st.tabSuggestRow}>
-                  {debtorNames.slice(0, 6).map((name) => (
-                    <TouchableOpacity
-                      key={name}
-                      style={st.tabSuggestChip}
-                      onPress={() => {
-                        hapticLight();
-                        setTabCustomerName(name);
-                      }}
-                    >
-                      <CustomText style={st.tabSuggestChipText}>{name}</CustomText>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-            </View>
-          )}
+          {/* Customer name — required to complete a "tab" sale, optional
+              (but tracked toward the loyalty club) for every other method. */}
+          <CustomText style={st.fieldLabel}>
+            {paymentMethod === "tab" ? "שם הלקוח" : "שם הלקוח (לא חובה)"}
+          </CustomText>
+          <View style={st.tabBox}>
+            <TextInput
+              testID="tab-customer-name"
+              style={st.input}
+              value={tabCustomerName}
+              onChangeText={setTabCustomerName}
+              placeholder="שם הלקוח"
+              placeholderTextColor={UI.inkMuted}
+              textAlign="right"
+            />
+            {debtorNames.length > 0 && (
+              <View style={st.tabSuggestRow}>
+                {debtorNames.slice(0, 6).map((name) => (
+                  <TouchableOpacity
+                    key={name}
+                    style={st.tabSuggestChip}
+                    onPress={() => {
+                      hapticLight();
+                      setTabCustomerName(name);
+                    }}
+                  >
+                    <CustomText style={st.tabSuggestChipText}>{name}</CustomText>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+            {isLoyaltyMilestone && (
+              <View testID="loyalty-alert" style={st.loyaltyAlert}>
+                <Icon name="award" size={16} color={UI.gold} />
+                <CustomText style={st.loyaltyAlertText}>
+                  התראת נאמנות: רכישה #{upcomingPurchaseCount}! שקלו להציע 10% הנחה.
+                </CustomText>
+              </View>
+            )}
+          </View>
 
           <TouchableOpacity
             testID="summary-complete"
@@ -1471,6 +1553,19 @@ const st = StyleSheet.create({
     borderColor: UI.hairline,
   },
   tabSuggestChipText: { fontFamily: FONTS.medium, fontSize: 12, color: UI.ink },
+  loyaltyAlert: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: tint(UI.gold, 0.12),
+    borderWidth: 1,
+    borderColor: tint(UI.gold, 0.3),
+  },
+  loyaltyAlertText: { flex: 1, fontFamily: FONTS.semibold, fontSize: 12.5, color: UI.gold, textAlign: "right" },
   primaryBtn: {
     flexDirection: "row-reverse",
     alignItems: "center",
@@ -1485,6 +1580,17 @@ const st = StyleSheet.create({
 
   receiptDone: { alignItems: "center", gap: 6, paddingVertical: 18 },
   receiptDoneTotal: { fontFamily: FONTS.bold, fontSize: 30, color: UI.ink },
+  droneAllocChip: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: tint(UI.violet, 0.1),
+  },
+  droneAllocChipText: { fontFamily: FONTS.semibold, fontSize: 12.5, color: UI.violet },
   receiptDoneSub: { fontFamily: FONTS.medium, fontSize: 13.5, color: UI.inkMuted },
   whatsappBtn: {
     flexDirection: "row-reverse",
