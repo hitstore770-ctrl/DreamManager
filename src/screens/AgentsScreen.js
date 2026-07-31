@@ -8,6 +8,7 @@ import { useAgents } from "../context/AgentsContext";
 import { useBusiness } from "../context/BusinessContext";
 import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
 import { shekel, todayKey, uid } from "../utils/posStore";
+import { evaluateRouteConditions, findNodeByPath, useTerritoryTree } from "../utils/TerritoryEngine";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import CustomText from "../components/CustomText";
 
@@ -677,10 +678,12 @@ function CloseShiftModal({ visible, agent, backpack, cashExpected, onClose }) {
 const QUICK_FLOORS = ["0", "1", "2", "3", "4", "5"];
 
 function AssignOrderModal({ visible, agent, agentOrders, onClose, onAssign }) {
+  const { tree } = useTerritoryTree();
   const [building, setBuilding] = useState("");
   const [floor, setFloor] = useState("");
   const [room, setRoom] = useState("");
   const [queuedCount, setQueuedCount] = useState(0);
+  const [blockedReason, setBlockedReason] = useState(null);
 
   const knownBuildings = useMemo(() => {
     const set = new Set((agentOrders || []).map((o) => o.building).filter(Boolean));
@@ -692,18 +695,40 @@ function AssignOrderModal({ visible, agent, agentOrders, onClose, onAssign }) {
     setFloor("");
     setRoom("");
     setQueuedCount(0);
+    setBlockedReason(null);
     onClose();
   };
 
   const valid = building.trim().length > 0;
 
+  // Territory metadata is an enrichment layer over the plain building/floor/
+  // room strings this modal has always collected — a stop with no matching
+  // node in the tree just assigns exactly as before (node is null,
+  // evaluateRouteConditions returns "no restrictions").
   const addOne = () => {
     if (!valid || !agent) {
       hapticWarning();
       return;
     }
+    const node = findNodeByPath(tree, building.trim(), floor.trim(), room.trim());
+    const evaluation = evaluateRouteConditions(node);
+    if (evaluation.blocked) {
+      hapticWarning();
+      setBlockedReason(evaluation.reason);
+      return;
+    }
+    setBlockedReason(null);
     hapticSuccess();
-    onAssign(agent, { building: building.trim(), floor: floor.trim(), room: room.trim() });
+    onAssign(agent, {
+      building: building.trim(),
+      floor: floor.trim(),
+      room: room.trim(),
+      territoryNodeId: node?.id || null,
+      surgeMultiplier: evaluation.surgeMultiplier,
+      surgeLabel: evaluation.surgeLabel,
+      cellularDeadZone: !!node?.metadata?.cellularDeadZone,
+      gateCodes: node?.metadata?.gateCodes || "",
+    });
     setQueuedCount((n) => n + 1);
     setFloor("");
     setRoom("");
@@ -783,6 +808,13 @@ function AssignOrderModal({ visible, agent, agentOrders, onClose, onAssign }) {
                 placeholderTextColor={INK_MUTED}
                 textAlign="center"
               />
+
+              {blockedReason && (
+                <View testID="assign-order-blocked" style={s.blockedNote}>
+                  <Icon name="alert-triangle" size={13} color={RED} />
+                  <CustomText style={s.blockedNoteText}>{blockedReason}</CustomText>
+                </View>
+              )}
 
               <TouchableOpacity
                 testID="assign-order-add"
@@ -953,6 +985,17 @@ const s = StyleSheet.create({
   chipOn: { backgroundColor: BLUE },
   chipText: { fontFamily: FONTS.semibold, fontSize: 12.5, color: INK_SOFT },
   chipTextOn: { color: WHITE },
+  blockedNote: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: RED + "14",
+  },
+  blockedNoteText: { flex: 1, fontFamily: FONTS.medium, fontSize: 11.5, color: RED, textAlign: "right" },
   amountInput: {
     minHeight: 50,
     backgroundColor: CARD,

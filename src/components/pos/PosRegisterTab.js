@@ -19,6 +19,7 @@ import { hapticLight, hapticSuccess, hapticWarning } from "../../utils/haptics";
 import { DECKS, DEFAULT_DECK_ITEMS, marginOf } from "../../utils/posCatalog";
 import { crossSellSuggestion, monthKey, shekel, suggestRetailPrice, todayKey, uid } from "../../utils/posStore";
 import { STORAGE_KEYS } from "../../utils/storageKeys";
+import { evaluateRouteConditions, findNode, useTerritoryTree } from "../../utils/TerritoryEngine";
 import { usePersistentState } from "../../utils/usePersistentState";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
 import { BEVEL, CARD_SHADOW, UI, tint } from "../../utils/ui";
@@ -385,6 +386,35 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
 
     return { gross, cost, profit, units, unknown, comboCount, comboDiscount, lateNightSurcharge, amountDue };
   }, [cart, costs]);
+
+  // Territory surge — priced against whatever is in the cart right now, the
+  // same "amount actually being charged" every other adjustment line here
+  // (combo discount, late-night surcharge) already reads from `totals`. An
+  // empty cart has nothing to tax yet, so the button is a no-op warning
+  // rather than a silent zero-amount line.
+  const { tree: territoryTree } = useTerritoryTree();
+  const addTerritorySurcharge = (order) => {
+    const node = order.territoryNodeId ? findNode(territoryTree, order.territoryNodeId) : null;
+    const evaluation = evaluateRouteConditions(node, totals.gross);
+    if (evaluation.surgeAmount <= 0) {
+      feedback.warning();
+      return;
+    }
+    feedback.light();
+    setCart((prev) => [
+      ...prev,
+      {
+        id: uid(),
+        sku: `surge-${order.id}`,
+        name: evaluation.surgeLabel || "תוספת מרחק/קושי",
+        price: evaluation.surgeAmount,
+        cost: 0,
+        qty: 1,
+        territorySurcharge: true,
+      },
+    ]);
+    setAgentOrders((prev) => (prev || []).map((o) => (o.id === order.id ? { ...o, surgeCharged: true } : o)));
+  };
 
   const add = (item, qty = 1) => {
     feedback.light();
@@ -1207,6 +1237,7 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
         onClose={() => setOrdersOpen(false)}
         onImHere={notifyImHere}
         onDelivered={markOrderDelivered}
+        onAddSurcharge={addTerritorySurcharge}
       />
       <AgentDebtorsModal
         visible={debtorsOpen}
@@ -1224,7 +1255,18 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
 // the stop as notified without removing it; "נמסר" is the only action that
 // actually closes it out.
 
-function OrderQueueModal({ visible, orders, onClose, onImHere, onDelivered }) {
+function OrderQueueModal({ visible, orders, onClose, onImHere, onDelivered, onAddSurcharge }) {
+  // Reactivity to Step 3 of the territory directive: any pending stop
+  // flagged cellularDeadZone gets one aggregate banner rather than a native
+  // Alert.alert() per stop — this app deliberately doesn't use blocking
+  // native alerts for anything short of a destructive confirm (see
+  // crossSellToast / resultBanner elsewhere), and a banner reads the same
+  // "heads up" without stopping the agent mid-round. Every sale already
+  // writes to local storage first regardless of connectivity (see
+  // completeSale), so there is no separate cache to warm here — the banner
+  // is the honest part of "offline-caching on entry."
+  const hasDeadZoneStop = orders.some((o) => o.cellularDeadZone);
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={st.backdrop} onPress={onClose}>
@@ -1235,6 +1277,15 @@ function OrderQueueModal({ visible, orders, onClose, onImHere, onDelivered }) {
             </TouchableOpacity>
             <CustomText style={st.sheetTitle}>משימות הפצה</CustomText>
           </View>
+
+          {hasDeadZoneStop && (
+            <View testID="deadzone-banner" style={st.deadZoneBanner}>
+              <Icon name="wifi-off" size={15} color={UI.amber} />
+              <CustomText style={st.deadZoneBannerText}>
+                יש עצירות באזור ללא כיסוי סלולרי — המכירות נשמרות מקומית ומסתנכרנות כשהחיבור חוזר
+              </CustomText>
+            </View>
+          )}
 
           {orders.length === 0 ? (
             <CustomText style={st.ordersEmpty}>אין משימות פתוחות — הכל נמסר.</CustomText>
@@ -1248,7 +1299,22 @@ function OrderQueueModal({ visible, orders, onClose, onImHere, onDelivered }) {
                   </View>
                   <View style={{ flex: 1 }}>
                     <CustomText style={st.orderAddress}>{composeOrderAddress(o)}</CustomText>
-                    {o.status === "notified" && <CustomText style={st.orderNotified}>הודעה נשלחה</CustomText>}
+                    <View style={st.orderTagRow}>
+                      {o.status === "notified" && <CustomText style={st.orderNotified}>הודעה נשלחה</CustomText>}
+                      {o.cellularDeadZone && <CustomText style={st.orderTagAmber}>ללא כיסוי</CustomText>}
+                      {!!o.gateCodes && <CustomText style={st.orderTagInfo}>קוד שער: {o.gateCodes}</CustomText>}
+                    </View>
+                    {o.surgeLabel && !o.surgeCharged && (
+                      <TouchableOpacity
+                        testID={`order-surge-${o.id}`}
+                        style={st.orderSurgeBtn}
+                        activeOpacity={0.8}
+                        onPress={() => onAddSurcharge(o)}
+                      >
+                        <Icon name="trending-up" size={12} color={UI.amber} />
+                        <CustomText style={st.orderSurgeBtnText}>{o.surgeLabel} — הוסף לעגלה</CustomText>
+                      </TouchableOpacity>
+                    )}
                   </View>
                   <TouchableOpacity
                     testID={`order-here-${o.id}`}
@@ -2168,8 +2234,35 @@ const st = StyleSheet.create({
   },
   toolChipBadgeText: { fontFamily: FONTS.bold, fontSize: 10, color: "#FFFFFF" },
 
+  deadZoneBanner: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: tint(UI.amber, 0.1),
+  },
+  deadZoneBannerText: { flex: 1, fontFamily: FONTS.medium, fontSize: 12, color: UI.amber, textAlign: "right", lineHeight: 17 },
+
   ordersEmpty: { fontFamily: FONTS.regular, fontSize: 13, color: UI.inkMuted, textAlign: "center", paddingVertical: 20 },
   ordersHint: { fontFamily: FONTS.regular, fontSize: 11.5, color: UI.inkMuted, textAlign: "right", marginBottom: 8 },
+  orderTagRow: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 6, marginTop: 2 },
+  orderTagAmber: { fontFamily: FONTS.semibold, fontSize: 10, color: UI.amber },
+  orderTagInfo: { fontFamily: FONTS.semibold, fontSize: 10, color: UI.inkSoft },
+  orderSurgeBtn: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-end",
+    marginTop: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: tint(UI.amber, 0.12),
+  },
+  orderSurgeBtnText: { fontFamily: FONTS.semibold, fontSize: 10.5, color: UI.amber },
   orderRow: {
     flexDirection: "row-reverse",
     alignItems: "center",
