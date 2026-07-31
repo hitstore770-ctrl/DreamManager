@@ -16,9 +16,9 @@ const INK_MUTED = "#9CA3AF";
 const BLUE = "#7C3AED";
 const RED = "#EF4444";
 
-export function ToolsFab({ onPress, style }) {
+export function ToolsFab({ onPress, style, testID = "tools-fab" }) {
   return (
-    <TouchableOpacity style={[s.fab, style]} onPress={onPress} activeOpacity={0.85}>
+    <TouchableOpacity testID={testID} style={[s.fab, style]} onPress={onPress} activeOpacity={0.85}>
       <Icon name="sliders" size={22} color="#FFFFFF" />
     </TouchableOpacity>
   );
@@ -65,7 +65,12 @@ export default function ToolsSheet({ visible, onClose, title, children }) {
 const s = StyleSheet.create({
   fab: {
     position: "absolute",
-    left: 14,
+    // No default horizontal position — WarehouseScreen, its only caller,
+    // sets `right` explicitly. Business (WarehouseScreen's host screen) is
+    // wrapped in withBack()'s BackFab, which floats at bottom-*left* — a
+    // default `left` here used to sit right under it, and BackFab paints on
+    // top, which made this button permanently untappable rather than merely
+    // ugly.
     zIndex: 30,
     width: 56,
     height: 56,

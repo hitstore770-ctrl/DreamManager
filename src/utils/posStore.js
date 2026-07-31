@@ -97,3 +97,47 @@ export function applyDamage(inventory, itemId, qty = 1) {
 export function isLocked(lockedDays, day = todayKey()) {
   return Array.isArray(lockedDays) && lockedDays.includes(day);
 }
+
+// Cost-plus retail suggestion for the Add/Edit Product form. `pct` is applied
+// as markup on the landed cost (cost + shipping), not margin on the eventual
+// price — "+40%" reads as "cost plus 40%," and this app already has a
+// dedicated tool (MarkupVsMargin) built around keeping those two numbers from
+// being silently swapped, so the quick-suggestion buttons stay consistent
+// with it rather than inventing a second convention.
+export function suggestRetailPrice(costBasis, pct) {
+  const c = Number(costBasis) || 0;
+  if (c <= 0) return 0;
+  return Math.round(c * (1 + pct / 100) * 100) / 100;
+}
+
+// Cross-sell hints: name-based rather than sku-based, so the same pairing
+// logic covers a deck tile, a scanned barcode, and a hand-typed inventory
+// item alike — none of which share an id scheme with each other.
+const CROSS_SELL_HINTS = [
+  { match: /פאוור בנק|power ?bank/i, suggestion: "כבל טעינה", icon: "zap" },
+  { match: /אוזניות|earbuds|buds/i, suggestion: "מטען מהיר", icon: "zap" },
+  { match: /עכבר|mouse/i, suggestion: "מפצל USB", icon: "share-2" },
+  { match: /כיסוי|case/i, suggestion: "מגן מסך", icon: "shield" },
+  { match: /טלפון|phone/i, suggestion: "מעמד לטלפון", icon: "smartphone" },
+];
+
+// Returns a suggestion object for `itemName`, or null — and null also when
+// the suggested product is already sitting in the cart, so the toast never
+// nags for something the customer is already buying.
+export function crossSellSuggestion(itemName, cartItemNames = []) {
+  const hint = CROSS_SELL_HINTS.find((h) => h.match.test(itemName));
+  if (!hint) return null;
+  const already = cartItemNames.some((n) => n.includes(hint.suggestion));
+  if (already) return null;
+  return hint;
+}
+
+// A clean, WhatsApp-ready text catalog of everything currently in stock.
+// Out-of-stock lines are left out on purpose — a customer tapping "is this
+// available?" on a sold-out line is the exact friction this exists to avoid.
+export function buildCatalogText(inventory) {
+  const inStock = (inventory || []).filter((i) => (i.qty || 0) > 0);
+  if (inStock.length === 0) return "";
+  const lines = inStock.map((i) => `🔥 ${i.name} - ${shekel(i.price || 0)}`).join("\n");
+  return `📦 הקטלוג שלנו\n\n${lines}\n\nלהזמנות, כתבו לנו כאן! 📩`;
+}

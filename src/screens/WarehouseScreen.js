@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { ScrollView, Share, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
+import { Linking, ScrollView, Share, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 
 import Icon from "../components/Icon";
 import ToolsSheet, { SheetRow, ToolsFab } from "../components/business/ToolsSheet";
 import { useBusiness } from "../context/BusinessContext";
 import { hapticLight, hapticSuccess, hapticWarning } from "../utils/haptics";
-import { CATEGORIES, LOW_STOCK, applyDamage, catOf, shekel, uid } from "../utils/posStore";
+import { CATEGORIES, LOW_STOCK, applyDamage, buildCatalogText, catOf, shekel, suggestRetailPrice, uid } from "../utils/posStore";
 import { buildZReportText, lastCloseTs } from "../utils/zReport";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import CustomText from "../components/CustomText";
@@ -22,7 +22,7 @@ const BLUE = "#7C3AED";
 const RED = "#EF4444";
 const GREEN = "#10B981";
 
-const EMPTY_FORM = { name: "", cost: "", price: "", qty: "", category: CATEGORIES[0].key };
+const EMPTY_FORM = { name: "", cost: "", shipping: "", price: "", qty: "", category: CATEGORIES[0].key };
 
 export default function WarehouseScreen({ onGoToPos }) {
   const { inventory, setInventory, setSales, sales, closes } = useBusiness();
@@ -42,6 +42,7 @@ export default function WarehouseScreen({ onGoToPos }) {
     const price = parseFloat(form.price);
     if (!name || !(price >= 0)) return;
     hapticSuccess();
+    const shipping = parseFloat(form.shipping) || 0;
     setInventory((prev) => [
       ...prev,
       {
@@ -49,13 +50,42 @@ export default function WarehouseScreen({ onGoToPos }) {
         name,
         category: form.category,
         qty: parseInt(form.qty, 10) || 0,
-        cost: parseFloat(form.cost) || 0,
+        // The stored cost is the full landed cost (product + shipping) — every
+        // other reader of this field (profit, damage write-offs, margin tags)
+        // already treats "cost" as one number, and a shipping charge that
+        // never made it into that number would quietly overstate profit.
+        cost: (parseFloat(form.cost) || 0) + shipping,
+        shipping,
         price,
         sold: 0,
       },
     ]);
     setForm(EMPTY_FORM);
     setShowForm(false);
+  };
+
+  const costBasis = (parseFloat(form.cost) || 0) + (parseFloat(form.shipping) || 0);
+  const applySuggestion = (pct) => {
+    hapticLight();
+    setForm((f) => ({ ...f, price: String(suggestRetailPrice(costBasis, pct)) }));
+  };
+
+  const shareCatalog = async () => {
+    hapticLight();
+    setSheetOpen(false);
+    const text = buildCatalogText(inventory);
+    if (!text) return;
+    const url = `whatsapp://send?text=${encodeURIComponent(text)}`;
+    try {
+      const ok = await Linking.canOpenURL(url);
+      if (ok) {
+        await Linking.openURL(url);
+        return;
+      }
+    } catch {
+      /* fall through */
+    }
+    Linking.openURL(`https://wa.me/?text=${encodeURIComponent(text)}`).catch(() => {});
   };
 
   // Defect mode: tapping a row logs one damaged unit (stock −1 + loss record).
@@ -117,24 +147,47 @@ export default function WarehouseScreen({ onGoToPos }) {
                 textAlign="center"
               />
               <TextInput
+                testID="wh-cost"
                 style={[s.input, { flex: 1 }]}
-                value={form.price}
-                onChangeText={(v) => setForm((f) => ({ ...f, price: v }))}
-                placeholder="מכירה ₪"
+                value={form.cost}
+                onChangeText={(v) => setForm((f) => ({ ...f, cost: v }))}
+                placeholder="עלות מוצר ₪"
                 placeholderTextColor={INK_MUTED}
                 keyboardType="numeric"
                 textAlign="center"
               />
               <TextInput
+                testID="wh-shipping"
                 style={[s.input, { flex: 1 }]}
-                value={form.cost}
-                onChangeText={(v) => setForm((f) => ({ ...f, cost: v }))}
-                placeholder="עלות ₪"
+                value={form.shipping}
+                onChangeText={(v) => setForm((f) => ({ ...f, shipping: v }))}
+                placeholder="משלוח ₪"
                 placeholderTextColor={INK_MUTED}
                 keyboardType="numeric"
                 textAlign="center"
               />
             </View>
+            {costBasis > 0 && (
+              <View style={s.suggestRow}>
+                <CustomText style={s.suggestLabel}>מחיר מוצע:</CustomText>
+                <TouchableOpacity testID="wh-suggest-40" style={s.suggestChip} onPress={() => applySuggestion(40)} activeOpacity={0.8}>
+                  <CustomText style={s.suggestChipText}>{shekel(suggestRetailPrice(costBasis, 40))} · 40%+</CustomText>
+                </TouchableOpacity>
+                <TouchableOpacity testID="wh-suggest-50" style={s.suggestChip} onPress={() => applySuggestion(50)} activeOpacity={0.8}>
+                  <CustomText style={s.suggestChipText}>{shekel(suggestRetailPrice(costBasis, 50))} · 50%+</CustomText>
+                </TouchableOpacity>
+              </View>
+            )}
+            <TextInput
+              testID="wh-price"
+              style={s.input}
+              value={form.price}
+              onChangeText={(v) => setForm((f) => ({ ...f, price: v }))}
+              placeholder="מחיר מכירה ₪"
+              placeholderTextColor={INK_MUTED}
+              keyboardType="numeric"
+              textAlign="center"
+            />
             <View style={{ flexDirection: "row", gap: 8 }}>
               {CATEGORIES.map((c) => (
                 <TouchableOpacity
@@ -208,7 +261,7 @@ export default function WarehouseScreen({ onGoToPos }) {
         )}
       </ScrollView>
 
-      <ToolsFab style={{ bottom: 18 }} onPress={() => { hapticLight(); setSheetOpen(true); }} />
+      <ToolsFab style={{ bottom: 18, right: 16 }} onPress={() => { hapticLight(); setSheetOpen(true); }} />
 
       <ToolsSheet visible={sheetOpen} onClose={() => setSheetOpen(false)} title="כלים מקצועיים">
         <SheetRow icon="percent" label="הנחה מהירה %" sub="פועל בקופה — מעבר לקופה" onPress={goPos} />
@@ -223,6 +276,7 @@ export default function WarehouseScreen({ onGoToPos }) {
           onPress={() => { hapticLight(); setDefectMode((v) => !v); setSheetOpen(false); }}
         />
         <SheetRow icon="file-text" label="ייצוא דוח Z ל-WhatsApp" sub="סיכום פדיון, עסקאות ופחת להיום" onPress={shareZ} />
+        <SheetRow icon="share-2" label="שיתוף קטלוג ב-WhatsApp" sub="רשימת כל המוצרים שבמלאי, מוכנה להעתקה" onPress={shareCatalog} />
       </ToolsSheet>
     </View>
   );
@@ -281,6 +335,10 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   catChipText: { fontFamily: FONTS.semibold, fontSize: 13, color: INK },
+  suggestRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  suggestLabel: { fontFamily: FONTS.medium, fontSize: 12, color: INK_MUTED },
+  suggestChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, backgroundColor: GREEN + "1A" },
+  suggestChipText: { fontFamily: FONTS.semibold, fontSize: 12, color: GREEN },
   formBtn: { flex: 1, minHeight: 48, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   formBtnText: { fontFamily: FONTS.bold, fontSize: 14 },
 

@@ -1,12 +1,16 @@
-import { useEffect, useState } from "react";
-import { ActivityIndicator, Modal, StyleSheet, TouchableOpacity, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Modal, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import CustomText from "../CustomText";
 import Icon from "../Icon";
-import { hapticLight, hapticSuccess } from "../../utils/haptics";
+import { hapticSuccess } from "../../utils/haptics";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
-import { UI } from "../../utils/ui";
+
+// Real product barcodes: EAN/UPC cover essentially every AliExpress box a
+// scooter delivery will ever carry; code128 and QR are included because some
+// sellers print their own labels in one of those instead.
+const BARCODE_TYPES = ["ean13", "ean8", "upc_a", "upc_e", "code128", "qr"];
 
 // The scanner for imported stock — full-screen, nothing else on it.
 //
@@ -40,30 +44,50 @@ function ScannerBody({ onScanned, onClose }) {
   const useCameraPermissions = CameraModule?.useCameraPermissions;
   const [permission, requestPermission] = useCameraPermissions ? useCameraPermissions() : [null, null];
   const [ready, setReady] = useState(false);
+  const [manualCode, setManualCode] = useState("");
+  // A real onBarcodeScanned fires on every frame that still has the barcode
+  // in view — dozens of times a second, not once. This is the guard against
+  // treating that as dozens of separate scans; it resets whenever the modal
+  // reopens, since ScannerBody is unmounted along with it (see ScanCamera
+  // below, which renders it only while `visible`).
+  const handledRef = useRef(false);
 
   useEffect(() => {
     if (permission && !permission.granted && permission.canAskAgain) requestPermission?.();
   }, [permission, requestPermission]);
 
-  // The mock capture.
-  //
-  // Recognition is not wired: there is no barcode lookup and no product
-  // database behind this yet, so the item it returns is a stand-in and is
-  // named as one on the cart line. What is real is the plumbing either side of
-  // it — camera, permission, capture, close, cart — so wiring a real decoder
-  // later is a change to this one function.
-  const capture = () => {
+  const handleBarcode = ({ data }) => {
+    if (handledRef.current || !data) return;
+    handledRef.current = true;
     hapticSuccess();
-    onScanned();
+    onScanned(data);
   };
 
-  const unavailable = !CameraView || !permission?.granted;
+  const submitManual = () => {
+    const code = manualCode.trim();
+    if (!code) return;
+    hapticSuccess();
+    onScanned(code);
+  };
+
+  const cameraOk = !!CameraView && !!permission?.granted;
+  const permissionDenied = !!CameraView && !!permission && !permission.granted;
 
   return (
     <View style={st.screen}>
-      {CameraView && permission?.granted ? (
-        <CameraView style={StyleSheet.absoluteFill} facing="back" onCameraReady={() => setReady(true)} />
+      {cameraOk ? (
+        <CameraView
+          style={StyleSheet.absoluteFill}
+          facing="back"
+          onCameraReady={() => setReady(true)}
+          barcodeScannerSettings={{ barcodeTypes: BARCODE_TYPES }}
+          onBarcodeScanned={handleBarcode}
+        />
       ) : (
+        // Graceful degradation, not a dead end: no camera module (Expo Go),
+        // permission denied, or permission still pending all land here with
+        // an explanation plus a manual code entry that keeps the scan flow
+        // usable either way.
         <View testID="scan-fallback" style={[StyleSheet.absoluteFill, st.fallback]}>
           <Icon name="camera-off" size={34} color="rgba(255,255,255,0.6)" />
           <CustomText style={st.fallbackTitle}>
@@ -72,8 +96,32 @@ function ScannerBody({ onScanned, onClose }) {
           <CustomText style={st.fallbackBody}>
             {!CameraModule
               ? "הסריקה דורשת development build — היא לא זמינה ב-Expo Go."
-              : "אפשר לאשר גישה למצלמה בהגדרות המכשיר ולנסות שוב."}
+              : permissionDenied
+                ? "אפשר לאשר גישה למצלמה בהגדרות המכשיר ולנסות שוב."
+                : "מבקש הרשאת מצלמה…"}
           </CustomText>
+          <View style={st.manualRow}>
+            <TextInput
+              testID="scan-manual-input"
+              style={st.manualInput}
+              value={manualCode}
+              onChangeText={setManualCode}
+              placeholder="הזנת ברקוד ידנית"
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              textAlign="center"
+              returnKeyType="done"
+              onSubmitEditing={submitManual}
+            />
+            <TouchableOpacity
+              testID="scan-manual-submit"
+              style={[st.manualBtn, !manualCode.trim() && { opacity: 0.4 }]}
+              onPress={submitManual}
+              disabled={!manualCode.trim()}
+              activeOpacity={0.8}
+            >
+              <Icon name="check" size={18} color="#000000" />
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -93,25 +141,15 @@ function ScannerBody({ onScanned, onClose }) {
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <CustomText style={st.title}>סריקת פריט</CustomText>
-          <CustomText style={st.subtitle}>כוון את המצלמה לברקוד או לאריזה</CustomText>
+          <CustomText style={st.subtitle}>כוון את המצלמה לברקוד — הזיהוי אוטומטי</CustomText>
         </View>
       </View>
 
-      <View style={[st.bottom, { paddingBottom: insets.bottom + 22 }]}>
-        <CustomText style={st.mockNote}>הזיהוי עדיין לא מחובר — הסריקה מוסיפה פריט הדגמה</CustomText>
-        <TouchableOpacity
-          testID="scan-capture"
-          style={[st.shutter, unavailable && st.shutterMuted]}
-          onPress={capture}
-          activeOpacity={0.85}
-        >
-          {CameraView && permission?.granted && !ready ? (
-            <ActivityIndicator color={UI.ink} />
-          ) : (
-            <View style={st.shutterInner} />
-          )}
-        </TouchableOpacity>
-      </View>
+      {cameraOk && (
+        <View style={[st.bottom, { paddingBottom: insets.bottom + 22 }]}>
+          {!ready && <ActivityIndicator color="#FFFFFF" />}
+        </View>
+      )}
     </View>
   );
 }
@@ -128,6 +166,27 @@ const st = StyleSheet.create({
     color: "rgba(255,255,255,0.7)",
     textAlign: "center",
     lineHeight: 20,
+  },
+  manualRow: { flexDirection: "row", gap: 8, marginTop: 14, width: "100%" },
+  manualInput: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    paddingHorizontal: 14,
+    fontFamily: FONTS.medium,
+    fontSize: 14,
+    color: "#FFFFFF",
+  },
+  manualBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   frameWrap: {
@@ -176,16 +235,4 @@ const st = StyleSheet.create({
     paddingTop: 18,
     backgroundColor: "rgba(0,0,0,0.35)",
   },
-  mockNote: { fontFamily: FONTS.medium, fontSize: 11.5, color: "rgba(255,255,255,0.8)", textAlign: "center" },
-  shutter: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 4,
-    borderColor: "rgba(255,255,255,0.85)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  shutterMuted: { borderColor: "rgba(255,255,255,0.45)" },
-  shutterInner: { width: 54, height: 54, borderRadius: 27, backgroundColor: "#FFFFFF" },
 });

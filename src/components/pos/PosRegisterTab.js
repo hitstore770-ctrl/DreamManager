@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Linking, Modal, Pressable, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 import { FlashList } from "@shopify/flash-list";
-import Animated, { FadeIn, FadeInDown, Layout } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInDown, FadeOut, Layout } from "react-native-reanimated";
 
 import Icon from "../Icon";
 import CustomText from "../CustomText";
@@ -15,7 +15,7 @@ import { costFor, useItemCosts } from "../../utils/costStore";
 import { pushMany } from "../../utils/cloudSync";
 import { hapticLight, hapticSuccess, hapticWarning } from "../../utils/haptics";
 import { DECKS, DEFAULT_DECK_ITEMS, marginOf } from "../../utils/posCatalog";
-import { monthKey, shekel, todayKey, uid } from "../../utils/posStore";
+import { crossSellSuggestion, monthKey, shekel, suggestRetailPrice, todayKey, uid } from "../../utils/posStore";
 import { usePersistentState } from "../../utils/usePersistentState";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
 import { BEVEL, CARD_SHADOW, UI, tint } from "../../utils/ui";
@@ -39,11 +39,6 @@ import { BEVEL, CARD_SHADOW, UI, tint } from "../../utils/ui";
 // merely took.
 
 const NUM_COLUMNS = 3;
-
-// What a mock scan returns, labelled as a demo on the cart line itself. An
-// unrecognised box entering the ledger under a confident product name is
-// precisely the failure a scanner exists to prevent.
-const SCAN_PLACEHOLDER = { name: "פריט סרוק (הדגמה)", price: 45 };
 
 // Quick-Tap category filter, food deck only — the AliExpress deck has no
 // grid to filter (see ScanMode below).
@@ -71,7 +66,7 @@ function isLateNightNow() {
 }
 
 export default function PosRegisterTab({ bottomInset = 0 }) {
-  const { sales, setSales, setInventory, debts, setDebts } = useBusiness();
+  const { sales, setSales, inventory, setInventory, debts, setDebts } = useBusiness();
   const { user } = useAuth();
   const costs = useItemCosts();
   // Settings → תצורת קופה. Off hides the manual line entirely, which is the
@@ -102,6 +97,22 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
   const [scanOpen, setScanOpen] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("all");
+
+  // A scanned barcode with no inventory match waits here until the "Add New
+  // Product" modal either saves it (stamping the barcode onto the new
+  // inventory row so the next scan finds it) or is dismissed.
+  const [newProductOpen, setNewProductOpen] = useState(false);
+  const [pendingBarcode, setPendingBarcode] = useState(null);
+
+  // Cross-sell nudge — a non-blocking banner, not an Alert: a cashier mid-sale
+  // should be free to keep tapping through it rather than dismiss a dialog.
+  const [crossSellToast, setCrossSellToast] = useState(null);
+  const crossSellTimer = useRef(null);
+  const showCrossSell = (itemName, hint) => {
+    if (crossSellTimer.current) clearTimeout(crossSellTimer.current);
+    setCrossSellToast({ itemName, ...hint });
+    crossSellTimer.current = setTimeout(() => setCrossSellToast(null), 4500);
+  };
 
   // Payment method for the sale about to close. "tab" (הקפה) defers payment
   // to a customer's running balance in DebtsScreen instead of collecting now.
@@ -171,6 +182,11 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
         },
       ];
     });
+    // Checked against the cart *before* this line joins it — cart here is
+    // still last render's value, which is exactly "what else is already in
+    // the sale" and never includes the line just added.
+    const hint = crossSellSuggestion(item.name, cart.map((l) => l.name));
+    if (hint) showCrossSell(item.name, hint);
   };
 
   const addManual = (name, price) => {
@@ -187,20 +203,50 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
     return true;
   };
 
-  const addScanned = () => {
+  // A scanned barcode either matches a product already in the warehouse — add
+  // it straight to the cart, same as tapping a deck tile — or it doesn't,
+  // in which case the honest move is to ask what it is rather than inventing
+  // a placeholder line, the way the old mock scanner did.
+  const addScanned = (barcode) => {
     setScanOpen(false);
-    setCart((prev) => [
-      ...prev,
-      {
-        id: uid(),
-        sku: `scan-${uid()}`,
-        name: SCAN_PLACEHOLDER.name,
-        price: SCAN_PLACEHOLDER.price,
-        itemId: null,
-        qty: 1,
-        scanned: true,
-      },
-    ]);
+    const found = (inventory || []).find((i) => i.barcode && i.barcode === barcode);
+    if (found) {
+      add({
+        sku: found.id,
+        name: found.name,
+        price: found.price,
+        cost: found.cost,
+        category: null,
+        itemId: found.id,
+      });
+      return;
+    }
+    setPendingBarcode(barcode);
+    setNewProductOpen(true);
+  };
+
+  // Saved from the "Add New Product" sheet: a brand-new inventory row,
+  // stamped with the barcode that triggered it (so the *next* scan of the
+  // same box finds it), added straight into the sale that's already in
+  // progress — the whole reason someone scanned it in the first place.
+  const saveNewProduct = ({ name, cost, shipping, price }) => {
+    hapticSuccess();
+    const landedCost = cost + shipping;
+    const newItem = {
+      id: uid(),
+      name,
+      category: "electronics",
+      qty: 1,
+      cost: landedCost,
+      shipping,
+      price,
+      sold: 0,
+      barcode: pendingBarcode,
+    };
+    setInventory((prev) => [...(prev || []), newItem]);
+    add({ sku: newItem.id, name: newItem.name, price: newItem.price, cost: newItem.cost, category: null, itemId: newItem.id });
+    setNewProductOpen(false);
+    setPendingBarcode(null);
   };
 
   const bump = (sku, delta) => {
@@ -391,6 +437,20 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
               </View>
             ))}
           </View>
+        </Animated.View>
+      )}
+
+      {/* Cross-sell nudge — a banner, not an Alert, so it never blocks the
+          next tap. Auto-dismisses; also dismissible by hand. */}
+      {crossSellToast && (
+        <Animated.View entering={FadeInDown.duration(200)} exiting={FadeOut.duration(180)} style={st.crossSellToast}>
+          <Icon name={crossSellToast.icon} size={16} color={UI.gold} />
+          <CustomText style={st.crossSellText} numberOfLines={2}>
+            הזדמנות למכירה נוספת: הציעו {crossSellToast.suggestion} יחד עם {crossSellToast.itemName}
+          </CustomText>
+          <TouchableOpacity onPress={() => setCrossSellToast(null)} hitSlop={10}>
+            <Icon name="x" size={14} color={UI.inkMuted} />
+          </TouchableOpacity>
         </Animated.View>
       )}
 
@@ -604,6 +664,15 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
         onAdd={addManual}
       />
       <ScanCamera visible={scanOpen} onScanned={addScanned} onClose={() => setScanOpen(false)} />
+      <AddNewProductModal
+        visible={newProductOpen}
+        barcode={pendingBarcode}
+        onClose={() => {
+          setNewProductOpen(false);
+          setPendingBarcode(null);
+        }}
+        onSave={saveNewProduct}
+      />
       <CheckoutSummary
         visible={summaryOpen}
         totals={totals}
@@ -709,6 +778,144 @@ function ManualItemModal({ visible, onClose, onAdd }) {
             onPress={submit}
           >
             <CustomText style={st.primaryText}>הוסף לעגלה</CustomText>
+          </TouchableOpacity>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// A scanned barcode that matched nothing in the warehouse — describe it once,
+// and it both joins the inventory (with the barcode attached, so the next
+// scan of the same box finds it) and the sale already in progress.
+
+function AddNewProductModal({ visible, barcode, onClose, onSave }) {
+  const [name, setName] = useState("");
+  const [cost, setCost] = useState("");
+  const [shipping, setShipping] = useState("");
+  const [price, setPrice] = useState("");
+
+  const close = () => {
+    setName("");
+    setCost("");
+    setShipping("");
+    setPrice("");
+    onClose();
+  };
+
+  const costBasis = (parseFloat(cost) || 0) + (parseFloat(shipping) || 0);
+  const valid = name.trim().length > 0 && parseFloat(price) > 0;
+
+  const applySuggestion = (pct) => {
+    hapticLight();
+    setPrice(String(suggestRetailPrice(costBasis, pct)));
+  };
+
+  const submit = () => {
+    if (!valid) {
+      hapticWarning();
+      return;
+    }
+    onSave({
+      name: name.trim(),
+      cost: parseFloat(cost) || 0,
+      shipping: parseFloat(shipping) || 0,
+      price: parseFloat(price),
+    });
+    close();
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
+      <Pressable style={st.backdrop} onPress={close}>
+        <Pressable style={st.sheet} onPress={(e) => e.stopPropagation()}>
+          <View style={st.sheetHead}>
+            <TouchableOpacity style={st.sheetBtn} onPress={close}>
+              <Icon name="x" size={18} color={UI.ink} />
+            </TouchableOpacity>
+            <CustomText style={st.sheetTitle}>מוצר חדש מסריקה</CustomText>
+          </View>
+
+          {!!barcode && (
+            <View testID="new-product-barcode" style={st.barcodeChip}>
+              <Icon name="hash" size={13} color={UI.inkMuted} />
+              <CustomText style={st.barcodeChipText}>{barcode}</CustomText>
+            </View>
+          )}
+
+          <CustomText style={st.fieldLabel}>שם המוצר</CustomText>
+          <TextInput
+            testID="new-product-name"
+            style={st.input}
+            value={name}
+            onChangeText={setName}
+            placeholder="למשל: פאוור בנק 10000"
+            placeholderTextColor={UI.inkMuted}
+            textAlign="right"
+          />
+
+          <View style={{ flexDirection: "row-reverse", gap: 8 }}>
+            <View style={{ flex: 1 }}>
+              <CustomText style={st.fieldLabel}>עלות מוצר</CustomText>
+              <TextInput
+                testID="new-product-cost"
+                style={st.input}
+                value={cost}
+                onChangeText={setCost}
+                keyboardType="decimal-pad"
+                placeholder="0"
+                placeholderTextColor={UI.inkMuted}
+                textAlign="center"
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <CustomText style={st.fieldLabel}>עלות משלוח</CustomText>
+              <TextInput
+                testID="new-product-shipping"
+                style={st.input}
+                value={shipping}
+                onChangeText={setShipping}
+                keyboardType="decimal-pad"
+                placeholder="0"
+                placeholderTextColor={UI.inkMuted}
+                textAlign="center"
+              />
+            </View>
+          </View>
+
+          {costBasis > 0 && (
+            <View style={st.suggestRow}>
+              <CustomText style={st.suggestLabel}>מחיר מוצע:</CustomText>
+              <TouchableOpacity testID="suggest-40" style={st.suggestChip} onPress={() => applySuggestion(40)}>
+                <CustomText style={st.suggestChipText}>{shekel(suggestRetailPrice(costBasis, 40))} · 40%+</CustomText>
+              </TouchableOpacity>
+              <TouchableOpacity testID="suggest-50" style={st.suggestChip} onPress={() => applySuggestion(50)}>
+                <CustomText style={st.suggestChipText}>{shekel(suggestRetailPrice(costBasis, 50))} · 50%+</CustomText>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <CustomText style={st.fieldLabel}>מחיר מכירה</CustomText>
+          <TextInput
+            testID="new-product-price"
+            style={st.input}
+            value={price}
+            onChangeText={setPrice}
+            keyboardType="decimal-pad"
+            placeholder="0"
+            placeholderTextColor={UI.inkMuted}
+            textAlign="center"
+            onSubmitEditing={submit}
+          />
+
+          <TouchableOpacity
+            testID="new-product-save"
+            style={[st.primaryBtn, !valid && { opacity: 0.4 }]}
+            disabled={!valid}
+            onPress={submit}
+          >
+            <CustomText style={st.primaryText}>הוסף למלאי ולעגלה</CustomText>
           </TouchableOpacity>
         </Pressable>
       </Pressable>
@@ -1010,6 +1217,22 @@ const st = StyleSheet.create({
   },
   pinnedChipText: { fontFamily: FONTS.medium, fontSize: 11, color: UI.ink },
 
+  crossSellToast: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 8,
+    marginHorizontal: 14,
+    marginTop: 10,
+    marginBottom: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: tint(UI.gold, 0.1),
+    borderWidth: 1,
+    borderColor: tint(UI.gold, 0.28),
+  },
+  crossSellText: { flex: 1, fontFamily: FONTS.medium, fontSize: 12.5, color: UI.ink, textAlign: "right" },
+
   topRow: { flexDirection: "row-reverse", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingBottom: 10 },
   deckSwitch: { flex: 1, flexDirection: "row-reverse", gap: 6, backgroundColor: UI.surfaceHi, borderRadius: 14, padding: 4 },
   deckBtn: {
@@ -1202,6 +1425,27 @@ const st = StyleSheet.create({
     fontSize: 16,
     color: UI.ink,
   },
+
+  barcodeChip: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    alignSelf: "flex-end",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    backgroundColor: UI.surfaceHi,
+  },
+  barcodeChipText: { fontFamily: FONTS.medium, fontSize: 12, color: UI.inkSoft },
+  suggestRow: { flexDirection: "row-reverse", alignItems: "center", gap: 8, marginTop: 8 },
+  suggestLabel: { fontFamily: FONTS.medium, fontSize: 12, color: UI.inkMuted },
+  suggestChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: tint(UI.green, 0.12),
+  },
+  suggestChipText: { fontFamily: FONTS.semibold, fontSize: 12, color: UI.green },
 
   paymentRow: { flexDirection: "row-reverse", gap: 8, marginTop: 6 },
   paymentChip: {
