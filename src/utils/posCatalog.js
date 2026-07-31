@@ -277,19 +277,24 @@ export const DECKS = [
   { key: "import", label: "אליאקספרס", icon: "package", color: "#111111" },
 ];
 
+// `category` drives two things on the register: the Quick-Tap filter chips
+// (מנות / שתייה / חטיפים) and the ComboMaker — a drink and a snack landing in
+// the same cart together triggers an automatic combo discount. Only the food
+// deck is categorized; the AliExpress deck is scan-only by design (see
+// PosRegisterTab.js) so a "gadget" category has nowhere to be used yet.
 export const FAST_FOOD = [
-  { sku: "ff-toast", name: "טוסט", price: 14, cost: 5, icon: "layers" },
-  { sku: "ff-schnitzel", name: "שניצל בלאפה", price: 28, cost: 12, icon: "disc" },
-  { sku: "ff-burger", name: "המבורגר", price: 32, cost: 14, icon: "disc" },
-  { sku: "ff-fries", name: "צ׳יפס", price: 12, cost: 3.5, icon: "grid" },
-  { sku: "ff-pizza", name: "משולש פיצה", price: 15, cost: 5, icon: "triangle" },
-  { sku: "ff-salad", name: "סלט אישי", price: 22, cost: 8, icon: "feather" },
-  { sku: "ff-soda", name: "פחית שתייה", price: 7, cost: 3, icon: "droplet" },
-  { sku: "ff-water", name: "בקבוק מים", price: 5, cost: 1.8, icon: "droplet" },
-  { sku: "ff-energy", name: "משקה אנרגיה", price: 13, cost: 6.5, icon: "zap" },
-  { sku: "ff-coffee", name: "קפה קר", price: 11, cost: 3, icon: "coffee" },
-  { sku: "ff-snack", name: "חטיף", price: 7, cost: 2.8, icon: "package" },
-  { sku: "ff-cookie", name: "עוגייה", price: 6, cost: 1.5, icon: "circle" },
+  { sku: "ff-toast", name: "טוסט", price: 14, cost: 5, icon: "layers", category: "food" },
+  { sku: "ff-schnitzel", name: "שניצל בלאפה", price: 28, cost: 12, icon: "disc", category: "food" },
+  { sku: "ff-burger", name: "המבורגר", price: 32, cost: 14, icon: "disc", category: "food" },
+  { sku: "ff-fries", name: "צ׳יפס", price: 12, cost: 3.5, icon: "grid", category: "snack" },
+  { sku: "ff-pizza", name: "משולש פיצה", price: 15, cost: 5, icon: "triangle", category: "food" },
+  { sku: "ff-salad", name: "סלט אישי", price: 22, cost: 8, icon: "feather", category: "food" },
+  { sku: "ff-soda", name: "פחית שתייה", price: 7, cost: 3, icon: "droplet", category: "drink" },
+  { sku: "ff-water", name: "בקבוק מים", price: 5, cost: 1.8, icon: "droplet", category: "drink" },
+  { sku: "ff-energy", name: "משקה אנרגיה", price: 13, cost: 6.5, icon: "zap", category: "drink" },
+  { sku: "ff-coffee", name: "קפה קר", price: 11, cost: 3, icon: "coffee", category: "drink" },
+  { sku: "ff-snack", name: "חטיף", price: 7, cost: 2.8, icon: "package", category: "snack" },
+  { sku: "ff-cookie", name: "עוגייה", price: 6, cost: 1.5, icon: "circle", category: "snack" },
 ];
 
 export const ALI_ITEMS = [

@@ -45,8 +45,33 @@ const NUM_COLUMNS = 3;
 // precisely the failure a scanner exists to prevent.
 const SCAN_PLACEHOLDER = { name: "פריט סרוק (הדגמה)", price: 45 };
 
+// Quick-Tap category filter, food deck only — the AliExpress deck has no
+// grid to filter (see ScanMode below).
+const FOOD_CATEGORIES = [
+  { key: "all", label: "הכל" },
+  { key: "food", label: "מנות" },
+  { key: "drink", label: "שתייה" },
+  { key: "snack", label: "חטיפים" },
+];
+const CATEGORY_TINT = { food: UI.violet, drink: UI.cyan, snack: UI.amber };
+
+// ComboMaker: a drink and a snack in the same cart is a pairing worth
+// rewarding. Flat ₪ off per pairing, capped by however many complete pairs
+// exist — two drinks and one snack is one combo, not two.
+const COMBO_SAVINGS = 3;
+
+// Late-night delivery/counter surcharge. A flat add-on rather than a
+// multiplier: simple enough that a cashier reading the receipt understands
+// it at a glance, which a percentage on top of already-adjusted totals would
+// not be.
+const LATE_NIGHT_SURCHARGE = 5;
+function isLateNightNow() {
+  const h = new Date().getHours();
+  return h >= 23 || h < 4;
+}
+
 export default function PosRegisterTab({ bottomInset = 0 }) {
-  const { sales, setSales, setInventory } = useBusiness();
+  const { sales, setSales, setInventory, debts, setDebts } = useBusiness();
   const { user } = useAuth();
   const costs = useItemCosts();
   // Settings → תצורת קופה. Off hides the manual line entirely, which is the
@@ -76,9 +101,19 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
   const [manualOpen, setManualOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState("all");
+
+  // Payment method for the sale about to close. "tab" (הקפה) defers payment
+  // to a customer's running balance in DebtsScreen instead of collecting now.
+  const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [tabCustomerName, setTabCustomerName] = useState("");
 
   const items = decks?.[deckKey] || DEFAULT_DECK_ITEMS[deckKey] || [];
   const isImport = deckKey === "import";
+  const filteredItems = useMemo(() => {
+    if (isImport || categoryFilter === "all") return items;
+    return items.filter((it) => it.category === categoryFilter);
+  }, [items, categoryFilter, isImport]);
 
   // What a line costs, in priority order.
   //
@@ -98,7 +133,23 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
     const cost = cart.reduce((sum, l) => sum + lineCost(l) * l.qty, 0);
     const units = cart.reduce((n, l) => n + l.qty, 0);
     const unknown = cart.filter((l) => costFor(costs, l.name) == null && typeof l.cost !== "number");
-    return { gross, cost, profit: gross - cost, units, unknown };
+
+    // ComboMaker: a drink and a snack together, ₪ off per complete pairing.
+    const drinkQty = cart.filter((l) => l.category === "drink").reduce((n, l) => n + l.qty, 0);
+    const snackQty = cart.filter((l) => l.category === "snack").reduce((n, l) => n + l.qty, 0);
+    const comboCount = Math.min(drinkQty, snackQty);
+    const comboDiscount = comboCount * COMBO_SAVINGS;
+
+    // Read at totals-compute-time (cart/costs changing), not on a ticking
+    // clock — a cart left open exactly across the 23:00 boundary won't flip
+    // until the next add/remove, which is an acceptable edge case for a flat
+    // counter surcharge rather than reason to run a timer for it.
+    const lateNightSurcharge = isLateNightNow() ? LATE_NIGHT_SURCHARGE : 0;
+
+    const amountDue = gross - comboDiscount + lateNightSurcharge;
+    const profit = amountDue - cost;
+
+    return { gross, cost, profit, units, unknown, comboCount, comboDiscount, lateNightSurcharge, amountDue };
   }, [cart, costs]);
 
   const add = (item, qty = 1) => {
@@ -108,7 +159,16 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
       if (found) return prev.map((l) => (l.sku === item.sku ? { ...l, qty: l.qty + qty } : l));
       return [
         ...prev,
-        { id: uid(), sku: item.sku, name: item.name, price: item.price, cost: item.cost, itemId: item.itemId || null, qty },
+        {
+          id: uid(),
+          sku: item.sku,
+          name: item.name,
+          price: item.price,
+          cost: item.cost,
+          category: item.category || null,
+          itemId: item.itemId || null,
+          qty,
+        },
       ];
     });
   };
@@ -167,6 +227,9 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
 
   const completeSale = () => {
     if (!cart.length) return;
+    // A tab sale needs someone to put it on — the button below is already
+    // disabled in this state, so reaching here means a stray call.
+    if (paymentMethod === "tab" && !tabCustomerName.trim()) return;
     hapticSuccess();
     const txId = uid();
     const ts = Date.now();
@@ -193,17 +256,83 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
         kind: "sale",
         eventId: txId,
         sku: l.sku,
+        paymentMethod,
       };
     });
 
-    setSales((prev) => [...(prev || []), ...records]);
+    // ComboMaker discount and the late-night surcharge are register-level
+    // adjustments, not lines from the deck — recorded as their own rows so
+    // every total that sums posSales (today's takings, the Z-report) reads
+    // the amount actually charged rather than the pre-adjustment cart sum.
+    const adjustments = [];
+    if (totals.comboDiscount > 0) {
+      adjustments.push({
+        id: uid(),
+        updatedAt: ts,
+        ts,
+        day: todayKey(),
+        month: monthKey(),
+        itemId: null,
+        name: `הנחת קומבו ×${totals.comboCount}`,
+        category: "combo",
+        qty: 1,
+        price: -totals.comboDiscount,
+        cost: 0,
+        total: -totals.comboDiscount,
+        profit: -totals.comboDiscount,
+        kind: "sale",
+        eventId: txId,
+        sku: `combo-${txId}`,
+        paymentMethod,
+      });
+    }
+    if (totals.lateNightSurcharge > 0) {
+      adjustments.push({
+        id: uid(),
+        updatedAt: ts,
+        ts,
+        day: todayKey(),
+        month: monthKey(),
+        itemId: null,
+        name: "תוספת לילה (23:00–04:00)",
+        category: "surcharge",
+        qty: 1,
+        price: totals.lateNightSurcharge,
+        cost: 0,
+        total: totals.lateNightSurcharge,
+        profit: totals.lateNightSurcharge,
+        kind: "sale",
+        eventId: txId,
+        sku: `latenight-${txId}`,
+        paymentMethod,
+      });
+    }
+
+    const allRecords = [...records, ...adjustments];
+    setSales((prev) => [...(prev || []), ...allRecords]);
 
     // Straight to the cloud rather than waiting for the next reconciliation
     // pass. Not awaited, and its failure is not surfaced: the sale is already
     // committed to local state, which is what the register and every report
     // read from. Offline this resolves once Firestore has queued it, and the
     // queue drains on reconnect — so the cashier never waits on a network.
-    if (user?.uid) pushMany(user.uid, "sales", records);
+    if (user?.uid) pushMany(user.uid, "sales", allRecords);
+
+    // "On the tab" — the sale is still booked as revenue above (the goods
+    // left the shelf today), but the cash isn't in hand yet, so it's also
+    // added to the customer's running balance in DebtsScreen for collection.
+    if (paymentMethod === "tab") {
+      const name = tabCustomerName.trim();
+      setDebts((prev) => {
+        const existing = (prev || []).find((d) => d.name.trim().toLowerCase() === name.toLowerCase());
+        if (existing) {
+          return prev.map((d) =>
+            d.id === existing.id ? { ...d, owed: (Number(d.owed) || 0) + totals.amountDue } : d
+          );
+        }
+        return [...(prev || []), { id: uid(), name, owed: totals.amountDue, paid: 0 }];
+      });
+    }
 
     // Deck lines only touch stock when explicitly linked to a warehouse item.
     // Matching on name would be a guess, and a guess that silently decrements
@@ -219,10 +348,18 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
       );
     }
 
-    setReceipt({ lines: cart, totals, ts });
-    setLastTotal(totals.gross);
+    setReceipt({
+      lines: cart,
+      totals,
+      ts,
+      paymentMethod,
+      tabCustomerName: paymentMethod === "tab" ? tabCustomerName.trim() : null,
+    });
+    setLastTotal(totals.amountDue);
     setCart([]);
     setExpanded(false);
+    setPaymentMethod("cash");
+    setTabCustomerName("");
   };
 
   const todayGross = useMemo(() => {
@@ -231,6 +368,11 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
   }, [sales]);
 
   const cartHeight = expanded ? 300 : cart.length ? 132 : 74;
+  const canComplete = paymentMethod !== "tab" || tabCustomerName.trim().length > 0;
+  const debtorNames = useMemo(
+    () => [...new Set((debts || []).map((d) => d.name.trim()).filter(Boolean))],
+    [debts]
+  );
 
   return (
     <View style={st.wrap}>
@@ -286,9 +428,31 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
           <ScanMode onScan={() => setScanOpen(true)} bottomPad={cartHeight + bottomInset} />
         ) : (
           <>
+            {/* Quick-Tap category filter — narrows the grid to one kind of
+                item so a busy counter isn't scanning past two rows of drinks
+                to find a snack. */}
+            <View style={st.categoryRow}>
+              {FOOD_CATEGORIES.map((c) => {
+                const on = c.key === categoryFilter;
+                return (
+                  <TouchableOpacity
+                    key={c.key}
+                    testID={`cat-${c.key}`}
+                    style={[st.categoryChip, on && st.categoryChipOn]}
+                    onPress={() => {
+                      hapticLight();
+                      setCategoryFilter(c.key);
+                    }}
+                  >
+                    <CustomText style={[st.categoryChipText, on && st.categoryChipTextOn]}>{c.label}</CustomText>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
             <FlashList
               testID="pos-deck"
-              data={items}
+              data={filteredItems}
               numColumns={NUM_COLUMNS}
               keyExtractor={(item) => item.sku}
               extraData={cart}
@@ -314,6 +478,7 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
               renderItem={({ item, index }) => {
                 const inCart = cart.find((l) => l.sku === item.sku);
                 const margin = marginOf(item);
+                const catTint = CATEGORY_TINT[item.category] || UI.inkSoft;
                 return (
                   <Animated.View entering={FadeIn.delay(Math.min(index, 11) * 22)} style={st.cell}>
                     <TouchableOpacity
@@ -327,7 +492,9 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
                           <CustomText style={st.tileBadgeText}>{inCart.qty}</CustomText>
                         </View>
                       )}
-                      <Icon name={item.icon} size={19} color={inCart ? UI.violet : UI.inkSoft} />
+                      <View style={[st.tileIconWrap, { backgroundColor: tint(catTint, 0.14) }]}>
+                        <Icon name={item.icon} size={22} color={inCart ? UI.violet : catTint} />
+                      </View>
                       <CustomText style={st.tileName} numberOfLines={2}>
                         {item.name}
                       </CustomText>
@@ -380,11 +547,13 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
             {cart.length > 0 && (
               <CustomText testID="cart-profit" style={st.cartSub}>
                 רווח צפוי {shekel(totals.profit)} · עלות {shekel(totals.cost)}
+                {totals.comboDiscount > 0 ? ` · 🎉 קומבו -${shekel(totals.comboDiscount)}` : ""}
+                {totals.lateNightSurcharge > 0 ? ` · תוספת לילה +${shekel(totals.lateNightSurcharge)}` : ""}
               </CustomText>
             )}
           </View>
           <CustomText testID="cart-total" style={st.cartTotal}>
-            {shekel(totals.gross)}
+            {shekel(totals.amountDue)}
           </CustomText>
           {cart.length > 0 && <Icon name={expanded ? "chevron-down" : "chevron-up"} size={18} color={UI.inkMuted} />}
         </TouchableOpacity>
@@ -420,7 +589,7 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
           <View style={st.cartActions}>
             <TouchableOpacity testID="cart-charge" style={st.charge} onPress={openSummary}>
               <Icon name="check" size={18} color="#FFFFFF" />
-              <CustomText style={st.chargeText}>חייב {shekel(totals.gross)}</CustomText>
+              <CustomText style={st.chargeText}>חייב {shekel(totals.amountDue)}</CustomText>
             </TouchableOpacity>
             <TouchableOpacity testID="cart-clear" style={st.clear} onPress={clear}>
               <Icon name="trash-2" size={17} color={UI.red} />
@@ -441,6 +610,12 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
         cart={cart}
         lineCost={lineCost}
         receipt={receipt}
+        paymentMethod={paymentMethod}
+        setPaymentMethod={setPaymentMethod}
+        tabCustomerName={tabCustomerName}
+        setTabCustomerName={setTabCustomerName}
+        debtorNames={debtorNames}
+        canComplete={canComplete}
         onClose={() => {
           setSummaryOpen(false);
           setReceipt(null);
@@ -550,10 +725,32 @@ function formatReceiptText(receipt) {
   const lines = receipt.lines
     .map((l) => `${l.qty}× ${l.name} — ${shekel(l.price * l.qty)}`)
     .join("\n");
-  return `📋 קבלה\n\n${lines}\n\nסה"כ לתשלום: ${shekel(receipt.totals.gross)}\n\nתודה על הקנייה! 🙏`;
+  const due = receipt.totals.amountDue ?? receipt.totals.gross;
+  const tabNote = receipt.paymentMethod === "tab" ? `\n(נרשם בהקפה על שם ${receipt.tabCustomerName})` : "";
+  return `📋 קבלה\n\n${lines}\n\nסה"כ לתשלום: ${shekel(due)}${tabNote}\n\nתודה על הקנייה! 🙏`;
 }
 
-function CheckoutSummary({ visible, totals, cart, lineCost, receipt, onClose, onComplete }) {
+const PAYMENT_METHODS = [
+  { key: "cash", label: "מזומן", icon: "dollar-sign" },
+  { key: "card", label: "אשראי", icon: "credit-card" },
+  { key: "tab", label: "הקפה", icon: "book-open" },
+];
+
+function CheckoutSummary({
+  visible,
+  totals,
+  cart,
+  lineCost,
+  receipt,
+  paymentMethod,
+  setPaymentMethod,
+  tabCustomerName,
+  setTabCustomerName,
+  debtorNames,
+  canComplete,
+  onClose,
+  onComplete,
+}) {
   const margin = totals.gross > 0 ? totals.profit / totals.gross : null;
 
   // Called unconditionally, above the receipt/summary branch below — both
@@ -595,9 +792,11 @@ function CheckoutSummary({ visible, totals, cart, lineCost, receipt, onClose, on
             <View style={st.receiptDone}>
               <Icon name="check-circle" size={40} color={UI.green} />
               <CustomText testID="receipt-total" style={st.receiptDoneTotal}>
-                {shekel(receipt.totals.gross)}
+                {shekel(receipt.totals.amountDue)}
               </CustomText>
-              <CustomText style={st.receiptDoneSub}>נגבה בהצלחה</CustomText>
+              <CustomText style={st.receiptDoneSub}>
+                {receipt.paymentMethod === "tab" ? `נרשם בהקפה על שם ${receipt.tabCustomerName}` : "נגבה בהצלחה"}
+              </CustomText>
             </View>
 
             <TouchableOpacity
@@ -635,6 +834,25 @@ function CheckoutSummary({ visible, totals, cart, lineCost, receipt, onClose, on
             </CustomText>
             <CustomText style={st.sumLabel}>הכנסה</CustomText>
           </View>
+
+          {totals.comboCount > 0 && (
+            <View style={st.sumRow}>
+              <CustomText testID="sum-combo" style={[st.sumValue, { color: UI.green }]}>
+                −{shekel(totals.comboDiscount)}
+              </CustomText>
+              <CustomText style={st.sumLabel}>🎉 הנחת קומבו (שתייה + חטיף × {totals.comboCount})</CustomText>
+            </View>
+          )}
+
+          {totals.lateNightSurcharge > 0 && (
+            <View style={st.sumRow}>
+              <CustomText testID="sum-latenight" style={[st.sumValue, { color: UI.amber }]}>
+                +{shekel(totals.lateNightSurcharge)}
+              </CustomText>
+              <CustomText style={st.sumLabel}>תוספת לילה (23:00–04:00)</CustomText>
+            </View>
+          )}
+
           <View style={st.sumRow}>
             <CustomText testID="sum-cost" style={[st.sumValue, { color: UI.amber }]}>
               −{shekel(totals.cost)}
@@ -645,11 +863,18 @@ function CheckoutSummary({ visible, totals, cart, lineCost, receipt, onClose, on
           <View style={st.sumDivider} />
 
           <View style={st.sumRow}>
-            <CustomText testID="sum-profit" style={[st.sumProfit, { color: totals.profit >= 0 ? UI.green : UI.red }]}>
+            <CustomText testID="sum-due" style={st.sumProfit}>
+              {shekel(totals.amountDue)}
+            </CustomText>
+            <CustomText style={st.sumProfitLabel}>לתשלום</CustomText>
+          </View>
+
+          <View style={st.sumRow}>
+            <CustomText testID="sum-profit" style={[st.sumValue, { color: totals.profit >= 0 ? UI.green : UI.red }]}>
               {shekel(totals.profit)}
             </CustomText>
             <View style={{ flex: 1 }}>
-              <CustomText style={st.sumProfitLabel}>רווח נקי</CustomText>
+              <CustomText style={st.sumLabel}>רווח נקי</CustomText>
               {margin != null && <CustomText style={st.sumMargin}>{Math.round(margin * 100)}% מתח רווח</CustomText>}
             </View>
           </View>
@@ -690,9 +915,67 @@ function CheckoutSummary({ visible, totals, cart, lineCost, receipt, onClose, on
             ))}
           </View>
 
-          <TouchableOpacity testID="summary-complete" style={st.primaryBtn} onPress={onComplete}>
+          {/* Payment method — cash/card settle now, a tab defers to a
+              customer's running balance in DebtsScreen instead. */}
+          <CustomText style={st.fieldLabel}>אופן תשלום</CustomText>
+          <View style={st.paymentRow}>
+            {PAYMENT_METHODS.map((m) => {
+              const on = m.key === paymentMethod;
+              return (
+                <TouchableOpacity
+                  key={m.key}
+                  testID={`payment-${m.key}`}
+                  style={[st.paymentChip, on && st.paymentChipOn]}
+                  onPress={() => {
+                    hapticLight();
+                    setPaymentMethod(m.key);
+                  }}
+                >
+                  <Icon name={m.icon} size={15} color={on ? "#FFFFFF" : UI.inkSoft} />
+                  <CustomText style={[st.paymentChipText, on && { color: "#FFFFFF" }]}>{m.label}</CustomText>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {paymentMethod === "tab" && (
+            <View style={st.tabBox}>
+              <TextInput
+                testID="tab-customer-name"
+                style={st.input}
+                value={tabCustomerName}
+                onChangeText={setTabCustomerName}
+                placeholder="שם הלקוח"
+                placeholderTextColor={UI.inkMuted}
+                textAlign="right"
+              />
+              {debtorNames.length > 0 && (
+                <View style={st.tabSuggestRow}>
+                  {debtorNames.slice(0, 6).map((name) => (
+                    <TouchableOpacity
+                      key={name}
+                      style={st.tabSuggestChip}
+                      onPress={() => {
+                        hapticLight();
+                        setTabCustomerName(name);
+                      }}
+                    >
+                      <CustomText style={st.tabSuggestChipText}>{name}</CustomText>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
+
+          <TouchableOpacity
+            testID="summary-complete"
+            style={[st.primaryBtn, !canComplete && { opacity: 0.4 }]}
+            disabled={!canComplete}
+            onPress={onComplete}
+          >
             <Icon name="check" size={17} color="#FFFFFF" />
-            <CustomText style={st.primaryText}>סגור עסקה</CustomText>
+            <CustomText style={st.primaryText}>סגור עסקה · {shekel(totals.amountDue)}</CustomText>
           </TouchableOpacity>
         </Pressable>
       </Pressable>
@@ -760,16 +1043,31 @@ const st = StyleSheet.create({
   manualText: { fontFamily: FONTS.bold, fontSize: 13.5, color: UI.violet },
   manualHint: { flex: 1, fontFamily: FONTS.regular, fontSize: 11, color: UI.inkMuted, textAlign: "right" },
 
+  categoryRow: { flexDirection: "row-reverse", gap: 6, paddingHorizontal: 14, paddingBottom: 8 },
+  categoryChip: {
+    paddingHorizontal: 14,
+    minHeight: 34,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: UI.surfaceHi,
+  },
+  categoryChipOn: { backgroundColor: UI.ink },
+  categoryChipText: { fontFamily: FONTS.semibold, fontSize: 12.5, color: UI.inkSoft },
+  categoryChipTextOn: { color: "#FFFFFF" },
+
+  // Quick-Tap Grid: a bigger, bolder tile than a dense price list needs,
+  // because this grid exists to be hit fast without looking, not read.
   cell: { flex: 1, padding: 5 },
   tile: {
-    minHeight: 104,
-    borderRadius: 16,
+    minHeight: 122,
+    borderRadius: 18,
     backgroundColor: UI.surface,
     alignItems: "center",
     justifyContent: "center",
-    gap: 3,
+    gap: 4,
     paddingHorizontal: 6,
-    paddingVertical: 10,
+    paddingVertical: 12,
     ...BEVEL,
     ...CARD_SHADOW,
   },
@@ -786,8 +1084,16 @@ const st = StyleSheet.create({
     justifyContent: "center",
   },
   tileBadgeText: { fontFamily: FONTS.bold, fontSize: 11, color: "#FFFFFF" },
-  tileName: { fontFamily: FONTS.semibold, fontSize: 11.5, color: UI.ink, textAlign: "center", lineHeight: 15 },
-  tilePrice: { fontFamily: FONTS.bold, fontSize: 14, color: UI.ink },
+  tileIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 1,
+  },
+  tileName: { fontFamily: FONTS.semibold, fontSize: 12.5, color: UI.ink, textAlign: "center", lineHeight: 16 },
+  tilePrice: { fontFamily: FONTS.bold, fontSize: 16, color: UI.ink },
   tileMargin: { fontFamily: FONTS.medium, fontSize: 9.5 },
 
   scanWrap: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 26, gap: 20 },
@@ -884,7 +1190,7 @@ const st = StyleSheet.create({
   sheetBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: UI.surfaceHi, alignItems: "center", justifyContent: "center" },
   sheetTitle: { flex: 1, fontFamily: FONTS.bold, fontSize: 17, color: UI.ink, textAlign: "right" },
 
-  fieldLabel: { fontFamily: FONTS.semibold, fontSize: 12, color: UI.inkSoft, textAlign: "right" },
+  fieldLabel: { fontFamily: FONTS.semibold, fontSize: 12, color: UI.inkSoft, textAlign: "right", marginTop: 8 },
   input: {
     minHeight: 52,
     borderRadius: 14,
@@ -896,6 +1202,31 @@ const st = StyleSheet.create({
     fontSize: 16,
     color: UI.ink,
   },
+
+  paymentRow: { flexDirection: "row-reverse", gap: 8, marginTop: 6 },
+  paymentChip: {
+    flex: 1,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    minHeight: 46,
+    borderRadius: 13,
+    backgroundColor: UI.surfaceHi,
+  },
+  paymentChipOn: { backgroundColor: UI.ink },
+  paymentChipText: { fontFamily: FONTS.semibold, fontSize: 12.5, color: UI.inkSoft },
+  tabBox: { marginTop: 8, gap: 8 },
+  tabSuggestRow: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 6 },
+  tabSuggestChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: UI.surfaceAlt,
+    borderWidth: 1,
+    borderColor: UI.hairline,
+  },
+  tabSuggestChipText: { fontFamily: FONTS.medium, fontSize: 12, color: UI.ink },
   primaryBtn: {
     flexDirection: "row-reverse",
     alignItems: "center",

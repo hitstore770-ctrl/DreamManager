@@ -47,9 +47,22 @@ function sharedTokenCount(a, b) {
   return count;
 }
 
-// Greedy nearest-neighbour by address token overlap, run separately inside
-// each distance tier so a "close" stop never gets shuffled behind a "far"
-// one just because it happens to share a street name.
+// A same-building match is exact, structured data (the user picked it, not
+// free text), so it outweighs the fuzzy token overlap rather than competing
+// with it on equal footing — that also covers single-digit building numbers
+// ("3"), which the token filter below drops for being too short to trust as
+// a word on its own.
+function stopScore(current, candidate) {
+  let score = sharedTokenCount(current.address, candidate.address);
+  const a = String(current.building || "").trim().toLowerCase();
+  const b = String(candidate.building || "").trim().toLowerCase();
+  if (a && a === b) score += 10;
+  return score;
+}
+
+// Greedy nearest-neighbour by building match / address token overlap, run
+// separately inside each distance tier so a "close" stop never gets shuffled
+// behind a "far" one just because it happens to share a building.
 export function optimizeRoute(stops) {
   const byTier = { 1: [], 2: [], 3: [] };
   stops.forEach((s) => {
@@ -67,7 +80,7 @@ export function optimizeRoute(stops) {
       let bestIdx = 0;
       let bestScore = -1;
       pool.forEach((candidate, idx) => {
-        const score = sharedTokenCount(current.address, candidate.address);
+        const score = stopScore(current, candidate);
         if (score > bestScore) {
           bestScore = score;
           bestIdx = idx;
@@ -80,10 +93,26 @@ export function optimizeRoute(stops) {
   return ordered;
 }
 
-function makeStop(address, distanceTier) {
+// Building/floor/room rather than a street address: a boarding school's own
+// hyper-local delivery unit is its dorm buildings, not house numbers. It also
+// sharpens the same-location proxy in optimizeRoute — "same building" from a
+// number the user actually typed is a stronger signal than word-overlap ever
+// was on free text.
+function composeAddress({ building, floor, room }) {
+  const parts = [];
+  if (building) parts.push(`בניין ${building}`);
+  if (floor) parts.push(`קומה ${floor}`);
+  if (room) parts.push(`חדר ${room}`);
+  return parts.join(" · ");
+}
+
+function makeStop({ building, floor, room }, distanceTier) {
   return {
     id: uid(),
-    address,
+    building,
+    floor,
+    room,
+    address: composeAddress({ building, floor, room }),
     distanceTier,
     done: false,
     createdAt: Date.now(),
@@ -92,17 +121,23 @@ function makeStop(address, distanceTier) {
 
 export default function DeliveryScreen() {
   const [stops, setStops] = usePersistentState(STORAGE_KEYS.deliveryStops, []);
-  const [draft, setDraft] = useState("");
+  const [draftBuilding, setDraftBuilding] = useState("");
+  const [draftFloor, setDraftFloor] = useState("");
+  const [draftRoom, setDraftRoom] = useState("");
   const [draftTier, setDraftTier] = useState(2);
 
   const pending = useMemo(() => stops.filter((s) => !s.done), [stops]);
   const done = useMemo(() => stops.filter((s) => s.done), [stops]);
 
   const addStop = () => {
-    const trimmed = draft.trim();
-    if (!trimmed) return;
-    setStops((prev) => [...prev, makeStop(trimmed, draftTier)]);
-    setDraft("");
+    const building = draftBuilding.trim();
+    const floor = draftFloor.trim();
+    const room = draftRoom.trim();
+    if (!building) return;
+    setStops((prev) => [...prev, makeStop({ building, floor, room }, draftTier)]);
+    setDraftBuilding("");
+    setDraftFloor("");
+    setDraftRoom("");
     hapticSuccess();
   };
 
@@ -201,18 +236,45 @@ export default function DeliveryScreen() {
 
   return (
     <View style={st.wrap}>
-      <View style={st.addRow}>
+      {/* Micro-location picker: building/floor/room, not a street address —
+          the real unit of hyper-local delivery on campus. */}
+      <View style={st.locationRow}>
         <TextInput
-          value={draft}
-          onChangeText={setDraft}
-          placeholder="כתובת עצירה (למשל: רח' הרב שך 12)"
+          value={draftBuilding}
+          onChangeText={setDraftBuilding}
+          placeholder="בניין"
           placeholderTextColor={UI.inkMuted}
-          style={st.input}
+          style={[st.input, st.locationInputWide]}
+          returnKeyType="next"
+          testID="delivery-input-building"
+        />
+        <TextInput
+          value={draftFloor}
+          onChangeText={setDraftFloor}
+          placeholder="קומה"
+          placeholderTextColor={UI.inkMuted}
+          style={[st.input, st.locationInputNarrow]}
+          keyboardType="number-pad"
+          returnKeyType="next"
+          testID="delivery-input-floor"
+        />
+        <TextInput
+          value={draftRoom}
+          onChangeText={setDraftRoom}
+          placeholder="חדר"
+          placeholderTextColor={UI.inkMuted}
+          style={[st.input, st.locationInputNarrow]}
+          keyboardType="number-pad"
           returnKeyType="done"
           onSubmitEditing={addStop}
-          testID="delivery-input"
+          testID="delivery-input-room"
         />
-        <Bounce style={st.addBtn} onPress={addStop} testID="delivery-add">
+        <Bounce
+          style={[st.addBtn, !draftBuilding.trim() && { opacity: 0.4 }]}
+          onPress={addStop}
+          disabled={!draftBuilding.trim()}
+          testID="delivery-add"
+        >
           <Icon name="plus" size={20} color="#FFFFFF" />
         </Bounce>
       </View>
@@ -295,20 +357,26 @@ const ROW = I18nManager.isRTL ? "row" : "row-reverse";
 
 const st = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: UI.bg, padding: 16 },
-  addRow: { flexDirection: ROW, gap: 8, marginBottom: 12 },
+  locationRow: { flexDirection: ROW, gap: 8, marginBottom: 12 },
   input: {
     flex: 1,
+    // Without this, three text inputs sharing a row never shrink below their
+    // own content width on web — flexbox's default min-width is "auto", not
+    // 0 — so the row silently overflows the screen instead of compressing.
+    minWidth: 0,
     backgroundColor: UI.surface,
     borderRadius: UI.radiusSm,
     borderWidth: 1,
     borderColor: UI.hairline,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     paddingVertical: 10,
     fontFamily: FONTS.regular,
     fontSize: 14.5,
     color: UI.ink,
     textAlign: "right",
   },
+  locationInputWide: { flex: 1.4 },
+  locationInputNarrow: { flex: 0.8, textAlign: "center", paddingHorizontal: 6 },
   addBtn: {
     width: 44,
     height: 44,

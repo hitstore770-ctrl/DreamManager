@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
+import { Linking, Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 
 import Icon from "../components/Icon";
 import { useBusiness } from "../context/BusinessContext";
@@ -46,6 +46,26 @@ export default function DebtsScreen() {
     hapticLight();
     setAmount("");
     setSelectedId(d.id);
+  };
+
+  // The exact wording the directive specifies — a polite nudge, not a
+  // demand, with both common local transfer apps named so there's no
+  // back-and-forth about how to actually pay.
+  const sendCollectionReminder = async (debtor, bal) => {
+    hapticLight();
+    const amount = shekel(bal).replace(/[^\d.,]/g, "");
+    const text = `היי, סיכום החשבון שלך להשבוע עומד על ${amount} ש״ח. אפשר להעביר בביט/פייבוקס. תודה!`;
+    const url = `whatsapp://send?text=${encodeURIComponent(text)}`;
+    try {
+      const ok = await Linking.canOpenURL(url);
+      if (ok) {
+        await Linking.openURL(url);
+        return;
+      }
+    } catch {
+      /* fall through */
+    }
+    Linking.openURL(`https://wa.me/?text=${encodeURIComponent(text)}`).catch(() => {});
   };
 
   const addDebt = () => {
@@ -120,8 +140,21 @@ export default function DebtsScreen() {
                   <CustomText style={s.name}>{d.name}</CustomText>
                   <CustomText style={s.nameSub}>סה״כ נרשם {shekel(d.owed || 0)} · שולם {shekel(d.paid || 0)}</CustomText>
                 </View>
+                {bal > 0 && (
+                  <TouchableOpacity
+                    testID={`debt-whatsapp-${d.id}`}
+                    style={s.waBtn}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      sendCollectionReminder(d, bal);
+                    }}
+                    activeOpacity={0.75}
+                  >
+                    <Icon name="message-circle" size={17} color={WHITE} />
+                  </TouchableOpacity>
+                )}
                 <View style={[s.avatar, { backgroundColor: bal > 0 ? RED + "14" : GREEN_DARK + "14" }]}>
-                  <Icon name={bal > 0 ? "alert-circle" : "check-circle"} size={19} color={bal > 0 ? RED : GREEN} />
+                  <Icon name={bal > 0 ? "alert-circle" : "check-circle"} size={19} color={bal > 0 ? RED : GREEN_DARK} />
                 </View>
               </TouchableOpacity>
             );
@@ -268,6 +301,14 @@ const s = StyleSheet.create({
     ...SHADOW,
   },
   avatar: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+  waBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#25D366",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   name: { fontFamily: FONTS.semibold, fontSize: 15, color: INK },
   nameSub: { fontFamily: FONTS.regular, fontSize: 11, color: INK_MUTED, marginTop: 2 },
   balance: { fontFamily: FONTS.bold, fontSize: 16 },
