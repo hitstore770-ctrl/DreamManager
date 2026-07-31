@@ -7,6 +7,7 @@ import Icon from "../Icon";
 import CustomText from "../CustomText";
 import ScanCamera from "./ScanCamera";
 import VoiceOrderButton from "./VoiceOrderButton";
+import { useAgents } from "../../context/AgentsContext";
 import { useAuth } from "../../context/AuthContext";
 import { useBusiness } from "../../context/BusinessContext";
 import { useNotes } from "../../context/NotesContext";
@@ -66,6 +67,18 @@ function isLateNightNow() {
   return h >= 23 || h < 4;
 }
 
+// Shared by the live estimate shown while the cart is still open and by the
+// number actually swept into the agent's balance at completeSale — one
+// formula, so the two can never drift apart.
+function computeCommission(agent, totals) {
+  if (!agent) return 0;
+  if (agent.commissionType === "flat") {
+    return Math.round((Number(agent.commissionValue) || 0) * totals.units * 100) / 100;
+  }
+  const pct = Number(agent.commissionValue) || 0;
+  return totals.profit > 0 && pct > 0 ? Math.round(totals.profit * (pct / 100) * 100) / 100 : 0;
+}
+
 export default function PosRegisterTab({ bottomInset = 0 }) {
   const { sales, setSales, inventory, setInventory, debts, setDebts } = useBusiness();
   const { user } = useAuth();
@@ -74,8 +87,29 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
   // point: a register that can invent items cannot be reconciled against the
   // deck, and some days the owner wants exactly that discipline.
   const { allowManualItems, droneAllocPct } = useSettings();
-  const manualAllowed = allowManualItems !== false;
   const allocPct = Math.max(0, parseFloat(droneAllocPct) || 0);
+
+  // Franchise layer: which sub-agent (if any) is currently operating the
+  // register. A sub-agent's cart draws from their own backpack, not the
+  // shared deck — this is the single switch every gate below reads.
+  const { agents, setAgents, agentInventory, setAgentInventory, auditLog, setAuditLog, activeAgentId, setActiveAgentId } =
+    useAgents() || {};
+  const activeAgent = (agents || []).find((a) => a.id === activeAgentId) || null;
+  const myBackpack = useMemo(
+    () => (activeAgent ? (agentInventory || []).filter((r) => r.agentId === activeAgent.id) : []),
+    [agentInventory, activeAgent]
+  );
+  // A sub-agent cannot invent an off-menu line — the whole point of the
+  // backpack is that they can only sell what's actually in it.
+  const manualAllowed = !activeAgent && allowManualItems !== false;
+
+  const logAudit = (action, detail) => {
+    if (!activeAgent) return;
+    setAuditLog((prev) => [
+      { id: uid(), ts: Date.now(), agentId: activeAgent.id, agentName: activeAgent.name, action, detail },
+      ...(prev || []),
+    ]);
+  };
 
   // The drone fund — same two keys MoneyDashboardScreen.js reads, so every
   // sale's automatic sweep shows up there live via usePersistentState's
@@ -189,6 +223,11 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
           cost: item.cost,
           category: item.category || null,
           itemId: item.itemId || null,
+          // Set only for a line pulled from a sub-agent's backpack — the id
+          // of the agentInventory row completeSale decrements, distinct from
+          // itemId (which still points at the original warehouse row, kept
+          // for reporting).
+          backpackId: item.backpackId || null,
           qty,
         },
       ];
@@ -198,6 +237,25 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
     // the sale" and never includes the line just added.
     const hint = crossSellSuggestion(item.name, cart.map((l) => l.name));
     if (hint) showCrossSell(item.name, hint);
+  };
+
+  // A tap on a backpack tile — capped at what's actually left in the
+  // backpack, since going over would sell stock the agent doesn't hold.
+  const addFromBackpack = (row) => {
+    const inCartQty = cart.find((l) => l.backpackId === row.id)?.qty || 0;
+    if (inCartQty >= row.qty) {
+      hapticWarning();
+      return;
+    }
+    add({
+      sku: `bp-${row.id}`,
+      name: row.name,
+      price: row.price,
+      cost: row.cost,
+      category: row.category || null,
+      itemId: row.itemId || null,
+      backpackId: row.id,
+    });
   };
 
   const addManual = (name, price) => {
@@ -263,12 +321,34 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
   const bump = (sku, delta) => {
     if (delta < 0) hapticWarning();
     else hapticLight();
-    setCart((prev) => prev.map((l) => (l.sku === sku ? { ...l, qty: l.qty + delta } : l)).filter((l) => l.qty > 0));
+    setCart((prev) => {
+      const line = prev.find((l) => l.sku === sku);
+      if (!line) return prev;
+      const nextQty = line.qty + delta;
+      // Backpack lines can't grow past what the agent actually has left.
+      if (delta > 0 && line.backpackId) {
+        const row = myBackpack.find((r) => r.id === line.backpackId);
+        if (nextQty > (row?.qty || 0)) {
+          hapticWarning();
+          return prev;
+        }
+      }
+      // Removing a line entirely — a sensitive action worth a paper trail
+      // when it's a sub-agent doing it, since it's exactly how a rung-up
+      // item quietly disappears from a shift's takings.
+      if (delta < 0 && nextQty <= 0 && activeAgent) {
+        logAudit("הסרת פריט מהעגלה", `${line.name} × ${line.qty}`);
+      }
+      return prev.map((l) => (l.sku === sku ? { ...l, qty: l.qty + delta } : l)).filter((l) => l.qty > 0);
+    });
   };
 
   const clear = () => {
     if (!cart.length) return;
     hapticWarning();
+    if (activeAgent) {
+      logAudit("ביטול עסקה", `${cart.length} שורות נוקו מהעגלה, סה"כ ${shekel(totals.amountDue)}`);
+    }
     setCart([]);
     setExpanded(false);
   };
@@ -304,7 +384,7 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
         month: monthKey(),
         itemId: l.itemId,
         name: l.name,
-        category: deckKey === "food" ? "snacks" : "electronics",
+        category: l.category || (deckKey === "food" ? "snacks" : "electronics"),
         qty: l.qty,
         price: l.price,
         cost: unit,
@@ -314,6 +394,10 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
         eventId: txId,
         sku: l.sku,
         paymentMethod,
+        // null for a Main Admin sale — the leaderboard and every per-agent
+        // report key off this field being absent rather than a sentinel.
+        agentId: activeAgent?.id || null,
+        agentName: activeAgent?.name || null,
       };
     });
 
@@ -405,17 +489,48 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
       });
     }
 
-    // Deck lines only touch stock when explicitly linked to a warehouse item.
-    // Matching on name would be a guess, and a guess that silently decrements
-    // the wrong row is worse than not decrementing.
-    const linked = cart.filter((l) => l.itemId);
-    if (linked.length && setInventory) {
-      setInventory((prev) =>
-        (prev || []).map((inv) => {
-          const line = linked.find((l) => l.itemId === inv.id);
-          if (!line) return inv;
-          return { ...inv, qty: Math.max(0, inv.qty - line.qty), sold: (inv.sold || 0) + line.qty };
-        })
+    if (activeAgent) {
+      // A sub-agent's stock lives in their backpack, already deducted from
+      // the main warehouse at transfer time — this sale only draws it down
+      // further, the main inventory is untouched.
+      const linkedBackpack = cart.filter((l) => l.backpackId);
+      if (linkedBackpack.length) {
+        setAgentInventory((prev) =>
+          (prev || []).map((row) => {
+            const line = linkedBackpack.find((l) => l.backpackId === row.id);
+            if (!line) return row;
+            return { ...row, qty: Math.max(0, row.qty - line.qty) };
+          })
+        );
+      }
+    } else {
+      // Deck lines only touch stock when explicitly linked to a warehouse
+      // item. Matching on name would be a guess, and a guess that silently
+      // decrements the wrong row is worse than not decrementing.
+      const linked = cart.filter((l) => l.itemId);
+      if (linked.length && setInventory) {
+        setInventory((prev) =>
+          (prev || []).map((inv) => {
+            const line = linked.find((l) => l.itemId === inv.id);
+            if (!line) return inv;
+            return { ...inv, qty: Math.max(0, inv.qty - line.qty), sold: (inv.sold || 0) + line.qty };
+          })
+        );
+      }
+    }
+
+    // Commission — a slice of this sale credited to the sub-agent who rang
+    // it up, live the instant the sale closes (same immediacy as the drone
+    // sweep below, and for the same reason: waiting for a manual tally is
+    // how a shift's earnings quietly go unpaid).
+    const commissionAmount = computeCommission(activeAgent, totals);
+    if (activeAgent && commissionAmount > 0) {
+      setAgents((prev) =>
+        (prev || []).map((a) =>
+          a.id === activeAgent.id
+            ? { ...a, commissionEarned: Math.round(((Number(a.commissionEarned) || 0) + commissionAmount) * 100) / 100 }
+            : a
+        )
       );
     }
 
@@ -439,6 +554,8 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
 
     setReceipt({
       droneAlloc: autoAllocAmount,
+      commission: commissionAmount,
+      agentName: activeAgent?.name || null,
       lines: cart,
       totals,
       ts,
@@ -456,6 +573,16 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
     const day = todayKey();
     return (sales || []).filter((r) => r.day === day && r.kind === "sale").reduce((n, r) => n + (r.total || 0), 0);
   }, [sales]);
+
+  const agentTodayGross = useMemo(() => {
+    if (!activeAgent) return 0;
+    const day = todayKey();
+    return (sales || [])
+      .filter((r) => r.day === day && r.kind === "sale" && r.agentId === activeAgent.id)
+      .reduce((n, r) => n + (r.total || 0), 0);
+  }, [sales, activeAgent]);
+
+  const liveCommission = computeCommission(activeAgent, totals);
 
   const cartHeight = expanded ? 300 : cart.length ? 132 : 74;
   const canComplete = paymentMethod !== "tab" || tabCustomerName.trim().length > 0;
@@ -506,37 +633,95 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
         </Animated.View>
       )}
 
-      {/* Mode switch + today's takings */}
-      <View style={st.topRow}>
-        <View style={st.deckSwitch}>
-          {DECKS.map((d) => {
-            const on = d.key === deckKey;
+      {/* Active operator — who's holding the register right now. Only shown
+          once at least one sub-agent exists, so a solo operator never sees a
+          selector with nothing to select. */}
+      {(agents || []).length > 0 && (
+        <View style={st.operatorRow}>
+          <TouchableOpacity
+            testID="operator-main"
+            style={[st.operatorChip, !activeAgent && st.operatorChipOn]}
+            onPress={() => {
+              hapticLight();
+              setActiveAgentId(null);
+            }}
+          >
+            <Icon name="shield" size={13} color={!activeAgent ? "#FFFFFF" : UI.inkSoft} />
+            <CustomText style={[st.operatorChipText, !activeAgent && { color: "#FFFFFF" }]}>מנהל ראשי</CustomText>
+          </TouchableOpacity>
+          {(agents || []).map((a) => {
+            const on = a.id === activeAgentId;
             return (
               <TouchableOpacity
-                key={d.key}
-                testID={`deck-${d.key}`}
-                style={[st.deckBtn, on && { backgroundColor: d.color }]}
+                key={a.id}
+                testID={`operator-${a.id}`}
+                style={[st.operatorChip, on && st.operatorChipOn]}
                 onPress={() => {
                   hapticLight();
-                  setDeckKey(d.key);
+                  setActiveAgentId(a.id);
                 }}
               >
-                <Icon name={d.icon} size={15} color={on ? "#FFFFFF" : UI.inkSoft} />
-                <CustomText style={[st.deckText, on && { color: "#FFFFFF" }]}>{d.label}</CustomText>
+                <Icon name="user" size={13} color={on ? "#FFFFFF" : UI.inkSoft} />
+                <CustomText style={[st.operatorChipText, on && { color: "#FFFFFF" }]} numberOfLines={1}>
+                  {a.name}
+                </CustomText>
               </TouchableOpacity>
             );
           })}
         </View>
+      )}
+
+      {/* Mode switch + today's takings */}
+      <View style={st.topRow}>
+        {activeAgent ? (
+          <View style={st.agentModeBadge}>
+            <Icon name="briefcase" size={15} color={UI.violet} />
+            <CustomText style={st.agentModeBadgeText}>מוכר מתוך התיק של {activeAgent.name}</CustomText>
+          </View>
+        ) : (
+          <View style={st.deckSwitch}>
+            {DECKS.map((d) => {
+              const on = d.key === deckKey;
+              return (
+                <TouchableOpacity
+                  key={d.key}
+                  testID={`deck-${d.key}`}
+                  style={[st.deckBtn, on && { backgroundColor: d.color }]}
+                  onPress={() => {
+                    hapticLight();
+                    setDeckKey(d.key);
+                  }}
+                >
+                  <Icon name={d.icon} size={15} color={on ? "#FFFFFF" : UI.inkSoft} />
+                  <CustomText style={[st.deckText, on && { color: "#FFFFFF" }]}>{d.label}</CustomText>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
         <View style={st.todayBox}>
-          <CustomText style={st.todayLabel}>היום</CustomText>
+          <CustomText style={st.todayLabel}>{activeAgent ? "המכירות שלי" : "היום"}</CustomText>
           <CustomText testID="pos-today" style={st.todayValue}>
-            {shekel(todayGross)}
+            {shekel(activeAgent ? agentTodayGross : todayGross)}
           </CustomText>
+          {activeAgent && (
+            <CustomText testID="pos-commission-earned" style={st.todayCommission}>
+              עמלה שנצברה: {shekel(activeAgent.commissionEarned || 0)}
+            </CustomText>
+          )}
         </View>
       </View>
 
       <View style={{ flex: 1 }}>
-        {isImport ? (
+        {activeAgent ? (
+          <BackpackMode
+            agent={activeAgent}
+            rows={myBackpack}
+            cart={cart}
+            onAdd={addFromBackpack}
+            bottomPad={cartHeight + bottomInset}
+          />
+        ) : isImport ? (
           <ScanMode onScan={() => setScanOpen(true)} bottomPad={cartHeight + bottomInset} />
         ) : (
           <>
@@ -661,6 +846,7 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
                 רווח צפוי {shekel(totals.profit)} · עלות {shekel(totals.cost)}
                 {totals.comboDiscount > 0 ? ` · 🎉 קומבו -${shekel(totals.comboDiscount)}` : ""}
                 {totals.lateNightSurcharge > 0 ? ` · תוספת לילה +${shekel(totals.lateNightSurcharge)}` : ""}
+                {activeAgent && liveCommission > 0 ? ` · עמלה צפויה ${shekel(liveCommission)}` : ""}
               </CustomText>
             )}
           </View>
@@ -738,6 +924,7 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
         debtorNames={debtorNames}
         loyaltyCustomers={loyaltyCustomers}
         canComplete={canComplete}
+        activeAgent={activeAgent}
         onClose={() => {
           setSummaryOpen(false);
           setReceipt(null);
@@ -745,6 +932,62 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
         onComplete={completeSale}
       />
     </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// A sub-agent's grid — every tile is a row from their own backpack, capped at
+// whatever quantity is still unsold in it. No manual line and no scanner:
+// the whole point of the backpack is that they can't sell outside it.
+
+function BackpackMode({ agent, rows, cart, onAdd, bottomPad }) {
+  const inStock = rows.filter((r) => r.qty > 0);
+  if (inStock.length === 0) {
+    return (
+      <View style={[st.scanWrap, { paddingBottom: bottomPad }]}>
+        <Icon name="briefcase" size={34} color={UI.inkMuted} />
+        <CustomText style={st.scanTitle}>התיק ריק</CustomText>
+        <CustomText style={st.scanNote}>בקשו מהמנהל להעביר מלאי לתיק שלכם דרך "סוכנים".</CustomText>
+      </View>
+    );
+  }
+  return (
+    <FlashList
+      testID="backpack-grid"
+      data={inStock}
+      numColumns={NUM_COLUMNS}
+      keyExtractor={(row) => row.id}
+      extraData={cart}
+      contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: bottomPad + 16, paddingTop: 8 }}
+      showsVerticalScrollIndicator={false}
+      renderItem={({ item: row, index }) => {
+        const inCart = cart.find((l) => l.backpackId === row.id);
+        return (
+          <Animated.View entering={FadeIn.delay(Math.min(index, 11) * 22)} style={st.cell}>
+            <TouchableOpacity
+              testID={`backpack-item-${row.id}`}
+              activeOpacity={0.8}
+              style={[st.tile, inCart && { borderColor: UI.violet, backgroundColor: tint(UI.violet, 0.05) }]}
+              onPress={() => onAdd(row)}
+            >
+              {!!inCart && (
+                <View style={st.tileBadge}>
+                  <CustomText style={st.tileBadgeText}>{inCart.qty}</CustomText>
+                </View>
+              )}
+              <View style={[st.tileIconWrap, { backgroundColor: tint(UI.violet, 0.14) }]}>
+                <Icon name="package" size={22} color={UI.violet} />
+              </View>
+              <CustomText style={st.tileName} numberOfLines={2}>
+                {row.name}
+              </CustomText>
+              <CustomText style={st.tilePrice}>{shekel(row.price)}</CustomText>
+              <CustomText style={st.tileMargin}>{row.qty - (inCart?.qty || 0)} נותרו בתיק</CustomText>
+            </TouchableOpacity>
+          </Animated.View>
+        );
+      }}
+    />
   );
 }
 
@@ -1009,10 +1252,12 @@ function CheckoutSummary({
   debtorNames,
   loyaltyCustomers,
   canComplete,
+  activeAgent,
   onClose,
   onComplete,
 }) {
   const margin = totals.gross > 0 ? totals.profit / totals.gross : null;
+  const commissionPreview = computeCommission(activeAgent, totals);
 
   // Loyalty milestone check, live as the name is typed — every 5th purchase
   // (5th, 10th, 15th…) for whoever this name matches in the loyalty ledger.
@@ -1072,6 +1317,14 @@ function CheckoutSummary({
                   <Icon name="target" size={13} color={UI.violet} />
                   <CustomText style={st.droneAllocChipText}>
                     {shekel(receipt.droneAlloc)} נשלחו אוטומטית לקרן הרחפן
+                  </CustomText>
+                </View>
+              )}
+              {receipt.commission > 0 && (
+                <View style={st.commissionChip}>
+                  <Icon name="briefcase" size={13} color={UI.green} />
+                  <CustomText style={st.commissionChipText}>
+                    {shekel(receipt.commission)} עמלה נזקפה ל{receipt.agentName}
                   </CustomText>
                 </View>
               )}
@@ -1163,6 +1416,15 @@ function CheckoutSummary({
                 {shekel(maaser)}
               </CustomText>
               <CustomText style={st.sumLabel}>מעשר ({maaserPct}% מהרווח)</CustomText>
+            </View>
+          )}
+
+          {activeAgent && (
+            <View style={st.sumRow}>
+              <CustomText testID="sum-commission" style={[st.sumValue, { color: UI.green }]}>
+                {shekel(commissionPreview)}
+              </CustomText>
+              <CustomText style={st.sumLabel}>עמלה ל{activeAgent.name}</CustomText>
             </View>
           )}
 
@@ -1315,6 +1577,25 @@ const st = StyleSheet.create({
   },
   crossSellText: { flex: 1, fontFamily: FONTS.medium, fontSize: 12.5, color: UI.ink, textAlign: "right" },
 
+  operatorRow: {
+    flexDirection: "row-reverse",
+    flexWrap: "wrap",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingBottom: 8,
+  },
+  operatorChip: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 11,
+    minHeight: 32,
+    borderRadius: 16,
+    backgroundColor: UI.surfaceHi,
+  },
+  operatorChipOn: { backgroundColor: UI.violet },
+  operatorChipText: { fontFamily: FONTS.semibold, fontSize: 11.5, color: UI.inkSoft, maxWidth: 100 },
+
   topRow: { flexDirection: "row-reverse", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingBottom: 10 },
   deckSwitch: { flex: 1, flexDirection: "row-reverse", gap: 6, backgroundColor: UI.surfaceHi, borderRadius: 14, padding: 4 },
   deckBtn: {
@@ -1327,9 +1608,21 @@ const st = StyleSheet.create({
     borderRadius: 11,
   },
   deckText: { fontFamily: FONTS.semibold, fontSize: 12.5, color: UI.inkSoft },
+  agentModeBadge: {
+    flex: 1,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: tint(UI.violet, 0.08),
+    borderRadius: 14,
+    minHeight: 40,
+    paddingHorizontal: 12,
+  },
+  agentModeBadgeText: { flex: 1, fontFamily: FONTS.semibold, fontSize: 12.5, color: UI.violet, textAlign: "right" },
   todayBox: { alignItems: "flex-end" },
   todayLabel: { fontFamily: FONTS.regular, fontSize: 10.5, color: UI.inkMuted },
   todayValue: { fontFamily: FONTS.bold, fontSize: 16, color: UI.green },
+  todayCommission: { fontFamily: FONTS.medium, fontSize: 10, color: UI.violet, marginTop: 1 },
 
   manualBtn: {
     flexDirection: "row-reverse",
@@ -1591,6 +1884,17 @@ const st = StyleSheet.create({
     backgroundColor: tint(UI.violet, 0.1),
   },
   droneAllocChipText: { fontFamily: FONTS.semibold, fontSize: 12.5, color: UI.violet },
+  commissionChip: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: tint(UI.green, 0.1),
+  },
+  commissionChipText: { fontFamily: FONTS.semibold, fontSize: 12.5, color: UI.green },
   receiptDoneSub: { fontFamily: FONTS.medium, fontSize: 13.5, color: UI.inkMuted },
   whatsappBtn: {
     flexDirection: "row-reverse",

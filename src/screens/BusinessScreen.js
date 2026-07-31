@@ -6,11 +6,13 @@ import Animated, { FadeIn } from "react-native-reanimated";
 import Bounce from "../components/Bounce";
 import Icon from "../components/Icon";
 
+import { AgentsProvider } from "../context/AgentsContext";
 import { BusinessProvider } from "../context/BusinessContext";
 import { hapticLight } from "../utils/haptics";
 import { FLUID, SCREEN_IN } from "../utils/motion";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
 import { CARD_SHADOW, UI } from "../utils/ui";
+import AgentsScreen from "./AgentsScreen";
 import BizDashboardScreen from "./BizDashboardScreen";
 import BizToolsScreen from "./BizToolsScreen";
 import DebtsScreen from "./DebtsScreen";
@@ -22,12 +24,13 @@ import WarehouseScreen from "./WarehouseScreen";
 import ZReportScreen from "./ZReportScreen";
 import CustomText from "../components/CustomText";
 
-// "העסק שלי" — a pill sub-navigation over nine business modules, all live.
+// "העסק שלי" — a pill sub-navigation over ten business modules, all live.
 // The last of them holds the three tools that moved here out of the Tools hub.
 
 const MODULES = [
   { key: "pos", label: "קופה", icon: "shopping-cart" },
   { key: "inventory", label: "מחסן", icon: "package" },
+  { key: "agents", label: "סוכנים", icon: "users" },
   { key: "tabs", label: "הקפות", icon: "book-open" },
   { key: "suppliers", label: "ספקים", icon: "truck" },
   { key: "zreport", label: "דוח Z", icon: "file-text" },
@@ -47,6 +50,8 @@ function BusinessShell() {
         return <POSScreen />;
       case "inventory":
         return <WarehouseScreen />;
+      case "agents":
+        return <AgentsScreen />;
       case "tabs":
         return <DebtsScreen />;
       case "zreport":
@@ -104,7 +109,9 @@ function BusinessShell() {
 export default function BusinessScreen() {
   return (
     <BusinessProvider>
-      <BusinessShell />
+      <AgentsProvider>
+        <BusinessShell />
+      </AgentsProvider>
     </BusinessProvider>
   );
 }

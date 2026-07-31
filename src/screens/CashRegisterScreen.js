@@ -10,6 +10,7 @@ import Icon from "../components/Icon";
 import CustomText from "../components/CustomText";
 import KitchenTab from "../components/pos/KitchenTab";
 import PosRegisterTab from "../components/pos/PosRegisterTab";
+import { AgentsProvider } from "../context/AgentsContext";
 import { BusinessProvider } from "../context/BusinessContext";
 import { POS_CATEGORIES, posCategory } from "../utils/posCatalog";
 import { resolveTarget } from "../components/pos/posRegistry";
@@ -39,7 +40,9 @@ const UNRESOLVED = POS_CATEGORIES.flatMap((cat) =>
 export default function CashRegisterScreen({ navigation }) {
   return (
     <BusinessProvider>
-      <RegisterShell navigation={navigation} />
+      <AgentsProvider>
+        <RegisterShell navigation={navigation} />
+      </AgentsProvider>
     </BusinessProvider>
   );
 }
