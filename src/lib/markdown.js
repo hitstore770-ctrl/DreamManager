@@ -1,6 +1,6 @@
 // A small, dependency-free markdown subset: headings, blockquotes, checklists,
-// fenced code (with a basic keyword/string/comment/number tokenizer), and
-// inline bold/italic/code. Parses into blocks the renderer walks — no AST
+// fenced code, tables and drawings (see lib/table.js, lib/syntaxHighlight.js),
+// and inline bold/italic/code. Parses into blocks the renderer walks — no AST
 // library, because the feature list is fixed and small.
 
 // ---- Block-level -----------------------------------------------------
@@ -15,6 +15,7 @@ export function parseBlocks(raw) {
 
     if (trimmed.startsWith("```")) {
       const lang = trimmed.slice(3).trim();
+      const startLine = i;
       const codeLines = [];
       i++;
       while (i < lines.length && !lines[i].trim().startsWith("```")) {
@@ -22,7 +23,11 @@ export function parseBlocks(raw) {
         i++;
       }
       if (i < lines.length) i++; // consume the closing fence
-      blocks.push({ type: "code", lang, code: codeLines.join("\n") });
+      const endLine = i - 1;
+      const content = codeLines.join("\n");
+      if (lang === "table") blocks.push({ type: "table", content, startLine, endLine });
+      else if (lang === "drawing") blocks.push({ type: "drawing", content, startLine, endLine });
+      else blocks.push({ type: "code", lang, code: content, startLine, endLine });
       continue;
     }
 
@@ -80,6 +85,17 @@ export function parseBlocks(raw) {
   return blocks;
 }
 
+// Replaces a fenced block (identified by the source line range parseBlocks
+// gave it) with fresh content for the same fence language — used by the
+// Table editor and the Whiteboard to write their edits back into the note's
+// raw markdown without disturbing anything else in it.
+export function replaceFence(raw, startLine, endLine, lang, content) {
+  const lines = raw.split("\n");
+  const next = [`\`\`\`${lang}`, ...content.split("\n"), "```"];
+  lines.splice(startLine, endLine - startLine + 1, ...next);
+  return lines.join("\n");
+}
+
 // Flips the "[ ]"/"[x]" on one specific line of the raw source — used when
 // a checklist row is tapped in the rendered view.
 export function toggleChecklistLine(raw, lineIndex) {
@@ -110,34 +126,9 @@ export function parseInline(text) {
   return segs.length ? segs : [{ text }];
 }
 
-// ---- Basic code-block syntax highlighting ------------------------------
-const KEYWORDS = new Set([
-  "const", "let", "var", "function", "return", "if", "else", "for", "while", "do",
-  "import", "export", "default", "from", "as", "class", "extends", "new", "this",
-  "async", "await", "try", "catch", "finally", "throw", "switch", "case", "break",
-  "continue", "typeof", "instanceof", "null", "undefined", "true", "false", "void",
-  "def", "elif", "print", "in", "is", "not", "and", "or", "lambda", "yield", "pass",
-  "self", "public", "private", "static", "interface", "implements", "package", "struct",
-  "fn", "match", "impl", "use", "mod",
-]);
-
-// One line -> [{ text, kind }]. `kind` drives the color: comment / string /
-// number / keyword / plain.
-export function tokenizeCodeLine(line) {
-  const tokens = [];
-  const re = /(\/\/.*)|(#.*)|('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*`)|(\b\d+(?:\.\d+)?\b)|([A-Za-z_$][A-Za-z0-9_$]*)|(\s+)|([^\sA-Za-z0-9_$]+)/g;
-  let m;
-  while ((m = re.exec(line)) !== null) {
-    if (m[1] !== undefined) tokens.push({ text: m[1], kind: "comment" });
-    else if (m[2] !== undefined) tokens.push({ text: m[2], kind: "comment" });
-    else if (m[3] !== undefined) tokens.push({ text: m[3], kind: "string" });
-    else if (m[4] !== undefined) tokens.push({ text: m[4], kind: "number" });
-    else if (m[5] !== undefined) tokens.push({ text: m[5], kind: KEYWORDS.has(m[5]) ? "keyword" : "plain" });
-    else if (m[6] !== undefined) tokens.push({ text: m[6], kind: "plain" });
-    else tokens.push({ text: m[7], kind: "punct" });
-  }
-  return tokens;
-}
+// Code-block syntax highlighting now lives in its own module — see
+// src/lib/syntaxHighlight.js — since it's substantial enough (and reused by
+// both the editor's rendered view and the PDF print path) to earn one.
 
 export function countWords(text) {
   const trimmed = (text || "").trim();

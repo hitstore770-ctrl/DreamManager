@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
@@ -132,7 +132,10 @@ export default function NotesListScreen({ navigation, route }) {
     <View style={[s.screen, { paddingTop: insets.top }]}>
       <View style={s.header}>
         <Text style={s.title}>Second Brain</Text>
-        <View style={s.headerActions}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={s.headerActions}>
+          <TouchableOpacity testID="open-compile" style={s.iconBtn} onPress={() => navigation.navigate("Compile")} activeOpacity={0.7}>
+            <Feather name="layers" size={19} color={theme.text} />
+          </TouchableOpacity>
           <TouchableOpacity testID="open-graph" style={s.iconBtn} onPress={() => navigation.navigate("Graph")} activeOpacity={0.7}>
             <Feather name="share-2" size={19} color={theme.text} />
           </TouchableOpacity>
@@ -145,7 +148,7 @@ export default function NotesListScreen({ navigation, route }) {
           <TouchableOpacity testID="open-split" style={s.iconBtn} onPress={() => navigation.navigate("Split")} activeOpacity={0.7}>
             <Feather name="columns" size={19} color={theme.text} />
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </View>
 
       <View style={s.searchRow}>

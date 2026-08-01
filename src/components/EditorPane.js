@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSQLiteContext } from "expo-sqlite";
+import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { useTheme } from "../theme/ThemeContext";
-import { getNote, saveNoteBody } from "../db/notesRepo";
+import { deriveTitle, getNote, saveNoteBody } from "../db/notesRepo";
 import { saveVaultNoteBody, moveIntoVault, moveOutOfVault } from "../db/vaultRepo";
 import { createTemplate } from "../db/templatesRepo";
 import { useDebouncedAutosave } from "../hooks/useDebouncedAutosave";
 import { useAutoVersion } from "../hooks/useAutoVersion";
 import { extractTags, colorForRoot, tagRoot } from "../lib/tags";
-import { countWords, toggleChecklistLine } from "../lib/markdown";
+import { countWords, replaceFence, toggleChecklistLine } from "../lib/markdown";
 import { isKanbanBoard } from "../lib/kanban";
 import { decryptText } from "../lib/crypto";
 import { useVault } from "../vault/VaultContext";
@@ -20,6 +21,9 @@ import KanbanBoard from "./KanbanBoard";
 import HistoryModal from "./HistoryModal";
 import SaveTemplateModal from "./SaveTemplateModal";
 import VaultPinModal from "./VaultPinModal";
+import InsertMenuSheet from "./InsertMenuSheet";
+import SnippetPickerSheet from "./SnippetPickerSheet";
+import TableEditorModal from "./TableEditorModal";
 
 const ZEN_LINE_HEIGHT = 25;
 
@@ -30,9 +34,11 @@ export default function EditorPane({ noteId, onBack, headerExtra }) {
   const theme = useTheme();
   const db = useSQLiteContext();
   const vault = useVault();
+  const navigation = useNavigation();
 
   const [note, setNote] = useState(null);
   const [body, setBody] = useState("");
+  const [selection, setSelection] = useState({ start: 0, end: 0 });
   const [ready, setReady] = useState(false);
   const [lockedNoKey, setLockedNoKey] = useState(false);
   const [preview, setPreview] = useState(false);
@@ -41,6 +47,9 @@ export default function EditorPane({ noteId, onBack, headerExtra }) {
   const [showHistory, setShowHistory] = useState(false);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [showVaultUnlock, setShowVaultUnlock] = useState(false);
+  const [showInsertMenu, setShowInsertMenu] = useState(false);
+  const [showSnippets, setShowSnippets] = useState(false);
+  const [tableEditor, setTableEditor] = useState(null); // { block } | { block: null } for a fresh insert
   const [viewportHeight, setViewportHeight] = useState(0);
   const scrollRef = useRef(null);
 
@@ -124,11 +133,69 @@ export default function EditorPane({ noteId, onBack, headerExtra }) {
     setShowSaveTemplate(false);
   };
 
+  // Inserts `text` at the current cursor (replacing the selection, if any)
+  // and leaves the caret right after it.
+  const insertAtCursor = (text) => {
+    const start = Math.min(selection.start, body.length);
+    const end = Math.min(Math.max(selection.end, start), body.length);
+    const next = `${body.slice(0, start)}${text}${body.slice(end)}`;
+    setBody(next);
+    const caret = start + text.length;
+    setSelection({ start: caret, end: caret });
+  };
+
+  const selectedText = selection.end > selection.start ? body.slice(selection.start, selection.end) : "";
+
+  const onInsertSnippet = (snippet) => {
+    setShowSnippets(false);
+    insertAtCursor(snippet.body);
+  };
+
+  const onPickInsert = (key) => {
+    setShowInsertMenu(false);
+    if (key === "snippet") {
+      setShowSnippets(true);
+    } else if (key === "table") {
+      setTableEditor({ block: null });
+    } else if (key === "drawing") {
+      navigation.navigate("Whiteboard", {
+        onSave: (base64) => insertAtCursor(`\`\`\`drawing\n${base64}\n\`\`\`\n`),
+      });
+    }
+  };
+
+  const onEditTable = (block) => setTableEditor({ block });
+
+  const onTableSaved = (content) => {
+    const editing = tableEditor?.block;
+    if (editing) {
+      setBody((b) => replaceFence(b, editing.startLine, editing.endLine, "table", content));
+    } else {
+      insertAtCursor(`\`\`\`table\n${content}\n\`\`\`\n`);
+    }
+    setTableEditor(null);
+  };
+
+  const onEditDrawing = (block) => {
+    navigation.navigate("Whiteboard", {
+      initialContent: block.content,
+      onSave: (base64) => setBody((b) => replaceFence(b, block.startLine, block.endLine, "drawing", base64)),
+    });
+  };
+
+  const onOpenPrint = () => {
+    // note.title reflects the last *saved* title, which can lag behind an
+    // edit still sitting in the debounce window — derive fresh from the
+    // in-memory body instead so Print never shows a stale/blank title.
+    navigation.navigate("Print", { title: deriveTitle(bodyRef.current) || "Untitled", body: bodyRef.current });
+  };
+
   // Typewriter scrolling: keep the line the cursor is on vertically
   // centered. Approximate (counts logical newlines, not wrapped visual
   // lines) — enough to keep the current thought in the middle of the screen
   // without a full custom text-layout engine.
   const onSelectionChange = (e) => {
+    setSelection(e.nativeEvent.selection);
     if (!zen || !viewportHeight) return;
     const pos = e.nativeEvent.selection.start;
     const lineIndex = body.slice(0, pos).split("\n").length - 1;
@@ -162,6 +229,11 @@ export default function EditorPane({ noteId, onBack, headerExtra }) {
                 <Feather name="bookmark" size={17} color={theme.text} />
               </TouchableOpacity>
             )}
+            {!lockedNoKey && (
+              <TouchableOpacity testID="open-insert-menu" style={s.iconBtn} onPress={() => setShowInsertMenu(true)} hitSlop={4}>
+                <Feather name="plus-square" size={17} color={theme.text} />
+              </TouchableOpacity>
+            )}
             {!lockedNoKey && boardDetected && (
               <TouchableOpacity
                 testID="toggle-board"
@@ -180,6 +252,11 @@ export default function EditorPane({ noteId, onBack, headerExtra }) {
             {!lockedNoKey && !note?.vault && (
               <TouchableOpacity testID="open-history" style={s.iconBtn} onPress={() => setShowHistory(true)} hitSlop={4}>
                 <Feather name="clock" size={18} color={theme.text} />
+              </TouchableOpacity>
+            )}
+            {!lockedNoKey && !note?.vault && (
+              <TouchableOpacity testID="open-print" style={s.iconBtn} onPress={onOpenPrint} hitSlop={4}>
+                <Feather name="printer" size={17} color={theme.text} />
               </TouchableOpacity>
             )}
             {!lockedNoKey && (
@@ -229,7 +306,13 @@ export default function EditorPane({ noteId, onBack, headerExtra }) {
             keyboardShouldPersistTaps="handled"
           >
             {preview ? (
-              <MarkdownView body={body} theme={theme} onToggleChecklist={onToggleChecklist} />
+              <MarkdownView
+                body={body}
+                theme={theme}
+                onToggleChecklist={onToggleChecklist}
+                onEditTable={onEditTable}
+                onEditDrawing={onEditDrawing}
+              />
             ) : (
               <TextInput
                 testID="editor-input"
@@ -266,6 +349,23 @@ export default function EditorPane({ noteId, onBack, headerExtra }) {
       )}
 
       <SaveTemplateModal visible={showSaveTemplate} onClose={() => setShowSaveTemplate(false)} onSave={onSaveAsTemplate} />
+
+      <InsertMenuSheet visible={showInsertMenu} onClose={() => setShowInsertMenu(false)} onPick={onPickInsert} />
+
+      <SnippetPickerSheet
+        visible={showSnippets}
+        onClose={() => setShowSnippets(false)}
+        onInsert={onInsertSnippet}
+        saveText={selectedText || body}
+        hasSelection={!!selectedText}
+      />
+
+      <TableEditorModal
+        visible={!!tableEditor}
+        initialContent={tableEditor?.block?.content}
+        onClose={() => setTableEditor(null)}
+        onSave={onTableSaved}
+      />
 
       <VaultPinModal
         visible={showVaultUnlock}

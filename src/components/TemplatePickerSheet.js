@@ -34,7 +34,12 @@ export default function TemplatePickerSheet({ visible, onClose, onPick }) {
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={s.backdrop} onPress={onClose}>
         <Pressable style={[s.sheet, { paddingBottom: insets.bottom + 16 }]} onPress={() => {}}>
-          <Text style={s.title}>Create from Template</Text>
+          <View style={s.titleRow}>
+            <Text style={s.title}>Create from Template</Text>
+            <TouchableOpacity testID="close-templates" onPress={onClose} hitSlop={10}>
+              <Feather name="x" size={18} color={theme.textMuted} />
+            </TouchableOpacity>
+          </View>
           <FlatList
             data={templates}
             keyExtractor={(t) => t.id}
@@ -70,7 +75,8 @@ const styles = (t) =>
   StyleSheet.create({
     backdrop: { flex: 1, backgroundColor: t.overlay, justifyContent: "flex-end" },
     sheet: { backgroundColor: t.surface, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20 },
-    title: { fontSize: 17, fontWeight: "700", color: t.text, marginBottom: 12 },
+    titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+    title: { fontSize: 17, fontWeight: "700", color: t.text },
     row: { flexDirection: "row", alignItems: "center", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: t.border, gap: 8 },
     rowTitle: { fontSize: 15, fontWeight: "700", color: t.text },
     rowPreview: { fontSize: 12.5, color: t.textMuted, marginTop: 2 },

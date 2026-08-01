@@ -43,6 +43,14 @@ CREATE TABLE IF NOT EXISTS templates (
   created_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS snippets (
+  id TEXT PRIMARY KEY NOT NULL,
+  name TEXT NOT NULL,
+  body TEXT NOT NULL DEFAULT '',
+  lang TEXT,
+  created_at INTEGER NOT NULL
+);
+
 -- A single row (id = 1) holding an AES-encrypted "verifier" string. Unlocking
 -- the Vault means: derive a key from the entered PIN and check it decrypts
 -- this row back to the known plaintext -- see src/lib/crypto.js.

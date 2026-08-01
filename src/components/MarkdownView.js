@@ -1,18 +1,25 @@
-import { Text, TouchableOpacity, View } from "react-native";
+import { useState } from "react";
+import { Image, Text, TouchableOpacity, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
+import * as Haptics from "expo-haptics";
 
-import { parseBlocks, parseInline, tokenizeCodeLine } from "../lib/markdown";
+import { parseBlocks, parseInline } from "../lib/markdown";
+import { tokenizeCodeLines } from "../lib/syntaxHighlight";
+import TableView from "./TableView";
 
 const CODE_TONE = {
   keyword: "#C6588A",
   string: "#3E8F5C",
   number: "#B0762C",
   comment: "#8A8781",
+  literal: "#B0762C",
 };
 
 // Rendered view of a note's markdown: headings, blockquotes, fenced code
-// (lightly syntax-highlighted), and checklists you can tap to toggle.
-export default function MarkdownView({ body, onToggleChecklist, theme, fontSize = 16 }) {
+// (syntax-highlighted, with a copy button), tables, drawings, and
+// checklists you can tap to toggle.
+export default function MarkdownView({ body, onToggleChecklist, onEditTable, onEditDrawing, theme, fontSize = 16 }) {
   const blocks = parseBlocks(body);
   const lineHeight = Math.round(fontSize * 1.5);
 
@@ -62,6 +69,22 @@ export default function MarkdownView({ body, onToggleChecklist, theme, fontSize 
         if (block.type === "code") {
           return <CodeBlock key={idx} lang={block.lang} code={block.code} theme={theme} />;
         }
+        if (block.type === "table") {
+          return (
+            <TableView
+              key={idx}
+              content={block.content}
+              theme={theme}
+              fontSize={fontSize}
+              onEdit={onEditTable ? () => onEditTable(block) : null}
+            />
+          );
+        }
+        if (block.type === "drawing") {
+          return (
+            <DrawingBlock key={idx} content={block.content} theme={theme} onEdit={onEditDrawing ? () => onEditDrawing(block) : null} />
+          );
+        }
         if (block.type === "checklist") {
           return (
             <TouchableOpacity
@@ -100,6 +123,7 @@ export default function MarkdownView({ body, onToggleChecklist, theme, fontSize 
           );
         }
         // paragraph
+        if (!block.text) return null;
         return (
           <Text key={idx} style={{ color: theme.text, fontSize, lineHeight, marginVertical: 2 }}>
             <InlineText segments={parseInline(block.text)} theme={theme} />
@@ -130,23 +154,64 @@ function InlineText({ segments, theme }) {
 }
 
 function CodeBlock({ lang, code, theme }) {
-  const lines = code.split("\n");
+  const [copied, setCopied] = useState(false);
+  const lines = tokenizeCodeLines(code, lang);
+
+  const onCopy = async () => {
+    await Clipboard.setStringAsync(code);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
   return (
-    <View style={{ backgroundColor: theme.codeBg, borderRadius: 10, padding: 12, marginVertical: 6 }}>
-      {!!lang && (
-        <Text style={{ color: theme.textMuted, fontSize: 11, marginBottom: 6, fontFamily: "monospace" }}>
-          {lang}
-        </Text>
-      )}
-      {lines.map((line, i) => (
+    <View style={{ backgroundColor: theme.codeBg, borderRadius: 10, padding: 12, paddingTop: 10, marginVertical: 6 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+        <Text style={{ color: theme.textMuted, fontSize: 11, fontFamily: "monospace" }}>{lang || "code"}</Text>
+        <TouchableOpacity
+          testID="copy-code"
+          onPress={onCopy}
+          hitSlop={8}
+          style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 6, paddingVertical: 3 }}
+        >
+          <Feather name={copied ? "check" : "copy"} size={12} color={copied ? theme.success : theme.textMuted} />
+          <Text style={{ fontSize: 10.5, color: copied ? theme.success : theme.textMuted, fontWeight: "600" }}>
+            {copied ? "Copied" : "Copy"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+      {lines.map((lineTokens, i) => (
         <Text key={i} style={{ fontFamily: "monospace", fontSize: 13, lineHeight: 19, color: theme.text }}>
-          {line === "" ? " " : tokenizeCodeLine(line).map((tok, j) => (
-            <Text key={j} style={{ color: CODE_TONE[tok.kind] }}>
-              {tok.text}
-            </Text>
-          ))}
+          {lineTokens.length === 0
+            ? " "
+            : lineTokens.map((tok, j) => (
+                <Text key={j} style={{ color: CODE_TONE[tok.kind] }}>
+                  {tok.text}
+                </Text>
+              ))}
         </Text>
       ))}
     </View>
+  );
+}
+
+function DrawingBlock({ content, theme, onEdit }) {
+  const uri = content.trim().startsWith("data:") ? content.trim() : `data:image/png;base64,${content.trim()}`;
+  const Wrapper = onEdit ? TouchableOpacity : View;
+  return (
+    <Wrapper
+      testID={onEdit ? "edit-drawing" : undefined}
+      onPress={onEdit}
+      activeOpacity={0.85}
+      style={{ borderRadius: 10, overflow: "hidden", marginVertical: 6, borderWidth: 1, borderColor: theme.border }}
+    >
+      <Image source={{ uri }} style={{ width: "100%", aspectRatio: 1.4, backgroundColor: "#FFFFFF" }} resizeMode="contain" />
+      {!!onEdit && (
+        <View style={{ position: "absolute", right: 8, bottom: 8, flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: theme.surface, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 }}>
+          <Feather name="edit-2" size={12} color={theme.textMuted} />
+          <Text style={{ fontSize: 11, color: theme.textMuted, fontWeight: "600" }}>Edit</Text>
+        </View>
+      )}
+    </Wrapper>
   );
 }

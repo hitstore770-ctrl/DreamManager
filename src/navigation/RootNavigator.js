@@ -6,6 +6,9 @@ import SplitWorkspaceScreen from "../screens/SplitWorkspaceScreen";
 import TagIndexScreen from "../screens/TagIndexScreen";
 import VaultScreen from "../screens/VaultScreen";
 import GraphScreen from "../screens/GraphScreen";
+import WhiteboardScreen from "../screens/WhiteboardScreen";
+import PrintPreviewScreen from "../screens/PrintPreviewScreen";
+import CompileScreen from "../screens/CompileScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -28,6 +31,9 @@ export default function RootNavigator() {
       <Stack.Screen name="TagIndex" component={TagIndexScreen} />
       <Stack.Screen name="Vault" component={VaultScreen} />
       <Stack.Screen name="Graph" component={GraphScreen} />
+      <Stack.Screen name="Whiteboard" component={WhiteboardScreen} options={{ animation: "slide_from_bottom" }} />
+      <Stack.Screen name="Print" component={PrintPreviewScreen} />
+      <Stack.Screen name="Compile" component={CompileScreen} />
     </Stack.Navigator>
   );
 }
