@@ -10,6 +10,7 @@ import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 
 import { ThemeProvider, useTheme } from "./src/theme/ThemeContext";
+import { VaultProvider } from "./src/vault/VaultContext";
 import { DATABASE_NAME, migrate } from "./src/db/schema";
 import RootNavigator from "./src/navigation/RootNavigator";
 
@@ -60,7 +61,9 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <Shell />
+          <VaultProvider>
+            <Shell />
+          </VaultProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

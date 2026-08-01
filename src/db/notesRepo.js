@@ -19,7 +19,7 @@ export function deriveTitle(body) {
 }
 
 function mapNoteRow(row) {
-  return { ...row, pinned: !!row.pinned, tags: [] };
+  return { ...row, pinned: !!row.pinned, vault: !!row.vault, tags: [] };
 }
 
 async function attachTags(db, notes) {
@@ -49,8 +49,11 @@ async function syncTags(db, noteId, tagPaths) {
   await db.runAsync(`DELETE FROM tags WHERE id NOT IN (SELECT DISTINCT tag_id FROM note_tags)`);
 }
 
+// Vault notes are a separate category (see src/screens/VaultScreen.js) --
+// their body is ciphertext and their title is a placeholder, so they never
+// belong in the regular list, search, or tag results.
 export async function listNotes(db, { query = "", tagPath = null } = {}) {
-  const clauses = [];
+  const clauses = ["n.vault = 0"];
   const params = [];
   let sql = `SELECT DISTINCT n.* FROM notes n`;
   if (tagPath) {

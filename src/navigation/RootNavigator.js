@@ -4,6 +4,8 @@ import NotesListScreen from "../screens/NotesListScreen";
 import EditorScreen from "../screens/EditorScreen";
 import SplitWorkspaceScreen from "../screens/SplitWorkspaceScreen";
 import TagIndexScreen from "../screens/TagIndexScreen";
+import VaultScreen from "../screens/VaultScreen";
+import GraphScreen from "../screens/GraphScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -24,6 +26,8 @@ export default function RootNavigator() {
       <Stack.Screen name="Editor" component={EditorScreen} />
       <Stack.Screen name="Split" component={SplitWorkspaceScreen} />
       <Stack.Screen name="TagIndex" component={TagIndexScreen} />
+      <Stack.Screen name="Vault" component={VaultScreen} />
+      <Stack.Screen name="Graph" component={GraphScreen} />
     </Stack.Navigator>
   );
 }
