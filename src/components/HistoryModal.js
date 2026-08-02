@@ -5,7 +5,7 @@ import Slider from "@react-native-community/slider";
 import { useSQLiteContext } from "expo-sqlite";
 import { Feather } from "@expo/vector-icons";
 
-import { useTheme } from "../theme/ThemeContext";
+import { RADIUS, useTheme } from "../theme/ThemeContext";
 import { listVersions, restoreVersion } from "../db/notesRepo";
 import MarkdownView from "./MarkdownView";
 
@@ -101,7 +101,7 @@ export default function HistoryModal({ visible, onClose, noteId, currentTitle, c
 const styles = (t) =>
   StyleSheet.create({
     backdrop: { flex: 1, backgroundColor: t.overlay, justifyContent: "flex-end" },
-    card: { backgroundColor: t.surface, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 28, maxHeight: "80%" },
+    card: { backgroundColor: t.surface, borderTopLeftRadius: RADIUS.lg, borderTopRightRadius: RADIUS.lg, padding: 20, paddingBottom: 28, maxHeight: "80%" },
     titleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
     title: { fontSize: 17, fontWeight: "700", color: t.text },
     meta: { fontSize: 12.5, color: t.textMuted, marginBottom: 4 },

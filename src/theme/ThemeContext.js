@@ -7,7 +7,7 @@ import { Appearance } from "react-native";
 
 // A small, shared corner-radius scale so cards/sheets/controls read as one
 // consistent system instead of every screen picking its own number.
-export const RADIUS = { sm: 10, md: 14, lg: 18 };
+export const RADIUS = { sm: 10, md: 14, lg: 16 };
 
 const LIGHT = {
   scheme: "light",
@@ -37,28 +37,31 @@ const LIGHT = {
 
 const DARK = {
   scheme: "dark",
-  bg: "#121212",
-  surface: "#1B1B1A",
-  surfaceAlt: "#242423",
-  border: "#2E2E2C",
-  text: "#EDEBE6",
-  textMuted: "#8E8B85",
-  accent: "#5FA98E",
+  // A sophisticated deep slate, not pure black -- #000 crushes shadows and
+  // reads as "screen off," not "premium." Surface/surfaceAlt step up in
+  // lightness from there so cards still have real tonal separation.
+  bg: "#1E1E24",
+  surface: "#27272F",
+  surfaceAlt: "#2E2E38",
+  border: "#38384380",
+  text: "#F1F0F4",
+  textMuted: "#9E9DAA",
+  accent: "#6BBBA0",
   onAccent: "#0B0B0A",
   danger: "#E5695A",
   success: "#57C285",
-  codeBg: "#1F211F",
-  quoteBorder: "#3A3A38",
-  overlay: "rgba(0, 0, 0, 0.55)",
-  // Shadows barely read against a dark background, so dark mode gets its
-  // depth from flat surface-tone contrast (surface vs. surfaceAlt vs. bg)
-  // instead -- a no-op shadow here, deliberately.
+  codeBg: "#26262F",
+  quoteBorder: "#43434F",
+  overlay: "rgba(0, 0, 0, 0.6)",
+  // Cards get real depth here too now, not just flat tone contrast --
+  // still subtle (low opacity, tight radius) so it reads as a soft lift
+  // rather than a harsh drop shadow against the dark surface.
   cardShadow: {
     shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    elevation: 0,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    elevation: 6,
   },
 };
 

@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSQLiteContext } from "expo-sqlite";
 import { Feather } from "@expo/vector-icons";
 
-import { useTheme } from "../theme/ThemeContext";
+import { RADIUS, useTheme } from "../theme/ThemeContext";
 import { createSnippet, deleteSnippet, listSnippets } from "../db/snippetsRepo";
 import SaveSnippetModal from "./SaveSnippetModal";
 
@@ -99,7 +99,7 @@ export default function SnippetPickerSheet({ visible, onClose, onInsert, saveTex
 const styles = (t) =>
   StyleSheet.create({
     backdrop: { flex: 1, backgroundColor: t.overlay, justifyContent: "flex-end" },
-    sheet: { backgroundColor: t.surface, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20 },
+    sheet: { backgroundColor: t.surface, borderTopLeftRadius: RADIUS.lg, borderTopRightRadius: RADIUS.lg, padding: 20 },
     titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
     title: { fontSize: 17, fontWeight: "700", color: t.text },
     saveRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, marginBottom: 6 },

@@ -3,7 +3,7 @@ import { Modal, Pressable, StyleSheet, TouchableOpacity, View } from "react-nati
 import AppText from "./AppText";
 import AppTextInput from "./AppTextInput";
 
-import { useTheme } from "../theme/ThemeContext";
+import { RADIUS, useTheme } from "../theme/ThemeContext";
 
 // Names a reusable chunk of text (usually the current selection) before it's
 // saved to the Snippet Library.
@@ -54,7 +54,7 @@ export default function SaveSnippetModal({ visible, onClose, preview, onSave }) 
 const styles = (t) =>
   StyleSheet.create({
     backdrop: { flex: 1, backgroundColor: t.overlay, alignItems: "center", justifyContent: "center", padding: 24 },
-    card: { width: "100%", maxWidth: 340, backgroundColor: t.surface, borderRadius: 18, padding: 20 },
+    card: { width: "100%", maxWidth: 340, backgroundColor: t.surface, borderRadius: RADIUS.lg, padding: 20, ...t.cardShadow },
     title: { fontSize: 16, fontWeight: "700", color: t.text, marginBottom: 10 },
     preview: {
       fontSize: 12,

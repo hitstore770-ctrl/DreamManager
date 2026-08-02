@@ -41,7 +41,7 @@ export function defaultLetterSpacing(fontSize) {
 }
 
 export function defaultLineHeight(fontSize) {
-  return Math.round(fontSize * 1.3);
+  return Math.round(fontSize * 1.5);
 }
 
 // Walks a (possibly nested/array) RN style prop and returns the last

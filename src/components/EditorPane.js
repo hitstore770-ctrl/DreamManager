@@ -26,6 +26,8 @@ import VaultPinModal from "./VaultPinModal";
 import InsertMenuSheet from "./InsertMenuSheet";
 import SnippetPickerSheet from "./SnippetPickerSheet";
 import TableEditorModal from "./TableEditorModal";
+import RichEditorSurface from "./RichEditorSurface";
+import RichToolbar from "./RichToolbar";
 
 const ZEN_LINE_HEIGHT = 25;
 
@@ -64,6 +66,17 @@ export default function EditorPane({ noteId, onBack, headerExtra, flushRef }) {
   const [tableEditor, setTableEditor] = useState(null); // { block } | { block: null } for a fresh insert
   const [viewportHeight, setViewportHeight] = useState(0);
   const scrollRef = useRef(null);
+  const richRef = useRef(null);
+  // Bumped whenever `body` changes from *outside* the rich editor's own DOM
+  // (a table/drawing edit made from Preview, a Time Machine restore) --
+  // combined with `noteId` as the surface's `key`, this forces it to
+  // remount and re-seed from the latest `body` instead of going stale.
+  const [reseedKey, setReseedKey] = useState(0);
+  const prevPreview = useRef(false);
+  useEffect(() => {
+    if (prevPreview.current && !preview) setReseedKey((k) => k + 1);
+    prevPreview.current = preview;
+  }, [preview]);
 
   useEffect(() => {
     let alive = true;
@@ -136,9 +149,17 @@ export default function EditorPane({ noteId, onBack, headerExtra, flushRef }) {
     setZen(next);
   };
 
+  // Sets `body` from somewhere other than the rich editor's own typing (a
+  // Time Machine restore, a table/drawing edit saved from Preview) and
+  // forces the rich editor to resync from it on next mount.
+  const applyExternalBody = (newBody) => {
+    setBody(newBody);
+    setReseedKey((k) => k + 1);
+  };
+
   const onRestored = (restored) => {
     setNote(restored);
-    setBody(restored.body);
+    applyExternalBody(restored.body);
     setShowHistory(false);
   };
 
@@ -161,22 +182,27 @@ export default function EditorPane({ noteId, onBack, headerExtra, flushRef }) {
     setShowSaveTemplate(false);
   };
 
-  // Inserts `text` at the current cursor (replacing the selection, if any)
-  // and leaves the caret right after it.
-  const insertAtCursor = (text) => {
-    const start = Math.min(selection.start, body.length);
-    const end = Math.min(Math.max(selection.end, start), body.length);
-    const next = `${body.slice(0, start)}${text}${body.slice(end)}`;
-    setBody(next);
-    const caret = start + text.length;
-    setSelection({ start: caret, end: caret });
+  // The rich editor owns the caret now (it's a DOM Range inside its own
+  // WebView/div, not a plain-text offset), so inserts go through its
+  // imperative ref. Only Zen mode still tracks a plain-text `selection`,
+  // and its Insert-menu entry point is hidden while zen — so whenever this
+  // fires, the rich editor is guaranteed to be the mounted surface, unless
+  // the user is sitting in Preview (ref unmounted, `richRef.current` null),
+  // in which case fall back to appending at the end of the note.
+  const insertFragment = (md) => {
+    if (richRef.current) {
+      richRef.current.insertMarkdownAtCursor(md);
+    } else {
+      const current = bodyRef.current || "";
+      applyExternalBody(`${current}${current && !current.endsWith("\n") ? "\n" : ""}${md}`);
+    }
   };
 
   const selectedText = selection.end > selection.start ? body.slice(selection.start, selection.end) : "";
 
   const onInsertSnippet = (snippet) => {
     setShowSnippets(false);
-    insertAtCursor(snippet.body);
+    insertFragment(snippet.body);
   };
 
   const onPickInsert = (key) => {
@@ -187,7 +213,7 @@ export default function EditorPane({ noteId, onBack, headerExtra, flushRef }) {
       setTableEditor({ block: null });
     } else if (key === "drawing") {
       navigation.navigate("Whiteboard", {
-        onSave: (base64) => insertAtCursor(`\`\`\`drawing\n${base64}\n\`\`\`\n`),
+        onSave: (base64) => insertFragment(`\`\`\`drawing\n${base64}\n\`\`\`\n`),
       });
     }
   };
@@ -197,9 +223,9 @@ export default function EditorPane({ noteId, onBack, headerExtra, flushRef }) {
   const onTableSaved = (content) => {
     const editing = tableEditor?.block;
     if (editing) {
-      setBody((b) => replaceFence(b, editing.startLine, editing.endLine, "table", content));
+      applyExternalBody(replaceFence(bodyRef.current, editing.startLine, editing.endLine, "table", content));
     } else {
-      insertAtCursor(`\`\`\`table\n${content}\n\`\`\`\n`);
+      insertFragment(`\`\`\`table\n${content}\n\`\`\`\n`);
     }
     setTableEditor(null);
   };
@@ -207,7 +233,7 @@ export default function EditorPane({ noteId, onBack, headerExtra, flushRef }) {
   const onEditDrawing = (block) => {
     navigation.navigate("Whiteboard", {
       initialContent: block.content,
-      onSave: (base64) => setBody((b) => replaceFence(b, block.startLine, block.endLine, "drawing", base64)),
+      onSave: (base64) => applyExternalBody(replaceFence(bodyRef.current, block.startLine, block.endLine, "drawing", base64)),
     });
   };
 
@@ -325,36 +351,54 @@ export default function EditorPane({ noteId, onBack, headerExtra, flushRef }) {
           </View>
         ) : boardMode && boardDetected ? (
           <KanbanBoard raw={body} onChange={setBody} theme={theme} />
-        ) : (
+        ) : zen ? (
+          // Zen/typewriter mode stays a plain text surface on purpose --
+          // it's meant to be minimal, and its cursor-centering scroll math
+          // needs a plain-text caret offset, not a DOM Range.
           <ScrollView
             ref={scrollRef}
             style={{ flex: 1 }}
             onLayout={(e) => setViewportHeight(e.nativeEvent.layout.height)}
-            contentContainerStyle={{ padding: zen ? 36 : 18, flexGrow: 1 }}
+            contentContainerStyle={{ padding: 36, flexGrow: 1 }}
             keyboardShouldPersistTaps="handled"
           >
-            {preview ? (
-              <MarkdownView
-                body={body}
-                theme={theme}
-                onToggleChecklist={onToggleChecklist}
-                onEditTable={onEditTable}
-                onEditDrawing={onEditDrawing}
-              />
-            ) : (
-              <AppTextInput
-                testID="editor-input"
-                style={[s.input, zen && s.zenInput]}
-                value={body}
-                onChangeText={setBody}
-                onSelectionChange={onSelectionChange}
-                placeholder="Start writing... use #tags, **bold**, - [ ] checklists, > quotes, ``` code```"
-                placeholderTextColor={theme.textMuted}
-                multiline
-                textAlignVertical="top"
-              />
-            )}
+            <AppTextInput
+              testID="editor-input"
+              style={[s.input, s.zenInput]}
+              value={body}
+              onChangeText={setBody}
+              onSelectionChange={onSelectionChange}
+              placeholder="Start writing..."
+              placeholderTextColor={theme.textMuted}
+              multiline
+              textAlignVertical="top"
+            />
           </ScrollView>
+        ) : preview ? (
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+            <MarkdownView
+              body={body}
+              theme={theme}
+              onToggleChecklist={onToggleChecklist}
+              onEditTable={onEditTable}
+              onEditDrawing={onEditDrawing}
+            />
+          </ScrollView>
+        ) : (
+          <>
+            <View style={{ flex: 1 }}>
+              <RichEditorSurface
+                key={`${noteId}:${reseedKey}`}
+                ref={richRef}
+                testID="editor-input"
+                initialMarkdown={body}
+                onChangeMarkdown={setBody}
+                theme={theme}
+                placeholder="Start writing…"
+              />
+            </View>
+            <RichToolbar surfaceRef={richRef} theme={theme} />
+          </>
         )}
       </KeyboardAvoidingView>
 

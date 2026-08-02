@@ -3,7 +3,7 @@ import { Modal, Pressable, StyleSheet, TouchableOpacity, View } from "react-nati
 import AppText from "./AppText";
 import AppTextInput from "./AppTextInput";
 
-import { useTheme } from "../theme/ThemeContext";
+import { RADIUS, useTheme } from "../theme/ThemeContext";
 
 // "Save as Template": names the current note's raw text (variables and
 // all -- {{CURRENT_DATE}} stays literal in storage, and only gets
@@ -54,7 +54,7 @@ export default function SaveTemplateModal({ visible, onClose, onSave }) {
 const styles = (t) =>
   StyleSheet.create({
     backdrop: { flex: 1, backgroundColor: t.overlay, alignItems: "center", justifyContent: "center", padding: 24 },
-    card: { width: "100%", maxWidth: 340, backgroundColor: t.surface, borderRadius: 18, padding: 20 },
+    card: { width: "100%", maxWidth: 340, backgroundColor: t.surface, borderRadius: RADIUS.lg, padding: 20, ...t.cardShadow },
     title: { fontSize: 16, fontWeight: "700", color: t.text, marginBottom: 12 },
     input: { backgroundColor: t.surfaceAlt, borderRadius: 10, paddingHorizontal: 14, height: 46, color: t.text, fontSize: 15, marginBottom: 10 },
     hint: { fontSize: 12, color: t.textMuted, lineHeight: 17, marginBottom: 14 },

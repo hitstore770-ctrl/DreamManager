@@ -5,7 +5,7 @@ import AppTextInput from "./AppTextInput";
 import { useSQLiteContext } from "expo-sqlite";
 import { Feather } from "@expo/vector-icons";
 
-import { useTheme } from "../theme/ThemeContext";
+import { RADIUS, useTheme } from "../theme/ThemeContext";
 import { getVerifier, setVerifier } from "../db/vaultRepo";
 import { decryptText, deriveVaultKey, VAULT_VERIFIER_PLAINTEXT } from "../lib/crypto";
 
@@ -133,7 +133,7 @@ export default function VaultPinModal({ visible, onClose, onUnlocked }) {
 const styles = (t) =>
   StyleSheet.create({
     backdrop: { flex: 1, backgroundColor: t.overlay, alignItems: "center", justifyContent: "center", padding: 24 },
-    card: { width: "100%", maxWidth: 340, backgroundColor: t.surface, borderRadius: 18, padding: 20 },
+    card: { width: "100%", maxWidth: 340, backgroundColor: t.surface, borderRadius: RADIUS.lg, padding: 20, ...t.cardShadow },
     titleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
     title: { fontSize: 16, fontWeight: "700", color: t.text },
     hint: { fontSize: 12.5, color: t.textMuted, lineHeight: 18, marginBottom: 14 },

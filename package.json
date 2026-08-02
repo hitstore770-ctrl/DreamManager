@@ -35,7 +35,8 @@
     "react-native-safe-area-context": "^5.8.0",
     "react-native-screens": "^4.26.2",
     "react-native-svg": "15.15.5",
-    "react-native-web": "^0.21.2"
+    "react-native-web": "^0.21.2",
+    "react-native-webview": "^13.17.0"
   },
   "devDependencies": {
     "babel-preset-expo": "^57.0.3"

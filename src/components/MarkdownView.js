@@ -51,10 +51,21 @@ export default function MarkdownView({ body, onToggleChecklist, onEditTable, onE
                 fontSize: headingFontSize(block.level, fontSize),
                 marginTop: block.level <= 2 ? 16 : 12,
                 marginBottom: 4,
+                textAlign: block.align || "left",
               }}
             >
               {block.text}
             </AppText>
+          );
+        }
+        if (block.type === "bullet") {
+          return (
+            <View key={idx} style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, paddingVertical: 2 }}>
+              <AppText style={{ color: theme.textMuted, fontSize, lineHeight }}>{"•"}</AppText>
+              <AppText style={{ flex: 1, color: theme.text, fontSize, lineHeight, textAlign: block.align || "left" }}>
+                <InlineText segments={parseInline(block.text)} theme={theme} />
+              </AppText>
+            </View>
           );
         }
         if (block.type === "quote") {
@@ -133,7 +144,7 @@ export default function MarkdownView({ body, onToggleChecklist, onEditTable, onE
         // paragraph
         if (!block.text) return null;
         return (
-          <AppText key={idx} style={{ color: theme.text, fontSize, lineHeight, marginVertical: 2 }}>
+          <AppText key={idx} style={{ color: theme.text, fontSize, lineHeight, marginVertical: 2, textAlign: block.align || "left" }}>
             <InlineText segments={parseInline(block.text)} theme={theme} />
           </AppText>
         );
@@ -149,6 +160,7 @@ function InlineText({ segments, theme }) {
       style={[
         seg.bold && { fontWeight: "700" },
         seg.italic && { fontStyle: "italic" },
+        seg.strike && { textDecorationLine: "line-through" },
         seg.code && {
           fontFamily: "monospace",
           backgroundColor: theme.codeBg,
