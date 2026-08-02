@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
+import { ScrollView, StyleSheet, TouchableOpacity, View, useWindowDimensions } from "react-native";
+import AppText from "../components/AppText";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
@@ -75,32 +76,32 @@ export default function PrintPreviewScreen({ navigation, route }) {
         <TouchableOpacity testID="print-back" style={s.iconBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Feather name="chevron-left" size={22} color={theme.text} />
         </TouchableOpacity>
-        <Text style={s.title}>Print Preview</Text>
+        <AppText style={s.title}>Print Preview</AppText>
         <View style={{ flex: 1 }} />
         <TouchableOpacity testID="paper-a5" style={[s.sizeBtn, paperSize === "A5" && s.sizeBtnActive]} onPress={() => setPaperSize("A5")}>
-          <Text style={[s.sizeBtnText, paperSize === "A5" && s.sizeBtnTextActive]}>A5</Text>
+          <AppText style={[s.sizeBtnText, paperSize === "A5" && s.sizeBtnTextActive]}>A5</AppText>
         </TouchableOpacity>
         <TouchableOpacity testID="paper-a4" style={[s.sizeBtn, paperSize === "A4" && s.sizeBtnActive]} onPress={() => setPaperSize("A4")}>
-          <Text style={[s.sizeBtnText, paperSize === "A4" && s.sizeBtnTextActive]}>A4</Text>
+          <AppText style={[s.sizeBtnText, paperSize === "A4" && s.sizeBtnTextActive]}>A4</AppText>
         </TouchableOpacity>
       </View>
 
-      <Text style={s.pageCount}>
+      <AppText style={s.pageCount}>
         {pages.length} page{pages.length === 1 ? "" : "s"} at {paperSize}
-      </Text>
+      </AppText>
 
       <ScrollView contentContainerStyle={{ padding: 20, alignItems: "center", gap: 20, paddingBottom: insets.bottom + 110 }}>
         {pages.map((blocks, i) => (
           <View key={i} style={[s.page, { width: frameWidth, height: frameHeight }]}>
             <View style={s.pageHeader}>
-              <Text style={s.pageHeaderText} numberOfLines={1}>
+              <AppText style={s.pageHeaderText} numberOfLines={1}>
                 {title}
-              </Text>
-              <Text style={s.pageHeaderText}>Second Brain</Text>
+              </AppText>
+              <AppText style={s.pageHeaderText}>Second Brain</AppText>
             </View>
             <View style={{ flex: 1, overflow: "hidden" }}>
               {blocks.map((block, bi) => (
-                <Text
+                <AppText
                   key={bi}
                   numberOfLines={block.type === "code" ? 6 : 3}
                   style={[
@@ -110,13 +111,13 @@ export default function PrintPreviewScreen({ navigation, route }) {
                   ]}
                 >
                   {blockPreviewText(block)}
-                </Text>
+                </AppText>
               ))}
             </View>
             <View style={s.pageFooter}>
-              <Text style={s.pageFooterText}>
+              <AppText style={s.pageFooterText}>
                 Page {i + 1} of {pages.length}
-              </Text>
+              </AppText>
             </View>
           </View>
         ))}
@@ -130,7 +131,7 @@ export default function PrintPreviewScreen({ navigation, route }) {
         activeOpacity={0.85}
       >
         <Feather name="download" size={17} color={theme.onAccent} />
-        <Text style={s.exportBtnText}>{exporting ? "Preparing PDF…" : "Export PDF"}</Text>
+        <AppText style={s.exportBtnText}>{exporting ? "Preparing PDF…" : "Export PDF"}</AppText>
       </TouchableOpacity>
     </SwipeBack>
   );

@@ -5,6 +5,7 @@
 import { uid, deriveTitle } from "./notesRepo";
 import { extractTags, tagRoot } from "../lib/tags";
 import { encryptText, VAULT_VERIFIER_PLAINTEXT } from "../lib/crypto";
+import { serialTransaction } from "./txQueue";
 
 const LOCKED_TITLE = "🔒 Locked note";
 
@@ -43,7 +44,7 @@ export async function createVaultNote(db, keyBytes) {
 // into the (plaintext) tag index either.
 export async function saveVaultNoteBody(db, id, plainBody, keyBytes) {
   const { cipherHex, ivHex, mac } = await encryptText(plainBody, keyBytes);
-  await db.withTransactionAsync(async () => {
+  await serialTransaction(db, async () => {
     await db.runAsync(`UPDATE notes SET title = ?, body = ?, iv = ?, mac = ?, updated_at = ? WHERE id = ?`, [
       LOCKED_TITLE,
       cipherHex,
@@ -61,7 +62,7 @@ export async function saveVaultNoteBody(db, id, plainBody, keyBytes) {
 export async function moveOutOfVault(db, id, plainBody) {
   const title = deriveTitle(plainBody);
   const now = Date.now();
-  await db.withTransactionAsync(async () => {
+  await serialTransaction(db, async () => {
     await db.runAsync(`UPDATE notes SET title = ?, body = ?, iv = NULL, mac = NULL, vault = 0, updated_at = ? WHERE id = ?`, [
       title,
       plainBody,
@@ -81,7 +82,7 @@ export async function moveOutOfVault(db, id, plainBody) {
 // body, scrubs the plaintext title and any tag links.
 export async function moveIntoVault(db, id, plainBody, keyBytes) {
   const { cipherHex, ivHex, mac } = await encryptText(plainBody, keyBytes);
-  await db.withTransactionAsync(async () => {
+  await serialTransaction(db, async () => {
     await db.runAsync(`UPDATE notes SET title = ?, body = ?, iv = ?, mac = ?, vault = 1, updated_at = ? WHERE id = ?`, [
       LOCKED_TITLE,
       cipherHex,

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import * as Haptics from "expo-haptics";
 import { deriveTitle, snapshotVersion } from "../db/notesRepo";
 
 // The Time Machine's silent background hook: every `intervalMs` (default
@@ -20,6 +21,10 @@ export function useAutoVersion(db, noteId, bodyRef, ready, intervalMs = 60000) {
       const current = bodyRef.current;
       if (lastSnapshotRef.current !== null && current !== lastSnapshotRef.current) {
         snapshotVersion(db, noteId, deriveTitle(current), current);
+        // The one haptic in the app that isn't a direct response to a tap --
+        // selectionAsync is the subtlest tick expo-haptics has, fitting for
+        // a background confirmation that fires without the user asking.
+        Haptics.selectionAsync().catch(() => {});
       }
       lastSnapshotRef.current = current;
     }, intervalMs);

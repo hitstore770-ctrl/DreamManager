@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Image, Text, TouchableOpacity, View } from "react-native";
+import { Image, TouchableOpacity, View } from "react-native";
+import AppText from "./AppText";
 import { Feather } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
@@ -7,6 +8,13 @@ import * as Haptics from "expo-haptics";
 import { parseBlocks, parseInline } from "../lib/markdown";
 import { tokenizeCodeLines } from "../lib/syntaxHighlight";
 import TableView from "./TableView";
+
+// Deliberately non-linear: H1 vs. H2 needs to read as a real step down, not
+// a 2px nudge, for headings to actually carry hierarchy at a glance.
+const HEADING_SCALE = [1.75, 1.35, 1.2, 1.1, 1.0, 0.95];
+function headingFontSize(level, baseSize) {
+  return Math.round(baseSize * (HEADING_SCALE[level - 1] ?? 1));
+}
 
 const CODE_TONE = {
   keyword: "#C6588A",
@@ -24,7 +32,7 @@ export default function MarkdownView({ body, onToggleChecklist, onEditTable, onE
   const lineHeight = Math.round(fontSize * 1.5);
 
   if (!body?.trim()) {
-    return <Text style={{ color: theme.textMuted, fontSize, lineHeight }}>Nothing here yet.</Text>;
+    return <AppText style={{ color: theme.textMuted, fontSize, lineHeight }}>Nothing here yet.</AppText>;
   }
 
   return (
@@ -35,18 +43,18 @@ export default function MarkdownView({ body, onToggleChecklist, onEditTable, onE
         }
         if (block.type === "heading") {
           return (
-            <Text
+            <AppText
               key={idx}
               style={{
                 color: theme.text,
                 fontWeight: "700",
-                fontSize: fontSize + Math.max(0, 6 - block.level) * 2,
-                marginTop: 12,
+                fontSize: headingFontSize(block.level, fontSize),
+                marginTop: block.level <= 2 ? 16 : 12,
                 marginBottom: 4,
               }}
             >
               {block.text}
-            </Text>
+            </AppText>
           );
         }
         if (block.type === "quote") {
@@ -60,9 +68,9 @@ export default function MarkdownView({ body, onToggleChecklist, onEditTable, onE
                 marginVertical: 6,
               }}
             >
-              <Text style={{ color: theme.textMuted, fontStyle: "italic", fontSize, lineHeight }}>
+              <AppText style={{ color: theme.textMuted, fontStyle: "italic", fontSize, lineHeight }}>
                 <InlineText segments={parseInline(block.text)} theme={theme} />
-              </Text>
+              </AppText>
             </View>
           );
         }
@@ -108,7 +116,7 @@ export default function MarkdownView({ body, onToggleChecklist, onEditTable, onE
               >
                 {block.checked && <Feather name="check" size={13} color={theme.onAccent} />}
               </View>
-              <Text
+              <AppText
                 style={{
                   flex: 1,
                   color: block.checked ? theme.textMuted : theme.text,
@@ -118,16 +126,16 @@ export default function MarkdownView({ body, onToggleChecklist, onEditTable, onE
                 }}
               >
                 <InlineText segments={parseInline(block.text)} theme={theme} />
-              </Text>
+              </AppText>
             </TouchableOpacity>
           );
         }
         // paragraph
         if (!block.text) return null;
         return (
-          <Text key={idx} style={{ color: theme.text, fontSize, lineHeight, marginVertical: 2 }}>
+          <AppText key={idx} style={{ color: theme.text, fontSize, lineHeight, marginVertical: 2 }}>
             <InlineText segments={parseInline(block.text)} theme={theme} />
-          </Text>
+          </AppText>
         );
       })}
     </View>
@@ -136,7 +144,7 @@ export default function MarkdownView({ body, onToggleChecklist, onEditTable, onE
 
 function InlineText({ segments, theme }) {
   return segments.map((seg, i) => (
-    <Text
+    <AppText
       key={i}
       style={[
         seg.bold && { fontWeight: "700" },
@@ -149,7 +157,7 @@ function InlineText({ segments, theme }) {
       ]}
     >
       {seg.text}
-    </Text>
+    </AppText>
   ));
 }
 
@@ -167,7 +175,7 @@ function CodeBlock({ lang, code, theme }) {
   return (
     <View style={{ backgroundColor: theme.codeBg, borderRadius: 10, padding: 12, paddingTop: 10, marginVertical: 6 }}>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-        <Text style={{ color: theme.textMuted, fontSize: 11, fontFamily: "monospace" }}>{lang || "code"}</Text>
+        <AppText style={{ color: theme.textMuted, fontSize: 11, fontFamily: "monospace" }}>{lang || "code"}</AppText>
         <TouchableOpacity
           testID="copy-code"
           onPress={onCopy}
@@ -175,21 +183,21 @@ function CodeBlock({ lang, code, theme }) {
           style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 6, paddingVertical: 3 }}
         >
           <Feather name={copied ? "check" : "copy"} size={12} color={copied ? theme.success : theme.textMuted} />
-          <Text style={{ fontSize: 10.5, color: copied ? theme.success : theme.textMuted, fontWeight: "600" }}>
+          <AppText style={{ fontSize: 10.5, color: copied ? theme.success : theme.textMuted, fontWeight: "600" }}>
             {copied ? "Copied" : "Copy"}
-          </Text>
+          </AppText>
         </TouchableOpacity>
       </View>
       {lines.map((lineTokens, i) => (
-        <Text key={i} style={{ fontFamily: "monospace", fontSize: 13, lineHeight: 19, color: theme.text }}>
+        <AppText key={i} style={{ fontFamily: "monospace", fontSize: 13, lineHeight: 19, color: theme.text }}>
           {lineTokens.length === 0
             ? " "
             : lineTokens.map((tok, j) => (
-                <Text key={j} style={{ color: CODE_TONE[tok.kind] }}>
+                <AppText key={j} style={{ color: CODE_TONE[tok.kind] }}>
                   {tok.text}
-                </Text>
+                </AppText>
               ))}
-        </Text>
+        </AppText>
       ))}
     </View>
   );
@@ -203,13 +211,13 @@ function DrawingBlock({ content, theme, onEdit }) {
       testID={onEdit ? "edit-drawing" : undefined}
       onPress={onEdit}
       activeOpacity={0.85}
-      style={{ borderRadius: 10, overflow: "hidden", marginVertical: 6, borderWidth: 1, borderColor: theme.border }}
+      style={{ borderRadius: 12, overflow: "hidden", marginVertical: 6, ...theme.cardShadow }}
     >
       <Image source={{ uri }} style={{ width: "100%", aspectRatio: 1.4, backgroundColor: "#FFFFFF" }} resizeMode="contain" />
       {!!onEdit && (
         <View style={{ position: "absolute", right: 8, bottom: 8, flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: theme.surface, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 }}>
           <Feather name="edit-2" size={12} color={theme.textMuted} />
-          <Text style={{ fontSize: 11, color: theme.textMuted, fontWeight: "600" }}>Edit</Text>
+          <AppText style={{ fontSize: 11, color: theme.textMuted, fontWeight: "600" }}>Edit</AppText>
         </View>
       )}
     </Wrapper>

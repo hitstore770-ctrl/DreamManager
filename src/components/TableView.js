@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import AppText from "./AppText";
 import { Feather } from "@expo/vector-icons";
 
 import { columnStats, formatNumber, parseTable, sortedRows } from "../lib/table";
@@ -39,9 +40,9 @@ export default function TableView({ content, theme, fontSize = 16, onEdit }) {
           <View style={s.headerRow}>
             {table.columns.map((col, i) => (
               <TouchableOpacity key={i} style={s.cell} onPress={() => toggleSort(i)} activeOpacity={0.7}>
-                <Text style={s.headerText} numberOfLines={1}>
+                <AppText style={s.headerText} numberOfLines={1}>
                   {col.name}
-                </Text>
+                </AppText>
                 {sortCol === i && <Feather name={sortDir === "asc" ? "arrow-up" : "arrow-down"} size={11} color={theme.accent} />}
               </TouchableOpacity>
             ))}
@@ -55,9 +56,9 @@ export default function TableView({ content, theme, fontSize = 16, onEdit }) {
                       {val && <Feather name="check" size={11} color={theme.onAccent} />}
                     </View>
                   ) : (
-                    <Text style={s.cellText} numberOfLines={2}>
+                    <AppText style={s.cellText} numberOfLines={2}>
                       {String(val ?? "")}
-                    </Text>
+                    </AppText>
                   )}
                 </View>
               ))}
@@ -70,11 +71,11 @@ export default function TableView({ content, theme, fontSize = 16, onEdit }) {
                 return (
                   <View key={i} style={s.cell}>
                     {stats ? (
-                      <Text style={s.statsText}>
+                      <AppText style={s.statsText}>
                         Σ {formatNumber(stats.sum)} · x̄ {formatNumber(stats.avg)}
-                      </Text>
+                      </AppText>
                     ) : i === 0 ? (
-                      <Text style={s.statsLabel}>Totals</Text>
+                      <AppText style={s.statsLabel}>Totals</AppText>
                     ) : null}
                   </View>
                 );
@@ -86,7 +87,7 @@ export default function TableView({ content, theme, fontSize = 16, onEdit }) {
       {!!onEdit && (
         <TouchableOpacity testID="edit-table" style={s.editBtn} onPress={onEdit} activeOpacity={0.8}>
           <Feather name="edit-2" size={12} color={theme.textMuted} />
-          <Text style={s.editText}>Edit table</Text>
+          <AppText style={s.editText}>Edit table</AppText>
         </TouchableOpacity>
       )}
     </View>
@@ -95,9 +96,9 @@ export default function TableView({ content, theme, fontSize = 16, onEdit }) {
 
 const styles = (t, fontSize) =>
   StyleSheet.create({
-    wrap: { marginVertical: 8, borderRadius: 10, overflow: "hidden", borderWidth: 1, borderColor: t.border },
+    wrap: { marginVertical: 8, borderRadius: 14, overflow: "hidden", ...t.cardShadow },
     headerRow: { flexDirection: "row", backgroundColor: t.surfaceAlt },
-    row: { flexDirection: "row", borderTopWidth: 1, borderTopColor: t.border },
+    row: { flexDirection: "row", backgroundColor: t.surface, borderTopWidth: 1, borderTopColor: t.border },
     statsRow: { backgroundColor: t.surfaceAlt },
     cell: { width: CELL_WIDTH, paddingHorizontal: 10, paddingVertical: 8, flexDirection: "row", alignItems: "center", gap: 4 },
     headerText: { fontSize: fontSize * 0.8, fontWeight: "700", color: t.text },

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import AppText from "./AppText";
 import Slider from "@react-native-community/slider";
 import { useSQLiteContext } from "expo-sqlite";
 import { Feather } from "@expo/vector-icons";
@@ -48,23 +49,23 @@ export default function HistoryModal({ visible, onClose, noteId, currentTitle, c
         <View style={s.card}>
           <View style={s.titleRow}>
             <Feather name="clock" size={17} color={theme.accent} />
-            <Text style={s.title}>Time Machine</Text>
+            <AppText style={s.title}>Time Machine</AppText>
             <TouchableOpacity testID="close-history" onPress={onClose} hitSlop={10} style={{ marginStart: "auto" }}>
               <Feather name="x" size={18} color={theme.textMuted} />
             </TouchableOpacity>
           </View>
 
           {versions.length <= 1 ? (
-            <Text style={s.empty}>
+            <AppText style={s.empty}>
               No earlier snapshots yet — a version is saved automatically every minute while you write.
-            </Text>
+            </AppText>
           ) : (
             <>
-              <Text style={s.meta}>
+              <AppText style={s.meta}>
                 {selected?.isCurrent ? "Current" : new Date(selected?.created_at).toLocaleString()}
                 {"   ·   "}
                 {index + 1} / {versions.length}
-              </Text>
+              </AppText>
               <Slider
                 minimumValue={0}
                 maximumValue={Math.max(0, versions.length - 1)}
@@ -87,7 +88,7 @@ export default function HistoryModal({ visible, onClose, noteId, currentTitle, c
                 activeOpacity={0.85}
               >
                 <Feather name="rotate-ccw" size={16} color={theme.onAccent} />
-                <Text style={s.restoreText}>Restore to this version</Text>
+                <AppText style={s.restoreText}>Restore to this version</AppText>
               </TouchableOpacity>
             </>
           )}

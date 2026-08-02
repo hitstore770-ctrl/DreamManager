@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { FlatList, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { FlatList, Modal, Pressable, StyleSheet, TouchableOpacity, View } from "react-native";
+import AppText from "./AppText";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSQLiteContext } from "expo-sqlite";
 import { Feather } from "@expo/vector-icons";
@@ -44,7 +45,7 @@ export default function SnippetPickerSheet({ visible, onClose, onInsert, saveTex
         <Pressable style={s.backdrop} onPress={onClose}>
           <Pressable style={[s.sheet, { paddingBottom: insets.bottom + 16 }]} onPress={() => {}}>
             <View style={s.titleRow}>
-              <Text style={s.title}>Snippet Library</Text>
+              <AppText style={s.title}>Snippet Library</AppText>
               <TouchableOpacity testID="close-snippets" onPress={onClose} hitSlop={10}>
                 <Feather name="x" size={18} color={theme.textMuted} />
               </TouchableOpacity>
@@ -58,9 +59,9 @@ export default function SnippetPickerSheet({ visible, onClose, onInsert, saveTex
               disabled={!canSave}
             >
               <Feather name="plus-circle" size={16} color={canSave ? theme.accent : theme.textMuted} />
-              <Text style={[s.saveRowText, { color: canSave ? theme.accent : theme.textMuted }]}>
+              <AppText style={[s.saveRowText, { color: canSave ? theme.accent : theme.textMuted }]}>
                 Save {hasSelection ? "selection" : "this note"} as a snippet
-              </Text>
+              </AppText>
             </TouchableOpacity>
 
             <FlatList
@@ -70,12 +71,12 @@ export default function SnippetPickerSheet({ visible, onClose, onInsert, saveTex
               renderItem={({ item }) => (
                 <View style={s.row}>
                   <TouchableOpacity testID="snippet-insert" style={{ flex: 1 }} onPress={() => onInsert(item)} activeOpacity={0.7}>
-                    <Text style={s.rowTitle} numberOfLines={1}>
+                    <AppText style={s.rowTitle} numberOfLines={1}>
                       {item.name}
-                    </Text>
-                    <Text style={s.rowPreview} numberOfLines={1}>
+                    </AppText>
+                    <AppText style={s.rowPreview} numberOfLines={1}>
                       {item.body.replace(/\n/g, " ").slice(0, 60) || "Empty"}
-                    </Text>
+                    </AppText>
                   </TouchableOpacity>
                   <TouchableOpacity testID="snippet-delete" onPress={() => onDelete(item.id)} hitSlop={8} style={{ padding: 6 }}>
                     <Feather name="trash-2" size={16} color={theme.textMuted} />
@@ -83,7 +84,7 @@ export default function SnippetPickerSheet({ visible, onClose, onInsert, saveTex
                 </View>
               )}
               ListEmptyComponent={
-                <Text style={s.empty}>No snippets yet. Select text in a note and save it here to reuse later.</Text>
+                <AppText style={s.empty}>No snippets yet. Select text in a note and save it here to reuse later.</AppText>
               }
             />
           </Pressable>

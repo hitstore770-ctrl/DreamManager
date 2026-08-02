@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
+import { ScrollView, StyleSheet, TouchableOpacity, View, useWindowDimensions } from "react-native";
+import AppText from "../components/AppText";
 import Svg, { Circle, Line, Text as SvgText } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
@@ -59,14 +60,14 @@ export default function GraphScreen({ navigation }) {
           <Feather name="chevron-left" size={22} color={theme.text} />
         </TouchableOpacity>
         <Feather name="share-2" size={16} color={theme.textMuted} style={{ marginStart: 6, marginEnd: 6 }} />
-        <Text style={s.topTitle}>Knowledge Graph</Text>
+        <AppText style={s.topTitle}>Knowledge Graph</AppText>
       </View>
 
       {nodes.length === 0 ? (
-        <Text style={s.empty}>
+        <AppText style={s.empty}>
           No notes yet. The graph fills in as you write — tag notes with #shared-tags, or link them directly with
           [[Note Title]].
-        </Text>
+        </AppText>
       ) : (
         <ScrollView horizontal style={{ flex: 1 }}>
           <ScrollView style={{ flex: 1 }}>

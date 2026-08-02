@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Modal, Pressable, StyleSheet, TouchableOpacity, View } from "react-native";
+import AppText from "./AppText";
+import AppTextInput from "./AppTextInput";
 
 import { useTheme } from "../theme/ThemeContext";
 
@@ -21,8 +23,8 @@ export default function SaveTemplateModal({ visible, onClose, onSave }) {
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={s.backdrop} onPress={onClose}>
         <Pressable style={s.card} onPress={() => {}}>
-          <Text style={s.title}>Save as Template</Text>
-          <TextInput
+          <AppText style={s.title}>Save as Template</AppText>
+          <AppTextInput
             testID="template-name-input"
             style={s.input}
             value={name}
@@ -31,16 +33,16 @@ export default function SaveTemplateModal({ visible, onClose, onSave }) {
             placeholderTextColor={theme.textMuted}
             autoFocus
           />
-          <Text style={s.hint}>
+          <AppText style={s.hint}>
             {"{{CURRENT_DATE}}"}, {"{{TIME}}"} and {"{{DATETIME}}"} will fill in with the real date/time each time
             you use this template.
-          </Text>
+          </AppText>
           <View style={{ flexDirection: "row", gap: 10 }}>
             <TouchableOpacity style={[s.btn, s.btnGhost]} onPress={onClose} activeOpacity={0.8}>
-              <Text style={[s.btnText, { color: theme.textSecondary }]}>Cancel</Text>
+              <AppText style={[s.btnText, { color: theme.textSecondary }]}>Cancel</AppText>
             </TouchableOpacity>
             <TouchableOpacity testID="template-save-submit" style={[s.btn, { backgroundColor: theme.accent }]} onPress={submit} activeOpacity={0.85}>
-              <Text style={[s.btnText, { color: theme.onAccent }]}>Save</Text>
+              <AppText style={[s.btnText, { color: theme.onAccent }]}>Save</AppText>
             </TouchableOpacity>
           </View>
         </Pressable>

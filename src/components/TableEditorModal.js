@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { Modal, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Modal, ScrollView, StyleSheet, Switch, TouchableOpacity, View } from "react-native";
+import AppText from "./AppText";
+import AppTextInput from "./AppTextInput";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 
@@ -84,7 +86,7 @@ export default function TableEditorModal({ visible, initialContent, onClose, onS
           <TouchableOpacity testID="table-editor-close" style={s.iconBtn} onPress={onClose} hitSlop={8}>
             <Feather name="x" size={20} color={theme.text} />
           </TouchableOpacity>
-          <Text style={s.title}>Edit Table</Text>
+          <AppText style={s.title}>Edit Table</AppText>
           <View style={{ flex: 1 }} />
           <TouchableOpacity testID="table-editor-save" style={[s.iconBtn, { backgroundColor: theme.accent }]} onPress={submit} hitSlop={8}>
             <Feather name="check" size={19} color={theme.onAccent} />
@@ -96,10 +98,10 @@ export default function TableEditorModal({ visible, initialContent, onClose, onS
             <View style={{ flexDirection: "row" }}>
               {table.columns.map((col, ci) => (
                 <View key={ci} style={[s.headerCell, { width: CELL_WIDTH }]}>
-                  <TextInput testID="column-name-input" style={s.columnNameInput} value={col.name} onChangeText={(v) => setColumnName(ci, v)} />
+                  <AppTextInput testID="column-name-input" style={s.columnNameInput} value={col.name} onChangeText={(v) => setColumnName(ci, v)} />
                   <View style={s.columnMetaRow}>
                     <TouchableOpacity testID="column-type-toggle" onPress={() => cycleColumnType(ci)} style={s.typePill}>
-                      <Text style={s.columnType}>{col.type}</Text>
+                      <AppText style={s.columnType}>{col.type}</AppText>
                     </TouchableOpacity>
                     {table.columns.length > 1 && (
                       <TouchableOpacity testID="remove-column" onPress={() => removeColumn(ci)} hitSlop={6}>
@@ -121,7 +123,7 @@ export default function TableEditorModal({ visible, initialContent, onClose, onS
                     {table.columns[ci].type === "checkbox" ? (
                       <Switch testID="cell-checkbox" value={!!val} onValueChange={(v) => setCell(ri, ci, v)} />
                     ) : (
-                      <TextInput
+                      <AppTextInput
                         testID="cell-input"
                         style={s.cellInput}
                         value={String(val ?? "")}
@@ -139,7 +141,7 @@ export default function TableEditorModal({ visible, initialContent, onClose, onS
 
             <TouchableOpacity testID="add-row" style={s.addRowBtn} onPress={addRow}>
               <Feather name="plus" size={15} color={theme.accent} />
-              <Text style={{ color: theme.accent, fontWeight: "700", marginStart: 6 }}>Add row</Text>
+              <AppText style={{ color: theme.accent, fontWeight: "700", marginStart: 6 }}>Add row</AppText>
             </TouchableOpacity>
           </ScrollView>
         </ScrollView>

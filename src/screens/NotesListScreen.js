@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { FlatList, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import AppText from "../components/AppText";
+import AppTextInput from "../components/AppTextInput";
 import { Swipeable } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
@@ -7,7 +9,7 @@ import { useSQLiteContext } from "expo-sqlite";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
-import { useTheme } from "../theme/ThemeContext";
+import { RADIUS, useTheme } from "../theme/ThemeContext";
 import { createNote, deleteNote, listNotes, setPinned } from "../db/notesRepo";
 import { colorForRoot, tagRoot } from "../lib/tags";
 import { noteColor } from "../lib/colors";
@@ -131,7 +133,7 @@ export default function NotesListScreen({ navigation, route }) {
   return (
     <View style={[s.screen, { paddingTop: insets.top }]}>
       <View style={s.header}>
-        <Text style={s.title}>Second Brain</Text>
+        <AppText style={s.title}>Second Brain</AppText>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={s.headerActions}>
           <TouchableOpacity testID="open-compile" style={s.iconBtn} onPress={() => navigation.navigate("Compile")} activeOpacity={0.7}>
             <Feather name="layers" size={19} color={theme.text} />
@@ -154,7 +156,7 @@ export default function NotesListScreen({ navigation, route }) {
       <View style={s.searchRow}>
         <View style={s.searchWrap}>
           <Feather name="search" size={16} color={theme.textMuted} style={{ marginEnd: 8 }} />
-          <TextInput
+          <AppTextInput
             style={s.searchInput}
             value={queryInput}
             onChangeText={setQueryInput}
@@ -168,14 +170,14 @@ export default function NotesListScreen({ navigation, route }) {
           onPress={() => setRegexMode((r) => !r)}
           activeOpacity={0.75}
         >
-          <Text style={[s.regexBtnText, { color: regexMode ? theme.onAccent : theme.textSecondary }]}>.*</Text>
+          <AppText style={[s.regexBtnText, { color: regexMode ? theme.onAccent : theme.textSecondary }]}>.*</AppText>
         </TouchableOpacity>
       </View>
-      {regexMode && regexError && <Text style={s.regexError}>Invalid pattern — showing all notes.</Text>}
+      {regexMode && regexError && <AppText style={s.regexError}>Invalid pattern — showing all notes.</AppText>}
 
       {!!activeTag && (
         <View style={s.filterRow}>
-          <Text style={s.filterText}>#{activeTag}</Text>
+          <AppText style={s.filterText}>#{activeTag}</AppText>
           <TouchableOpacity onPress={() => setActiveTag(null)} hitSlop={8}>
             <Feather name="x" size={15} color={theme.textMuted} />
           </TouchableOpacity>
@@ -197,9 +199,9 @@ export default function NotesListScreen({ navigation, route }) {
           />
         )}
         ListEmptyComponent={
-          <Text style={s.empty}>
+          <AppText style={s.empty}>
             {query || activeTag ? "No notes match." : "No notes yet. Tap + to write one (hold + for templates)."}
-          </Text>
+          </AppText>
         }
       />
 
@@ -232,18 +234,18 @@ function NoteCard({ note, theme, styles: s, onOpen, onTogglePin, onDelete }) {
       <Pressable testID="note-card" style={[s.card, { backgroundColor: bg }]} onPress={onOpen} onLongPress={onTogglePin}>
         <View style={s.cardTop}>
           {note.pinned && <Feather name="bookmark" size={13} color={theme.accent} style={{ marginEnd: 6 }} />}
-          <Text style={[s.cardTitle, { color: theme.text }]} numberOfLines={1}>
+          <AppText style={[s.cardTitle, { color: theme.text }]} numberOfLines={1}>
             {note.title || "Untitled"}
-          </Text>
+          </AppText>
         </View>
-        <Text style={[s.cardPreview, { color: theme.textMuted }]} numberOfLines={2}>
+        <AppText style={[s.cardPreview, { color: theme.textMuted }]} numberOfLines={2}>
           {previewOf(note.body)}
-        </Text>
+        </AppText>
         <View style={s.cardFoot}>
-          <Text style={s.cardMeta}>{fmtUpdated(note.updated_at)}</Text>
+          <AppText style={s.cardMeta}>{fmtUpdated(note.updated_at)}</AppText>
           {note.tags.slice(0, 3).map((t) => (
             <View key={t} style={[s.tagPill, { backgroundColor: colorForRoot(tagRoot(t)) + "22" }]}>
-              <Text style={[s.tagPillText, { color: colorForRoot(tagRoot(t)) }]}>#{t}</Text>
+              <AppText style={[s.tagPillText, { color: colorForRoot(tagRoot(t)) }]}>#{t}</AppText>
             </View>
           ))}
         </View>
@@ -256,26 +258,26 @@ const styles = (t) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: t.bg },
     header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingTop: 8, paddingBottom: 10 },
-    title: { fontSize: 22, fontWeight: "700", color: t.text },
+    title: { fontSize: 24, fontWeight: "700", color: t.text },
     headerActions: { flexDirection: "row", gap: 8 },
-    iconBtn: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: t.surfaceAlt },
+    iconBtn: { width: 38, height: 38, borderRadius: RADIUS.sm, alignItems: "center", justifyContent: "center", backgroundColor: t.surfaceAlt },
     searchRow: { flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 14, marginBottom: 4 },
-    searchWrap: { flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: t.surfaceAlt, borderRadius: 12, paddingHorizontal: 12, height: 42 },
+    searchWrap: { flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: t.surfaceAlt, borderRadius: RADIUS.sm, paddingHorizontal: 12, height: 42 },
     searchInput: { flex: 1, color: t.text, fontSize: 15 },
-    regexBtn: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: t.surfaceAlt },
+    regexBtn: { width: 42, height: 42, borderRadius: RADIUS.sm, alignItems: "center", justifyContent: "center", backgroundColor: t.surfaceAlt },
     regexBtnText: { fontSize: 14, fontWeight: "700" },
     regexError: { color: t.danger, fontSize: 12, marginHorizontal: 18, marginTop: 4, marginBottom: 2 },
     filterRow: { flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 18, marginTop: 8, marginBottom: 8 },
     filterText: { color: t.accent, fontWeight: "600", fontSize: 13 },
-    card: { borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: t.border },
-    cardTop: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
+    card: { borderRadius: RADIUS.lg, padding: 16, marginBottom: 12, ...t.cardShadow },
+    cardTop: { flexDirection: "row", alignItems: "center", marginBottom: 5 },
     cardTitle: { flex: 1, fontSize: 16, fontWeight: "600" },
     cardPreview: { fontSize: 13.5, lineHeight: 19 },
-    cardFoot: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6, marginTop: 8 },
+    cardFoot: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6, marginTop: 9 },
     cardMeta: { fontSize: 11.5, color: t.textMuted, marginEnd: 4 },
     tagPill: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
     tagPillText: { fontSize: 11, fontWeight: "700" },
-    deleteAction: { backgroundColor: t.danger, justifyContent: "center", alignItems: "center", width: 64, borderRadius: 14, marginBottom: 10 },
+    deleteAction: { backgroundColor: t.danger, justifyContent: "center", alignItems: "center", width: 64, borderRadius: RADIUS.lg, marginBottom: 12 },
     empty: { color: t.textMuted, textAlign: "center", marginTop: 60, fontSize: 14, paddingHorizontal: 30, lineHeight: 21 },
     fab: {
       position: "absolute",

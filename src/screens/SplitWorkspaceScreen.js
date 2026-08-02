@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { Modal, Pressable, StyleSheet, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import AppText from "../components/AppText";
+import AppTextInput from "../components/AppTextInput";
 import { FlatList } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSQLiteContext } from "expo-sqlite";
@@ -41,7 +43,7 @@ export default function SplitWorkspaceScreen({ navigation }) {
           <Feather name="chevron-left" size={22} color={theme.text} />
         </TouchableOpacity>
         <Feather name="columns" size={16} color={theme.textMuted} style={{ marginStart: 6, marginEnd: 6 }} />
-        <Text style={s.topTitle}>Split Workspace</Text>
+        <AppText style={s.topTitle}>Split Workspace</AppText>
       </View>
 
       <View style={[s.body, { flexDirection: isWide ? "row" : "column" }]}>
@@ -74,7 +76,7 @@ function Pane({ testID, noteId, onPick, theme }) {
       <View style={[s.pane, s.paneEmpty]}>
         <Feather name="file-plus" size={26} color={theme.textMuted} />
         <TouchableOpacity testID={testID} style={s.pickBtn} onPress={onPick} activeOpacity={0.8}>
-          <Text style={s.pickBtnText}>Choose a note</Text>
+          <AppText style={s.pickBtnText}>Choose a note</AppText>
         </TouchableOpacity>
       </View>
     );
@@ -86,7 +88,7 @@ function Pane({ testID, noteId, onPick, theme }) {
         headerExtra={
           <TouchableOpacity style={s.switchBtn} onPress={onPick} hitSlop={6}>
             <Feather name="repeat" size={15} color={theme.textMuted} />
-            <Text style={s.switchBtnText}>Switch</Text>
+            <AppText style={s.switchBtnText}>Switch</AppText>
           </TouchableOpacity>
         }
       />
@@ -111,8 +113,8 @@ function NotePickerSheet({ visible, onClose, onPick }) {
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={s.backdrop} onPress={onClose}>
         <Pressable style={[s.sheet, { paddingBottom: insets.bottom + 16 }]} onPress={() => {}}>
-          <Text style={s.sheetTitle}>Choose a note</Text>
-          <TextInput
+          <AppText style={s.sheetTitle}>Choose a note</AppText>
+          <AppTextInput
             style={s.sheetSearch}
             value={query}
             onChangeText={setQuery}
@@ -125,12 +127,12 @@ function NotePickerSheet({ visible, onClose, onPick }) {
             style={{ maxHeight: 360 }}
             renderItem={({ item }) => (
               <TouchableOpacity testID="picker-row" style={s.sheetRow} onPress={() => onPick(item.id)} activeOpacity={0.7}>
-                <Text style={s.sheetRowText} numberOfLines={1}>
+                <AppText style={s.sheetRowText} numberOfLines={1}>
                   {item.title || "Untitled"}
-                </Text>
+                </AppText>
               </TouchableOpacity>
             )}
-            ListEmptyComponent={<Text style={s.empty}>No notes found.</Text>}
+            ListEmptyComponent={<AppText style={s.empty}>No notes found.</AppText>}
           />
         </Pressable>
       </Pressable>

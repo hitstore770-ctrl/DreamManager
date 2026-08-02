@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import AppText from "../components/AppText";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Svg, { Image as SvgImage, Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -91,7 +92,7 @@ export default function WhiteboardScreen({ navigation, route }) {
           <Feather name="chevron-left" size={22} color={theme.text} />
         </TouchableOpacity>
         <Feather name="edit-3" size={16} color={theme.textMuted} style={{ marginStart: 6, marginEnd: 6 }} />
-        <Text style={s.topTitle}>Whiteboard</Text>
+        <AppText style={s.topTitle}>Whiteboard</AppText>
         <View style={{ flex: 1 }} />
         <TouchableOpacity testID="whiteboard-save" style={[s.iconBtn, { backgroundColor: theme.accent }]} onPress={save} hitSlop={8}>
           <Feather name="check" size={19} color={theme.onAccent} />
@@ -127,7 +128,7 @@ export default function WhiteboardScreen({ navigation, route }) {
         ))}
       </ScrollView>
 
-      <Text style={s.hint}>{tool === "pan" ? "Panning — switch to Pen to draw" : "Draw with your finger or stylus"}</Text>
+      <AppText style={s.hint}>{tool === "pan" ? "Panning — switch to Pen to draw" : "Draw with your finger or stylus"}</AppText>
 
       <ScrollView horizontal scrollEnabled={tool === "pan"} style={{ flex: 1 }}>
         <ScrollView scrollEnabled={tool === "pan"} style={{ flex: 1 }}>

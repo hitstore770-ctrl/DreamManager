@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import AppText from "./AppText";
+import AppTextInput from "./AppTextInput";
 import { useSQLiteContext } from "expo-sqlite";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
@@ -30,7 +32,17 @@ const ZEN_LINE_HEIGHT = 25;
 // A single, self-contained note editor: its own load, its own autosave, its
 // own 60s version snapshots. Two of these mounted side by side (Split mode)
 // never share state — each instance owns its hooks independently.
-export default function EditorPane({ noteId, onBack, headerExtra }) {
+//
+// `flushRef`, if passed, is filled in with a function that saves whatever's
+// currently typed right now and returns the save's promise. It exists
+// because navigating away doesn't unmount this component until its exit
+// animation finishes, but the screen underneath refetches its list the
+// moment navigation *starts* — a plain back button that only relied on the
+// unmount-time flush could show stale (or, for a brand-new note, "Empty
+// note") content. The caller (EditorScreen) `await`s flushRef.current()
+// before calling navigation.goBack(), so the write has actually landed
+// before the previous screen re-reads the database.
+export default function EditorPane({ noteId, onBack, headerExtra, flushRef }) {
   const theme = useTheme();
   const db = useSQLiteContext();
   const vault = useVault();
@@ -98,6 +110,17 @@ export default function EditorPane({ noteId, onBack, headerExtra }) {
   const { savedAt, bodyRef } = useDebouncedAutosave(db, noteId, body, ready && !lockedNoKey, { saveFn });
   useAutoVersion(db, noteId, bodyRef, ready && !lockedNoKey && !note?.vault);
 
+  useEffect(() => {
+    if (!flushRef) return undefined;
+    // Must return the save's promise -- the caller awaits this before
+    // navigating away, otherwise the write only *starts* and the screen
+    // underneath can still read stale/empty data before it lands.
+    flushRef.current = () => (ready && !lockedNoKey ? saveFn(db, noteId, bodyRef.current) : Promise.resolve());
+    return () => {
+      flushRef.current = null;
+    };
+  }, [flushRef, saveFn, db, noteId, ready, lockedNoKey, bodyRef]);
+
   const tags = note?.vault ? [] : extractTags(body);
   const counts = countWords(body);
   const boardDetected = isKanbanBoard(body);
@@ -106,6 +129,11 @@ export default function EditorPane({ noteId, onBack, headerExtra }) {
   const onToggleChecklist = (lineIndex) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setBody((b) => toggleChecklistLine(b, lineIndex));
+  };
+
+  const onToggleZen = (next) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    setZen(next);
   };
 
   const onRestored = (restored) => {
@@ -245,7 +273,7 @@ export default function EditorPane({ noteId, onBack, headerExtra }) {
               </TouchableOpacity>
             )}
             {!lockedNoKey && (
-              <TouchableOpacity testID="toggle-zen" style={s.iconBtn} onPress={() => setZen(true)} hitSlop={4}>
+              <TouchableOpacity testID="toggle-zen" style={s.iconBtn} onPress={() => onToggleZen(true)} hitSlop={4}>
                 <Feather name="minimize-2" size={17} color={theme.text} />
               </TouchableOpacity>
             )}
@@ -274,7 +302,7 @@ export default function EditorPane({ noteId, onBack, headerExtra }) {
       )}
 
       {zen && (
-        <TouchableOpacity testID="exit-zen" style={s.zenExit} onPress={() => setZen(false)} hitSlop={12}>
+        <TouchableOpacity testID="exit-zen" style={s.zenExit} onPress={() => onToggleZen(false)} hitSlop={12}>
           <Feather name="minimize-2" size={15} color={theme.textMuted} />
         </TouchableOpacity>
       )}
@@ -283,7 +311,7 @@ export default function EditorPane({ noteId, onBack, headerExtra }) {
         <View style={s.tagRow}>
           {tags.map((t) => (
             <View key={t} style={[s.tagPill, { backgroundColor: colorForRoot(tagRoot(t)) + "22" }]}>
-              <Text style={[s.tagPillText, { color: colorForRoot(tagRoot(t)) }]}>#{t}</Text>
+              <AppText style={[s.tagPillText, { color: colorForRoot(tagRoot(t)) }]}>#{t}</AppText>
             </View>
           ))}
         </View>
@@ -293,7 +321,7 @@ export default function EditorPane({ noteId, onBack, headerExtra }) {
         {lockedNoKey ? (
           <View style={s.lockedWrap}>
             <Feather name="lock" size={26} color={theme.textMuted} />
-            <Text style={s.lockedText}>This note is in the Vault. Open it from the Vault to unlock it.</Text>
+            <AppText style={s.lockedText}>This note is in the Vault. Open it from the Vault to unlock it.</AppText>
           </View>
         ) : boardMode && boardDetected ? (
           <KanbanBoard raw={body} onChange={setBody} theme={theme} />
@@ -314,7 +342,7 @@ export default function EditorPane({ noteId, onBack, headerExtra }) {
                 onEditDrawing={onEditDrawing}
               />
             ) : (
-              <TextInput
+              <AppTextInput
                 testID="editor-input"
                 style={[s.input, zen && s.zenInput]}
                 value={body}
@@ -331,10 +359,10 @@ export default function EditorPane({ noteId, onBack, headerExtra }) {
       </KeyboardAvoidingView>
 
       <View style={[s.footer, zen && s.zenFooter]}>
-        {!zen && <Text style={s.footerText}>{savedAt ? "Saved" : "Autosaving…"}</Text>}
-        <Text style={[s.footerText, zen && s.zenCounter]}>
+        {!zen && <AppText style={s.footerText}>{savedAt ? "Saved" : "Autosaving…"}</AppText>}
+        <AppText style={[s.footerText, zen && s.zenCounter]}>
           {counts.words} words · {counts.chars} chars
-        </Text>
+        </AppText>
       </View>
 
       {!note?.vault && (
@@ -398,11 +426,9 @@ const styles = (t) =>
       flexDirection: "row",
       justifyContent: "space-between",
       paddingHorizontal: 18,
-      paddingVertical: 8,
-      borderTopWidth: 1,
-      borderTopColor: t.border,
+      paddingVertical: 9,
     },
-    zenFooter: { borderTopWidth: 0, justifyContent: "center", opacity: 0.5 },
+    zenFooter: { justifyContent: "center", opacity: 0.5 },
     footerText: { fontSize: 11.5, color: t.textMuted },
     zenCounter: { fontSize: 11 },
   });

@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, TouchableOpacity, View } from "react-native";
+import AppText from "../components/AppText";
 import { Swipeable } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useSQLiteContext } from "expo-sqlite";
 import { Feather } from "@expo/vector-icons";
 
-import { useTheme } from "../theme/ThemeContext";
+import { RADIUS, useTheme } from "../theme/ThemeContext";
 import SwipeBack from "../navigation/SwipeBack";
 import VaultPinModal from "../components/VaultPinModal";
 import { useVault } from "../vault/VaultContext";
@@ -65,7 +66,7 @@ export default function VaultScreen({ navigation }) {
           <Feather name="chevron-left" size={22} color={theme.text} />
         </TouchableOpacity>
         <Feather name="shield" size={16} color={theme.textMuted} style={{ marginStart: 6, marginEnd: 6 }} />
-        <Text style={s.topTitle}>Vault</Text>
+        <AppText style={s.topTitle}>Vault</AppText>
         <View style={{ flex: 1 }} />
         {vault.unlocked && (
           <TouchableOpacity
@@ -98,7 +99,7 @@ export default function VaultScreen({ navigation }) {
                 onDelete={() => onDelete(item.id)}
               />
             )}
-            ListEmptyComponent={<Text style={s.empty}>No notes in the Vault yet. Tap + to add one.</Text>}
+            ListEmptyComponent={<AppText style={s.empty}>No notes in the Vault yet. Tap + to add one.</AppText>}
           />
           <TouchableOpacity
             testID="new-vault-note"
@@ -139,13 +140,13 @@ function VaultCard({ plain, theme, styles: s, onOpen, onDelete }) {
   return (
     <Swipeable renderRightActions={renderRightActions} onSwipeableOpen={onDelete} overshootRight={false} rightThreshold={44}>
       <Pressable testID="vault-note-card" style={s.card} onPress={onOpen}>
-        <Text style={s.cardTitle} numberOfLines={1}>
+        <AppText style={s.cardTitle} numberOfLines={1}>
           {title}
-        </Text>
+        </AppText>
         {!!preview && (
-          <Text style={s.cardPreview} numberOfLines={2}>
+          <AppText style={s.cardPreview} numberOfLines={2}>
             {preview}
-          </Text>
+          </AppText>
         )}
       </Pressable>
     </Swipeable>
@@ -157,10 +158,10 @@ const styles = (t) =>
     topBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 10, paddingVertical: 8 },
     iconBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: t.surfaceAlt },
     topTitle: { fontSize: 17, fontWeight: "700", color: t.text },
-    card: { backgroundColor: t.surface, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: t.border },
+    card: { backgroundColor: t.surface, borderRadius: RADIUS.lg, padding: 16, marginBottom: 12, ...t.cardShadow },
     cardTitle: { fontSize: 15.5, fontWeight: "700", color: t.text, marginBottom: 4 },
     cardPreview: { fontSize: 13, color: t.textMuted, lineHeight: 18 },
-    deleteAction: { backgroundColor: t.danger, justifyContent: "center", alignItems: "center", width: 64, borderRadius: 14, marginBottom: 10 },
+    deleteAction: { backgroundColor: t.danger, justifyContent: "center", alignItems: "center", width: 64, borderRadius: RADIUS.lg, marginBottom: 12 },
     empty: { color: t.textMuted, textAlign: "center", marginTop: 60, fontSize: 14, paddingHorizontal: 30, lineHeight: 21 },
     fab: {
       position: "absolute",

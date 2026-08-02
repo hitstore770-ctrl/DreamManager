@@ -1,9 +1,11 @@
 import { useRef, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
+import AppText from "./AppText";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { Feather } from "@expo/vector-icons";
 
 import { extractBoard, moveCard, toggleCard } from "../lib/kanban";
+import { RADIUS } from "../theme/ThemeContext";
 
 const COLUMN_WIDTH = 230;
 
@@ -44,7 +46,7 @@ export default function KanbanBoard({ raw, onChange, theme }) {
   const s = styles(theme);
 
   if (!region) {
-    return <Text style={{ color: theme.textMuted }}>No board detected in this note.</Text>;
+    return <AppText style={{ color: theme.textMuted }}>No board detected in this note.</AppText>;
   }
 
   const draggedCard = dragging ? columns[dragging.colIdx]?.cards[dragging.cardIdx] : null;
@@ -61,9 +63,9 @@ export default function KanbanBoard({ raw, onChange, theme }) {
             onLayout={remeasure}
             style={s.column}
           >
-            <Text style={s.columnTitle}>
-              {col.name} <Text style={s.columnCount}>{col.cards.length}</Text>
-            </Text>
+            <AppText style={s.columnTitle}>
+              {col.name} <AppText style={s.columnCount}>{col.cards.length}</AppText>
+            </AppText>
             {col.cards.map((card, cardIdx) => (
               <KanbanCard
                 key={cardIdx}
@@ -83,7 +85,7 @@ export default function KanbanBoard({ raw, onChange, theme }) {
                 }}
               />
             ))}
-            {col.cards.length === 0 && <Text style={s.emptyCol}>Drop cards here</Text>}
+            {col.cards.length === 0 && <AppText style={s.emptyCol}>Drop cards here</AppText>}
           </View>
         ))}
       </ScrollView>
@@ -93,9 +95,9 @@ export default function KanbanBoard({ raw, onChange, theme }) {
           pointerEvents="none"
           style={[s.ghost, { left: dragPos.x - rootRect.current.x - 90, top: dragPos.y - rootRect.current.y - 18 }]}
         >
-          <Text style={s.ghostText} numberOfLines={2}>
+          <AppText style={s.ghostText} numberOfLines={2}>
             {draggedCard.text}
-          </Text>
+          </AppText>
         </View>
       )}
     </View>
@@ -127,12 +129,12 @@ function KanbanCard({ card, hidden, theme, onTap, onDragStart, onDragMove, onDra
             {card.done && <Feather name="check" size={11} color={theme.onAccent} />}
           </View>
         )}
-        <Text
+        <AppText
           style={[s.cardText, card.done && { textDecorationLine: "line-through", color: theme.textMuted }]}
           numberOfLines={4}
         >
           {card.text}
-        </Text>
+        </AppText>
       </View>
     </GestureDetector>
   );
@@ -140,7 +142,7 @@ function KanbanCard({ card, hidden, theme, onTap, onDragStart, onDragMove, onDra
 
 const styles = (t) =>
   StyleSheet.create({
-    column: { width: COLUMN_WIDTH, backgroundColor: t.surfaceAlt, borderRadius: 14, padding: 10, alignSelf: "flex-start" },
+    column: { width: COLUMN_WIDTH, backgroundColor: t.surfaceAlt, borderRadius: RADIUS.md, padding: 10, alignSelf: "flex-start" },
     columnTitle: { fontSize: 13, fontWeight: "700", color: t.text, marginBottom: 10, paddingHorizontal: 2 },
     columnCount: { color: t.textMuted, fontWeight: "600" },
     emptyCol: { fontSize: 12, color: t.textMuted, textAlign: "center", paddingVertical: 14 },
@@ -149,11 +151,10 @@ const styles = (t) =>
       alignItems: "flex-start",
       gap: 8,
       backgroundColor: t.surface,
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: t.border,
+      borderRadius: RADIUS.sm,
       padding: 10,
       marginBottom: 8,
+      ...t.cardShadow,
     },
     checkbox: { width: 16, height: 16, marginTop: 2, borderRadius: 4, borderWidth: 2, borderColor: t.border, alignItems: "center", justifyContent: "center" },
     cardText: { flex: 1, fontSize: 13.5, color: t.text, lineHeight: 19 },

@@ -1,6 +1,7 @@
 // All reads/writes go through here — screens never write raw SQL. Every
 // function takes the `db` handle from useSQLiteContext() as its first arg.
 import { extractTags, tagRoot } from "../lib/tags";
+import { serialTransaction } from "./txQueue";
 
 export const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -96,7 +97,7 @@ export async function createNote(db, body = "") {
 export async function saveNoteBody(db, id, body) {
   const title = deriveTitle(body);
   const now = Date.now();
-  await db.withTransactionAsync(async () => {
+  await serialTransaction(db, async () => {
     await db.runAsync(`UPDATE notes SET title = ?, body = ?, updated_at = ? WHERE id = ?`, [title, body, now, id]);
     await syncTags(db, id, extractTags(body));
   });
@@ -141,7 +142,7 @@ export async function listVersions(db, noteId) {
 // text that was on screen), then overwrites the note with the chosen
 // version's content.
 export async function restoreVersion(db, noteId, version, currentTitle, currentBody) {
-  await db.withTransactionAsync(async () => {
+  await serialTransaction(db, async () => {
     await db.runAsync(`INSERT INTO versions (note_id, title, body, created_at) VALUES (?, ?, ?, ?)`, [
       noteId,
       currentTitle,

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { LayoutAnimation, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, UIManager, View } from "react-native";
+import { LayoutAnimation, Platform, ScrollView, StyleSheet, TouchableOpacity, UIManager, View } from "react-native";
+import AppText from "../components/AppText";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
@@ -97,7 +98,7 @@ export default function CompileScreen({ navigation }) {
           <TouchableOpacity testID="compile-preview-back" style={s.iconBtn} onPress={() => setCompiled(null)} hitSlop={8}>
             <Feather name="chevron-left" size={22} color={theme.text} />
           </TouchableOpacity>
-          <Text style={s.title}>Master Document</Text>
+          <AppText style={s.title}>Master Document</AppText>
         </View>
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 18, paddingBottom: insets.bottom + 100 }}>
           <MarkdownView body={compiled.mergedBody} theme={theme} />
@@ -105,11 +106,11 @@ export default function CompileScreen({ navigation }) {
         <View style={[s.exportBar, { paddingBottom: insets.bottom + 14 }]}>
           <TouchableOpacity testID="export-md" style={[s.exportBtn, { backgroundColor: theme.accent }]} onPress={() => onExport("md")} disabled={exporting}>
             <Feather name="download" size={15} color={theme.onAccent} />
-            <Text style={[s.exportBtnText, { color: theme.onAccent }]}>{exporting ? "Exporting…" : "Export .md"}</Text>
+            <AppText style={[s.exportBtnText, { color: theme.onAccent }]}>{exporting ? "Exporting…" : "Export .md"}</AppText>
           </TouchableOpacity>
           <TouchableOpacity testID="export-txt" style={[s.exportBtn, s.exportBtnGhost]} onPress={() => onExport("txt")} disabled={exporting}>
             <Feather name="download" size={15} color={theme.text} />
-            <Text style={s.exportBtnText}>Export .txt</Text>
+            <AppText style={s.exportBtnText}>Export .txt</AppText>
           </TouchableOpacity>
         </View>
       </SwipeBack>
@@ -123,12 +124,12 @@ export default function CompileScreen({ navigation }) {
           <Feather name="chevron-left" size={22} color={theme.text} />
         </TouchableOpacity>
         <Feather name="layers" size={16} color={theme.textMuted} style={{ marginStart: 6, marginEnd: 6 }} />
-        <Text style={s.title}>Compile Project</Text>
+        <AppText style={s.title}>Compile Project</AppText>
       </View>
 
       {order.length > 0 && (
         <View style={s.orderSection}>
-          <Text style={s.sectionLabel}>Order (drag to rearrange)</Text>
+          <AppText style={s.sectionLabel}>Order (drag to rearrange)</AppText>
           {orderedNotes.map((note, index) => (
             <DraggableRow
               key={note.id}
@@ -143,7 +144,7 @@ export default function CompileScreen({ navigation }) {
         </View>
       )}
 
-      <Text style={s.sectionLabel}>All notes</Text>
+      <AppText style={s.sectionLabel}>All notes</AppText>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 100 }}>
         {notes.map((note) => {
           const selected = order.includes(note.id);
@@ -158,13 +159,13 @@ export default function CompileScreen({ navigation }) {
               <View style={[s.checkbox, selected && { backgroundColor: theme.accent, borderColor: theme.accent }]}>
                 {selected && <Feather name="check" size={12} color={theme.onAccent} />}
               </View>
-              <Text style={s.pickRowText} numberOfLines={1}>
+              <AppText style={s.pickRowText} numberOfLines={1}>
                 {note.title || "Untitled"}
-              </Text>
+              </AppText>
             </TouchableOpacity>
           );
         })}
-        {notes.length === 0 && <Text style={s.empty}>No notes to compile yet.</Text>}
+        {notes.length === 0 && <AppText style={s.empty}>No notes to compile yet.</AppText>}
       </ScrollView>
 
       <TouchableOpacity
@@ -175,7 +176,7 @@ export default function CompileScreen({ navigation }) {
         activeOpacity={0.85}
       >
         <Feather name="git-merge" size={17} color={theme.onAccent} />
-        <Text style={s.compileBtnText}>Compile {order.length || ""}</Text>
+        <AppText style={s.compileBtnText}>Compile {order.length || ""}</AppText>
       </TouchableOpacity>
     </SwipeBack>
   );
@@ -210,9 +211,9 @@ function DraggableRow({ note, index, count, theme, onReorder, onRemove }) {
           <Feather name="menu" size={16} color={theme.textMuted} />
         </View>
       </GestureDetector>
-      <Text style={s.dragRowText} numberOfLines={1}>
+      <AppText style={s.dragRowText} numberOfLines={1}>
         {note.title || "Untitled"}
-      </Text>
+      </AppText>
       <TouchableOpacity testID="deselect-note" onPress={onRemove} hitSlop={8}>
         <Feather name="x" size={16} color={theme.textMuted} />
       </TouchableOpacity>
@@ -233,10 +234,9 @@ const styles = (t) =>
       gap: 10,
       backgroundColor: t.surface,
       borderRadius: 12,
-      borderWidth: 1,
-      borderColor: t.border,
       paddingHorizontal: 10,
       marginBottom: 6,
+      ...t.cardShadow,
     },
     dragHandle: { width: 30, height: 30, alignItems: "center", justifyContent: "center" },
     dragRowText: { flex: 1, fontSize: 14, color: t.text, fontWeight: "600" },

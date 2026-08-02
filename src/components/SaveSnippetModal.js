@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Modal, Pressable, StyleSheet, TouchableOpacity, View } from "react-native";
+import AppText from "./AppText";
+import AppTextInput from "./AppTextInput";
 
 import { useTheme } from "../theme/ThemeContext";
 
@@ -20,13 +22,13 @@ export default function SaveSnippetModal({ visible, onClose, preview, onSave }) 
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={s.backdrop} onPress={onClose}>
         <Pressable style={s.card} onPress={() => {}}>
-          <Text style={s.title}>Save Snippet</Text>
+          <AppText style={s.title}>Save Snippet</AppText>
           {!!preview && (
-            <Text style={s.preview} numberOfLines={3}>
+            <AppText style={s.preview} numberOfLines={3}>
               {preview}
-            </Text>
+            </AppText>
           )}
-          <TextInput
+          <AppTextInput
             testID="snippet-name-input"
             style={s.input}
             value={name}
@@ -37,10 +39,10 @@ export default function SaveSnippetModal({ visible, onClose, preview, onSave }) 
           />
           <View style={{ flexDirection: "row", gap: 10 }}>
             <TouchableOpacity style={[s.btn, s.btnGhost]} onPress={onClose} activeOpacity={0.8}>
-              <Text style={[s.btnText, { color: theme.textSecondary }]}>Cancel</Text>
+              <AppText style={[s.btnText, { color: theme.textSecondary }]}>Cancel</AppText>
             </TouchableOpacity>
             <TouchableOpacity testID="snippet-save-submit" style={[s.btn, { backgroundColor: theme.accent }]} onPress={submit} activeOpacity={0.85}>
-              <Text style={[s.btnText, { color: theme.onAccent }]}>Save</Text>
+              <AppText style={[s.btnText, { color: theme.onAccent }]}>Save</AppText>
             </TouchableOpacity>
           </View>
         </Pressable>

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Modal, Pressable, StyleSheet, TouchableOpacity, View } from "react-native";
+import AppText from "./AppText";
+import AppTextInput from "./AppTextInput";
 import { useSQLiteContext } from "expo-sqlite";
 import { Feather } from "@expo/vector-icons";
 
@@ -71,18 +73,18 @@ export default function VaultPinModal({ visible, onClose, onUnlocked }) {
         <Pressable style={s.card} onPress={() => {}}>
           <View style={s.titleRow}>
             <Feather name="shield" size={18} color={theme.accent} />
-            <Text style={s.title}>{mode === "set" ? "Set a Vault PIN" : "Enter Vault PIN"}</Text>
+            <AppText style={s.title}>{mode === "set" ? "Set a Vault PIN" : "Enter Vault PIN"}</AppText>
           </View>
           {mode === "checking" ? (
-            <Text style={s.hint}>Loading…</Text>
+            <AppText style={s.hint}>Loading…</AppText>
           ) : (
             <>
-              <Text style={s.hint}>
+              <AppText style={s.hint}>
                 {mode === "set"
                   ? "This PIN encrypts every note you put in the Vault. There is no recovery if you forget it."
                   : "Notes stay encrypted until the correct PIN is entered."}
-              </Text>
-              <TextInput
+              </AppText>
+              <AppTextInput
                 testID="vault-pin-input"
                 style={s.input}
                 value={pin}
@@ -94,7 +96,7 @@ export default function VaultPinModal({ visible, onClose, onUnlocked }) {
                 autoFocus
               />
               {mode === "set" && (
-                <TextInput
+                <AppTextInput
                   testID="vault-confirm-input"
                   style={s.input}
                   value={confirmPin}
@@ -105,10 +107,10 @@ export default function VaultPinModal({ visible, onClose, onUnlocked }) {
                   keyboardType="number-pad"
                 />
               )}
-              {!!error && <Text style={s.error}>{error}</Text>}
+              {!!error && <AppText style={s.error}>{error}</AppText>}
               <View style={{ flexDirection: "row", gap: 10, marginTop: 6 }}>
                 <TouchableOpacity style={[s.btn, s.btnGhost]} onPress={onClose} activeOpacity={0.8}>
-                  <Text style={[s.btnText, { color: theme.textSecondary }]}>Cancel</Text>
+                  <AppText style={[s.btnText, { color: theme.textSecondary }]}>Cancel</AppText>
                 </TouchableOpacity>
                 <TouchableOpacity
                   testID="vault-submit"
@@ -117,7 +119,7 @@ export default function VaultPinModal({ visible, onClose, onUnlocked }) {
                   disabled={busy}
                   activeOpacity={0.85}
                 >
-                  <Text style={[s.btnText, { color: theme.onAccent }]}>{busy ? "…" : mode === "set" ? "Create" : "Unlock"}</Text>
+                  <AppText style={[s.btnText, { color: theme.onAccent }]}>{busy ? "…" : mode === "set" ? "Create" : "Unlock"}</AppText>
                 </TouchableOpacity>
               </View>
             </>

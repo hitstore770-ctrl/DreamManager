@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import AppText from "../components/AppText";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useSQLiteContext } from "expo-sqlite";
@@ -50,11 +51,11 @@ export default function TagIndexScreen({ navigation }) {
           <Feather name="chevron-left" size={22} color={theme.text} />
         </TouchableOpacity>
         <Feather name="hash" size={16} color={theme.textMuted} style={{ marginStart: 6, marginEnd: 6 }} />
-        <Text style={s.topTitle}>Tags</Text>
+        <AppText style={s.topTitle}>Tags</AppText>
       </View>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 30 }}>
         {tree.length === 0 && (
-          <Text style={s.empty}>No tags yet. Type #tag or #project/subtag in a note.</Text>
+          <AppText style={s.empty}>No tags yet. Type #tag or #project/subtag in a note.</AppText>
         )}
         {tree.map((node) => (
           <TagBranch
@@ -93,10 +94,10 @@ function TagBranch({ node, depth, expanded, onToggle, onSelect, theme }) {
           <View style={s.chevronBtn} />
         )}
         <View style={[s.dot, { backgroundColor: node.color }]} />
-        <Text style={s.rowText} numberOfLines={1}>
+        <AppText style={s.rowText} numberOfLines={1}>
           {node.name}
-        </Text>
-        {node.count > 0 && <Text style={s.count}>{node.count}</Text>}
+        </AppText>
+        {node.count > 0 && <AppText style={s.count}>{node.count}</AppText>}
       </TouchableOpacity>
       {hasChildren &&
         isOpen &&

@@ -1,4 +1,5 @@
-import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Modal, Pressable, StyleSheet, TouchableOpacity, View } from "react-native";
+import AppText from "./AppText";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 
@@ -22,7 +23,7 @@ export default function InsertMenuSheet({ visible, onClose, onPick }) {
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={s.backdrop} onPress={onClose}>
         <Pressable style={[s.sheet, { paddingBottom: insets.bottom + 16 }]} onPress={() => {}}>
-          <Text style={s.title}>Insert</Text>
+          <AppText style={s.title}>Insert</AppText>
           <View style={{ flexDirection: "row", gap: 12 }}>
             {ITEMS.map((item) => (
               <TouchableOpacity
@@ -35,7 +36,7 @@ export default function InsertMenuSheet({ visible, onClose, onPick }) {
                 <View style={s.iconWrap}>
                   <Feather name={item.icon} size={20} color={theme.accent} />
                 </View>
-                <Text style={s.itemLabel}>{item.label}</Text>
+                <AppText style={s.itemLabel}>{item.label}</AppText>
               </TouchableOpacity>
             ))}
           </View>

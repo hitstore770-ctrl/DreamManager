@@ -5,6 +5,10 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { Appearance } from "react-native";
 
+// A small, shared corner-radius scale so cards/sheets/controls read as one
+// consistent system instead of every screen picking its own number.
+export const RADIUS = { sm: 10, md: 14, lg: 18 };
+
 const LIGHT = {
   scheme: "light",
   bg: "#FAFAF9",
@@ -20,6 +24,15 @@ const LIGHT = {
   codeBg: "#F0EEE8",
   quoteBorder: "#D8D5CD",
   overlay: "rgba(20, 20, 18, 0.35)",
+  // Cards read as soft, floating surfaces in light mode -- a shadow instead
+  // of a hard 1px border reads as "premium" rather than "outlined form."
+  cardShadow: {
+    shadowColor: "#1A1A19",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 2,
+  },
 };
 
 const DARK = {
@@ -37,6 +50,16 @@ const DARK = {
   codeBg: "#1F211F",
   quoteBorder: "#3A3A38",
   overlay: "rgba(0, 0, 0, 0.55)",
+  // Shadows barely read against a dark background, so dark mode gets its
+  // depth from flat surface-tone contrast (surface vs. surfaceAlt vs. bg)
+  // instead -- a no-op shadow here, deliberately.
+  cardShadow: {
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
+  },
 };
 
 function timeBasedScheme() {
