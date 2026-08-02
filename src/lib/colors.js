@@ -13,3 +13,8 @@ export function noteColor(key, dark) {
   const c = NOTE_COLORS.find((x) => x.key === key) || NOTE_COLORS[0];
   return dark ? c.dark : c.light;
 }
+
+// A distinct blue for the archive swipe action -- deliberately not
+// `theme.accent` (teal, already means "pinned"/"selected" elsewhere) or
+// `theme.danger` (red, means destructive/delete).
+export const ARCHIVE_COLOR = "#3B7DD8";

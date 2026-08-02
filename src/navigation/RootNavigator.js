@@ -1,6 +1,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import NotesListScreen from "../screens/NotesListScreen";
+import ArchivedScreen from "../screens/ArchivedScreen";
 import EditorScreen from "../screens/EditorScreen";
 import SplitWorkspaceScreen from "../screens/SplitWorkspaceScreen";
 import TagIndexScreen from "../screens/TagIndexScreen";
@@ -26,6 +27,7 @@ export default function RootNavigator() {
       }}
     >
       <Stack.Screen name="NotesList" component={NotesListScreen} />
+      <Stack.Screen name="Archived" component={ArchivedScreen} />
       <Stack.Screen name="Editor" component={EditorScreen} />
       <Stack.Screen name="Split" component={SplitWorkspaceScreen} />
       <Stack.Screen name="TagIndex" component={TagIndexScreen} />

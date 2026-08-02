@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Animated, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import AppText from "./AppText";
 import AppTextInput from "./AppTextInput";
 import { useSQLiteContext } from "expo-sqlite";
@@ -67,6 +67,36 @@ export default function EditorPane({ noteId, onBack, headerExtra, flushRef }) {
   const [viewportHeight, setViewportHeight] = useState(0);
   const scrollRef = useRef(null);
   const richRef = useRef(null);
+
+  // Hide-on-scroll header: scrolling down inside a long note slides the
+  // header (and its tag row) up out of the way to maximize reading space;
+  // scrolling up -- even a little -- brings it straight back. The header
+  // is measured (not a guessed constant) so the content underneath can
+  // reserve exactly enough top padding to start below it.
+  const [headerHeight, setHeaderHeight] = useState(56);
+  const headerY = useRef(new Animated.Value(0)).current;
+  const headerHiddenRef = useRef(false);
+  const lastScrollYRef = useRef(0);
+  const setHeaderHidden = (hidden) => {
+    if (headerHiddenRef.current === hidden) return;
+    headerHiddenRef.current = hidden;
+    Animated.timing(headerY, { toValue: hidden ? -headerHeight : 0, duration: 220, useNativeDriver: true }).start();
+  };
+  const onContentScroll = (y) => {
+    const dy = y - lastScrollYRef.current;
+    if (y <= 4) setHeaderHidden(false);
+    else if (dy > 8) setHeaderHidden(true);
+    else if (dy < -8) setHeaderHidden(false);
+    lastScrollYRef.current = y;
+  };
+  // Fresh scroll bookkeeping (and a visible header) every time the visible
+  // surface changes identity, so switching notes/modes never inherits a
+  // stale scroll delta from whatever was on screen before.
+  useEffect(() => {
+    lastScrollYRef.current = 0;
+    headerHiddenRef.current = false;
+    headerY.setValue(0);
+  }, [noteId, preview, boardMode, zen, headerY]);
   // Bumped whenever `body` changes from *outside* the rich editor's own DOM
   // (a table/drawing edit made from Preview, a Time Machine restore) --
   // combined with `noteId` as the surface's `key`, this forces it to
@@ -264,67 +294,82 @@ export default function EditorPane({ noteId, onBack, headerExtra, flushRef }) {
   return (
     <View style={{ flex: 1, backgroundColor: theme.bg }}>
       {!zen && (
-        <View style={s.header}>
-          {onBack && (
-            <TouchableOpacity testID="editor-back" style={s.iconBtn} onPress={onBack} hitSlop={8}>
-              <Feather name="chevron-left" size={22} color={theme.text} />
-            </TouchableOpacity>
+        <Animated.View
+          style={[s.headerOverlay, { backgroundColor: theme.bg, transform: [{ translateY: headerY }] }]}
+          onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
+        >
+          <View style={s.header}>
+            {onBack && (
+              <TouchableOpacity testID="editor-back" style={s.iconBtn} onPress={onBack} hitSlop={8}>
+                <Feather name="chevron-left" size={22} color={theme.text} />
+              </TouchableOpacity>
+            )}
+            {headerExtra}
+            <View style={{ flex: 1 }} />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={s.headerActions}>
+              {!lockedNoKey && (
+                <TouchableOpacity testID="toggle-vault" style={s.iconBtn} onPress={onToggleVault} hitSlop={4}>
+                  <Feather name={note?.vault ? "unlock" : "shield"} size={17} color={theme.text} />
+                </TouchableOpacity>
+              )}
+              {!lockedNoKey && (
+                <TouchableOpacity testID="save-template" style={s.iconBtn} onPress={() => setShowSaveTemplate(true)} hitSlop={4}>
+                  <Feather name="bookmark" size={17} color={theme.text} />
+                </TouchableOpacity>
+              )}
+              {!lockedNoKey && (
+                <TouchableOpacity testID="open-insert-menu" style={s.iconBtn} onPress={() => setShowInsertMenu(true)} hitSlop={4}>
+                  <Feather name="plus-square" size={17} color={theme.text} />
+                </TouchableOpacity>
+              )}
+              {!lockedNoKey && boardDetected && (
+                <TouchableOpacity
+                  testID="toggle-board"
+                  style={[s.iconBtn, boardMode && { backgroundColor: theme.accent }]}
+                  onPress={() => setBoardMode((b) => !b)}
+                  hitSlop={4}
+                >
+                  <Feather name="trello" size={17} color={boardMode ? theme.onAccent : theme.text} />
+                </TouchableOpacity>
+              )}
+              {!lockedNoKey && (
+                <TouchableOpacity testID="toggle-zen" style={s.iconBtn} onPress={() => onToggleZen(true)} hitSlop={4}>
+                  <Feather name="minimize-2" size={17} color={theme.text} />
+                </TouchableOpacity>
+              )}
+              {!lockedNoKey && !note?.vault && (
+                <TouchableOpacity testID="open-history" style={s.iconBtn} onPress={() => setShowHistory(true)} hitSlop={4}>
+                  <Feather name="clock" size={18} color={theme.text} />
+                </TouchableOpacity>
+              )}
+              {!lockedNoKey && !note?.vault && (
+                <TouchableOpacity testID="open-print" style={s.iconBtn} onPress={onOpenPrint} hitSlop={4}>
+                  <Feather name="printer" size={17} color={theme.text} />
+                </TouchableOpacity>
+              )}
+              {!lockedNoKey && (
+                <TouchableOpacity
+                  testID="toggle-preview"
+                  style={[s.iconBtn, preview && { backgroundColor: theme.accent }]}
+                  onPress={() => setPreview((p) => !p)}
+                  hitSlop={4}
+                >
+                  <Feather name="eye" size={18} color={preview ? theme.onAccent : theme.text} />
+                </TouchableOpacity>
+              )}
+            </ScrollView>
+          </View>
+
+          {!lockedNoKey && !note?.vault && tags.length > 0 && (
+            <View style={s.tagRow}>
+              {tags.map((t) => (
+                <View key={t} style={[s.tagPill, { backgroundColor: colorForRoot(tagRoot(t)) + "22" }]}>
+                  <AppText style={[s.tagPillText, { color: colorForRoot(tagRoot(t)) }]}>#{t}</AppText>
+                </View>
+              ))}
+            </View>
           )}
-          {headerExtra}
-          <View style={{ flex: 1 }} />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={s.headerActions}>
-            {!lockedNoKey && (
-              <TouchableOpacity testID="toggle-vault" style={s.iconBtn} onPress={onToggleVault} hitSlop={4}>
-                <Feather name={note?.vault ? "unlock" : "shield"} size={17} color={theme.text} />
-              </TouchableOpacity>
-            )}
-            {!lockedNoKey && (
-              <TouchableOpacity testID="save-template" style={s.iconBtn} onPress={() => setShowSaveTemplate(true)} hitSlop={4}>
-                <Feather name="bookmark" size={17} color={theme.text} />
-              </TouchableOpacity>
-            )}
-            {!lockedNoKey && (
-              <TouchableOpacity testID="open-insert-menu" style={s.iconBtn} onPress={() => setShowInsertMenu(true)} hitSlop={4}>
-                <Feather name="plus-square" size={17} color={theme.text} />
-              </TouchableOpacity>
-            )}
-            {!lockedNoKey && boardDetected && (
-              <TouchableOpacity
-                testID="toggle-board"
-                style={[s.iconBtn, boardMode && { backgroundColor: theme.accent }]}
-                onPress={() => setBoardMode((b) => !b)}
-                hitSlop={4}
-              >
-                <Feather name="trello" size={17} color={boardMode ? theme.onAccent : theme.text} />
-              </TouchableOpacity>
-            )}
-            {!lockedNoKey && (
-              <TouchableOpacity testID="toggle-zen" style={s.iconBtn} onPress={() => onToggleZen(true)} hitSlop={4}>
-                <Feather name="minimize-2" size={17} color={theme.text} />
-              </TouchableOpacity>
-            )}
-            {!lockedNoKey && !note?.vault && (
-              <TouchableOpacity testID="open-history" style={s.iconBtn} onPress={() => setShowHistory(true)} hitSlop={4}>
-                <Feather name="clock" size={18} color={theme.text} />
-              </TouchableOpacity>
-            )}
-            {!lockedNoKey && !note?.vault && (
-              <TouchableOpacity testID="open-print" style={s.iconBtn} onPress={onOpenPrint} hitSlop={4}>
-                <Feather name="printer" size={17} color={theme.text} />
-              </TouchableOpacity>
-            )}
-            {!lockedNoKey && (
-              <TouchableOpacity
-                testID="toggle-preview"
-                style={[s.iconBtn, preview && { backgroundColor: theme.accent }]}
-                onPress={() => setPreview((p) => !p)}
-                hitSlop={4}
-              >
-                <Feather name="eye" size={18} color={preview ? theme.onAccent : theme.text} />
-              </TouchableOpacity>
-            )}
-          </ScrollView>
-        </View>
+        </Animated.View>
       )}
 
       {zen && (
@@ -333,28 +378,21 @@ export default function EditorPane({ noteId, onBack, headerExtra, flushRef }) {
         </TouchableOpacity>
       )}
 
-      {!zen && !lockedNoKey && !note?.vault && tags.length > 0 && (
-        <View style={s.tagRow}>
-          {tags.map((t) => (
-            <View key={t} style={[s.tagPill, { backgroundColor: colorForRoot(tagRoot(t)) + "22" }]}>
-              <AppText style={[s.tagPillText, { color: colorForRoot(tagRoot(t)) }]}>#{t}</AppText>
-            </View>
-          ))}
-        </View>
-      )}
-
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         {lockedNoKey ? (
-          <View style={s.lockedWrap}>
+          <View style={[s.lockedWrap, { paddingTop: headerHeight }]}>
             <Feather name="lock" size={26} color={theme.textMuted} />
             <AppText style={s.lockedText}>This note is in the Vault. Open it from the Vault to unlock it.</AppText>
           </View>
         ) : boardMode && boardDetected ? (
-          <KanbanBoard raw={body} onChange={setBody} theme={theme} />
+          <View style={{ flex: 1, paddingTop: headerHeight }}>
+            <KanbanBoard raw={body} onChange={setBody} theme={theme} />
+          </View>
         ) : zen ? (
           // Zen/typewriter mode stays a plain text surface on purpose --
           // it's meant to be minimal, and its cursor-centering scroll math
-          // needs a plain-text caret offset, not a DOM Range.
+          // needs a plain-text caret offset, not a DOM Range. No header to
+          // hide here either (it isn't rendered at all in zen mode).
           <ScrollView
             ref={scrollRef}
             style={{ flex: 1 }}
@@ -375,7 +413,13 @@ export default function EditorPane({ noteId, onBack, headerExtra, flushRef }) {
             />
           </ScrollView>
         ) : preview ? (
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ padding: 20, paddingTop: headerHeight + 20, flexGrow: 1 }}
+            keyboardShouldPersistTaps="handled"
+            onScroll={(e) => onContentScroll(e.nativeEvent.contentOffset.y)}
+            scrollEventThrottle={16}
+          >
             <MarkdownView
               body={body}
               theme={theme}
@@ -386,13 +430,14 @@ export default function EditorPane({ noteId, onBack, headerExtra, flushRef }) {
           </ScrollView>
         ) : (
           <>
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, paddingTop: headerHeight }}>
               <RichEditorSurface
                 key={`${noteId}:${reseedKey}`}
                 ref={richRef}
                 testID="editor-input"
                 initialMarkdown={body}
                 onChangeMarkdown={setBody}
+                onScrollY={onContentScroll}
                 theme={theme}
                 placeholder="Start writing…"
               />
@@ -455,6 +500,7 @@ export default function EditorPane({ noteId, onBack, headerExtra, flushRef }) {
 
 const styles = (t) =>
   StyleSheet.create({
+    headerOverlay: { position: "absolute", top: 0, left: 0, right: 0, zIndex: 20, elevation: 8 },
     header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 10, paddingVertical: 8, gap: 4 },
     headerActions: { flexDirection: "row", alignItems: "center", gap: 4 },
     iconBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: t.surfaceAlt },

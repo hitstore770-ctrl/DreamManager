@@ -10,11 +10,12 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { RADIUS, useTheme } from "../theme/ThemeContext";
-import { createNote, deleteNote, listNotes, setPinned } from "../db/notesRepo";
+import { ARCHIVE_COLOR, noteColor } from "../lib/colors";
+import { createNote, deleteNote, listNotes, saveNoteBody, setArchived, setPinned } from "../db/notesRepo";
 import { colorForRoot, tagRoot } from "../lib/tags";
-import { noteColor } from "../lib/colors";
 import { renderTemplate } from "../lib/templates";
 import TemplatePickerSheet from "../components/TemplatePickerSheet";
+import ExpandableFab from "../components/ExpandableFab";
 
 function previewOf(body) {
   // Skip the first line — it's already shown as the card title — and
@@ -116,6 +117,27 @@ export default function NotesListScreen({ navigation, route }) {
     navigation.navigate("Editor", { noteId: note.id });
   };
 
+  // Whiteboard pops itself off the stack right after calling onSave (it
+  // doesn't await it), so by the time this save actually lands we're back
+  // on NotesList -- navigating to Editor from here pushes it cleanly on
+  // top, instead of racing Whiteboard's own goBack().
+  const onNewDrawing = async () => {
+    const note = await createNote(db, "");
+    navigation.navigate("Whiteboard", {
+      onSave: (base64) => {
+        saveNoteBody(db, note.id, `\`\`\`drawing\n${base64}\n\`\`\`\n`).then(() => {
+          navigation.navigate("Editor", { noteId: note.id });
+        });
+      },
+    });
+  };
+
+  const onFabPick = (key) => {
+    if (key === "note") onNewNote();
+    else if (key === "drawing") onNewDrawing();
+    else if (key === "template") setShowTemplates(true);
+  };
+
   const onTogglePin = async (note) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     await setPinned(db, note.id, !note.pinned);
@@ -126,6 +148,12 @@ export default function NotesListScreen({ navigation, route }) {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setNotes((prev) => prev.filter((n) => n.id !== id));
     await deleteNote(db, id);
+  };
+
+  const onArchive = async (id) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    setNotes((prev) => prev.filter((n) => n.id !== id));
+    await setArchived(db, id, true);
   };
 
   const s = styles(theme);
@@ -149,6 +177,9 @@ export default function NotesListScreen({ navigation, route }) {
           </TouchableOpacity>
           <TouchableOpacity testID="open-split" style={s.iconBtn} onPress={() => navigation.navigate("Split")} activeOpacity={0.7}>
             <Feather name="columns" size={19} color={theme.text} />
+          </TouchableOpacity>
+          <TouchableOpacity testID="open-archived" style={s.iconBtn} onPress={() => navigation.navigate("Archived")} activeOpacity={0.7}>
+            <Feather name="archive" size={19} color={theme.text} />
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -196,6 +227,7 @@ export default function NotesListScreen({ navigation, route }) {
             onOpen={() => openNote(item.id)}
             onTogglePin={() => onTogglePin(item)}
             onDelete={() => onDelete(item.id)}
+            onArchive={() => onArchive(item.id)}
           />
         )}
         ListEmptyComponent={
@@ -205,22 +237,14 @@ export default function NotesListScreen({ navigation, route }) {
         }
       />
 
-      <TouchableOpacity
-        testID="new-note-fab"
-        style={[s.fab, { bottom: insets.bottom + 24 }]}
-        onPress={onNewNote}
-        onLongPress={() => setShowTemplates(true)}
-        activeOpacity={0.85}
-      >
-        <Feather name="plus" size={26} color={theme.onAccent} />
-      </TouchableOpacity>
+      <ExpandableFab bottom={insets.bottom + 24} onPick={onFabPick} />
 
       <TemplatePickerSheet visible={showTemplates} onClose={() => setShowTemplates(false)} onPick={onUseTemplate} />
     </View>
   );
 }
 
-function NoteCard({ note, theme, styles: s, onOpen, onTogglePin, onDelete }) {
+function NoteCard({ note, theme, styles: s, onOpen, onTogglePin, onDelete, onArchive }) {
   const bg = noteColor(note.color, theme.scheme === "dark");
 
   const renderRightActions = () => (
@@ -229,8 +253,22 @@ function NoteCard({ note, theme, styles: s, onOpen, onTogglePin, onDelete }) {
     </View>
   );
 
+  const renderLeftActions = () => (
+    <View style={s.archiveAction}>
+      <Feather name="archive" size={18} color="#FFFFFF" />
+    </View>
+  );
+
   return (
-    <Swipeable renderRightActions={renderRightActions} onSwipeableOpen={onDelete} overshootRight={false} rightThreshold={44}>
+    <Swipeable
+      renderLeftActions={renderLeftActions}
+      renderRightActions={renderRightActions}
+      onSwipeableOpen={(direction) => (direction === "left" ? onArchive() : onDelete())}
+      overshootLeft={false}
+      overshootRight={false}
+      leftThreshold={44}
+      rightThreshold={44}
+    >
       <Pressable testID="note-card" style={[s.card, { backgroundColor: bg }]} onPress={onOpen} onLongPress={onTogglePin}>
         <View style={s.cardTop}>
           {note.pinned && <Feather name="bookmark" size={13} color={theme.accent} style={{ marginEnd: 6 }} />}
@@ -278,20 +316,6 @@ const styles = (t) =>
     tagPill: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
     tagPillText: { fontSize: 11, fontWeight: "700" },
     deleteAction: { backgroundColor: t.danger, justifyContent: "center", alignItems: "center", width: 64, borderRadius: RADIUS.lg, marginBottom: 12 },
+    archiveAction: { backgroundColor: ARCHIVE_COLOR, justifyContent: "center", alignItems: "center", width: 64, borderRadius: RADIUS.lg, marginBottom: 12 },
     empty: { color: t.textMuted, textAlign: "center", marginTop: 60, fontSize: 14, paddingHorizontal: 30, lineHeight: 21 },
-    fab: {
-      position: "absolute",
-      right: 20,
-      width: 58,
-      height: 58,
-      borderRadius: 29,
-      backgroundColor: t.accent,
-      alignItems: "center",
-      justifyContent: "center",
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.2,
-      shadowRadius: 10,
-      elevation: 6,
-    },
   });

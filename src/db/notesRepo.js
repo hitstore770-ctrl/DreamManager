@@ -20,7 +20,7 @@ export function deriveTitle(body) {
 }
 
 function mapNoteRow(row) {
-  return { ...row, pinned: !!row.pinned, vault: !!row.vault, tags: [] };
+  return { ...row, pinned: !!row.pinned, vault: !!row.vault, archived: !!row.archived, tags: [] };
 }
 
 async function attachTags(db, notes) {
@@ -52,9 +52,10 @@ async function syncTags(db, noteId, tagPaths) {
 
 // Vault notes are a separate category (see src/screens/VaultScreen.js) --
 // their body is ciphertext and their title is a placeholder, so they never
-// belong in the regular list, search, or tag results.
+// belong in the regular list, search, or tag results. Archived notes are
+// hidden from the main list the same way -- see listArchivedNotes below.
 export async function listNotes(db, { query = "", tagPath = null } = {}) {
-  const clauses = ["n.vault = 0"];
+  const clauses = ["n.vault = 0", "n.archived = 0"];
   const params = [];
   let sql = `SELECT DISTINCT n.* FROM notes n`;
   if (tagPath) {
@@ -105,6 +106,17 @@ export async function saveNoteBody(db, id, body) {
 
 export async function setPinned(db, id, pinned) {
   await db.runAsync(`UPDATE notes SET pinned = ?, updated_at = ? WHERE id = ?`, [pinned ? 1 : 0, Date.now(), id]);
+}
+
+// Archiving is a soft-delete: the row (and its tags/version history) stays
+// intact, it just drops out of listNotes' default view until restored.
+export async function setArchived(db, id, archived) {
+  await db.runAsync(`UPDATE notes SET archived = ?, updated_at = ? WHERE id = ?`, [archived ? 1 : 0, Date.now(), id]);
+}
+
+export async function listArchivedNotes(db) {
+  const rows = await db.getAllAsync(`SELECT * FROM notes WHERE vault = 0 AND archived = 1 ORDER BY updated_at DESC`);
+  return attachTags(db, rows.map(mapNoteRow));
 }
 
 export async function setColor(db, id, color) {

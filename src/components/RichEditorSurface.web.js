@@ -20,7 +20,7 @@ function ensureStyleTag(css) {
 }
 
 const RichEditorSurface = forwardRef(function RichEditorSurface(
-  { initialMarkdown, onChangeMarkdown, theme, placeholder, testID },
+  { initialMarkdown, onChangeMarkdown, theme, placeholder, testID, onScrollY },
   ref
 ) {
   const divRef = useRef(null);
@@ -111,6 +111,7 @@ const RichEditorSurface = forwardRef(function RichEditorSurface(
       suppressContentEditableWarning
       data-placeholder={placeholder}
       onInput={emitChange}
+      onScroll={onScrollY ? (e) => onScrollY(e.target.scrollTop) : undefined}
       style={{ flex: 1, minHeight: 260, outline: "none", overflowY: "auto" }}
     />
   );

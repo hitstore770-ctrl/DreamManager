@@ -74,6 +74,7 @@ const NOTES_COLUMNS = [
   { name: "vault", ddl: "ALTER TABLE notes ADD COLUMN vault INTEGER NOT NULL DEFAULT 0" },
   { name: "iv", ddl: "ALTER TABLE notes ADD COLUMN iv TEXT" },
   { name: "mac", ddl: "ALTER TABLE notes ADD COLUMN mac TEXT" },
+  { name: "archived", ddl: "ALTER TABLE notes ADD COLUMN archived INTEGER NOT NULL DEFAULT 0" },
 ];
 
 async function ensureNotesColumns(db) {

@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
-import { Modal, Pressable, StyleSheet, TouchableOpacity, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 import AppText from "./AppText";
 import AppTextInput from "./AppTextInput";
 import { useSQLiteContext } from "expo-sqlite";
 import { Feather } from "@expo/vector-icons";
 
-import { RADIUS, useTheme } from "../theme/ThemeContext";
+import { useTheme } from "../theme/ThemeContext";
 import { getVerifier, setVerifier } from "../db/vaultRepo";
 import { decryptText, deriveVaultKey, VAULT_VERIFIER_PLAINTEXT } from "../lib/crypto";
+import BottomSheet from "./BottomSheet";
 
 // Reusable PIN gate: on first use (no verifier row yet) it asks the user to
 // set a PIN; every time after, it asks for the existing one. Either path
@@ -68,72 +69,66 @@ export default function VaultPinModal({ visible, onClose, onUnlocked }) {
   const s = styles(theme);
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={s.backdrop} onPress={onClose}>
-        <Pressable style={s.card} onPress={() => {}}>
-          <View style={s.titleRow}>
-            <Feather name="shield" size={18} color={theme.accent} />
-            <AppText style={s.title}>{mode === "set" ? "Set a Vault PIN" : "Enter Vault PIN"}</AppText>
-          </View>
-          {mode === "checking" ? (
-            <AppText style={s.hint}>Loading…</AppText>
-          ) : (
-            <>
-              <AppText style={s.hint}>
-                {mode === "set"
-                  ? "This PIN encrypts every note you put in the Vault. There is no recovery if you forget it."
-                  : "Notes stay encrypted until the correct PIN is entered."}
-              </AppText>
-              <AppTextInput
-                testID="vault-pin-input"
-                style={s.input}
-                value={pin}
-                onChangeText={setPin}
-                placeholder="PIN"
-                placeholderTextColor={theme.textMuted}
-                secureTextEntry
-                keyboardType="number-pad"
-                autoFocus
-              />
-              {mode === "set" && (
-                <AppTextInput
-                  testID="vault-confirm-input"
-                  style={s.input}
-                  value={confirmPin}
-                  onChangeText={setConfirmPin}
-                  placeholder="Confirm PIN"
-                  placeholderTextColor={theme.textMuted}
-                  secureTextEntry
-                  keyboardType="number-pad"
-                />
-              )}
-              {!!error && <AppText style={s.error}>{error}</AppText>}
-              <View style={{ flexDirection: "row", gap: 10, marginTop: 6 }}>
-                <TouchableOpacity style={[s.btn, s.btnGhost]} onPress={onClose} activeOpacity={0.8}>
-                  <AppText style={[s.btnText, { color: theme.textSecondary }]}>Cancel</AppText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  testID="vault-submit"
-                  style={[s.btn, { backgroundColor: theme.accent }]}
-                  onPress={submit}
-                  disabled={busy}
-                  activeOpacity={0.85}
-                >
-                  <AppText style={[s.btnText, { color: theme.onAccent }]}>{busy ? "…" : mode === "set" ? "Create" : "Unlock"}</AppText>
-                </TouchableOpacity>
-              </View>
-            </>
+    <BottomSheet visible={visible} onClose={onClose}>
+      <View style={s.titleRow}>
+        <Feather name="shield" size={18} color={theme.accent} />
+        <AppText style={s.title}>{mode === "set" ? "Set a Vault PIN" : "Enter Vault PIN"}</AppText>
+      </View>
+      {mode === "checking" ? (
+        <AppText style={s.hint}>Loading…</AppText>
+      ) : (
+        <>
+          <AppText style={s.hint}>
+            {mode === "set"
+              ? "This PIN encrypts every note you put in the Vault. There is no recovery if you forget it."
+              : "Notes stay encrypted until the correct PIN is entered."}
+          </AppText>
+          <AppTextInput
+            testID="vault-pin-input"
+            style={s.input}
+            value={pin}
+            onChangeText={setPin}
+            placeholder="PIN"
+            placeholderTextColor={theme.textMuted}
+            secureTextEntry
+            keyboardType="number-pad"
+            autoFocus
+          />
+          {mode === "set" && (
+            <AppTextInput
+              testID="vault-confirm-input"
+              style={s.input}
+              value={confirmPin}
+              onChangeText={setConfirmPin}
+              placeholder="Confirm PIN"
+              placeholderTextColor={theme.textMuted}
+              secureTextEntry
+              keyboardType="number-pad"
+            />
           )}
-        </Pressable>
-      </Pressable>
-    </Modal>
+          {!!error && <AppText style={s.error}>{error}</AppText>}
+          <View style={{ flexDirection: "row", gap: 10, marginTop: 6 }}>
+            <TouchableOpacity style={[s.btn, s.btnGhost]} onPress={onClose} activeOpacity={0.8}>
+              <AppText style={[s.btnText, { color: theme.textSecondary }]}>Cancel</AppText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              testID="vault-submit"
+              style={[s.btn, { backgroundColor: theme.accent }]}
+              onPress={submit}
+              disabled={busy}
+              activeOpacity={0.85}
+            >
+              <AppText style={[s.btnText, { color: theme.onAccent }]}>{busy ? "…" : mode === "set" ? "Create" : "Unlock"}</AppText>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+    </BottomSheet>
   );
 }
 
 const styles = (t) =>
   StyleSheet.create({
-    backdrop: { flex: 1, backgroundColor: t.overlay, alignItems: "center", justifyContent: "center", padding: 24 },
-    card: { width: "100%", maxWidth: 340, backgroundColor: t.surface, borderRadius: RADIUS.lg, padding: 20, ...t.cardShadow },
     titleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
     title: { fontSize: 16, fontWeight: "700", color: t.text },
     hint: { fontSize: 12.5, color: t.textMuted, lineHeight: 18, marginBottom: 14 },

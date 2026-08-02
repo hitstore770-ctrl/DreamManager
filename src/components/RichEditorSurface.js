@@ -37,7 +37,7 @@ function buildDocument(theme, initialHtml, placeholder) {
 }
 
 const RichEditorSurface = forwardRef(function RichEditorSurface(
-  { initialMarkdown, onChangeMarkdown, theme, placeholder, testID },
+  { initialMarkdown, onChangeMarkdown, theme, placeholder, testID, onScrollY },
   ref
 ) {
   const webRef = useRef(null);
@@ -97,6 +97,7 @@ const RichEditorSurface = forwardRef(function RichEditorSurface(
       originWhitelist={["*"]}
       source={{ html }}
       onMessage={onMessage}
+      onScroll={onScrollY ? (e) => onScrollY(e.nativeEvent.contentOffset.y) : undefined}
       style={{ flex: 1, backgroundColor: theme.bg }}
       scrollEnabled
       keyboardDisplayRequiresUserAction={false}
