@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Image, TouchableOpacity, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Animated, Image, TouchableOpacity, View } from "react-native";
 import AppText from "./AppText";
 import { Feather } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
@@ -106,39 +106,14 @@ export default function MarkdownView({ body, onToggleChecklist, onEditTable, onE
         }
         if (block.type === "checklist") {
           return (
-            <TouchableOpacity
+            <ChecklistItem
               key={idx}
-              style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, paddingVertical: 4 }}
+              block={block}
+              theme={theme}
+              fontSize={fontSize}
+              lineHeight={lineHeight}
               onPress={() => onToggleChecklist?.(block.lineIndex)}
-              activeOpacity={0.7}
-            >
-              <View
-                style={{
-                  width: 20,
-                  height: 20,
-                  marginTop: Math.round((lineHeight - 20) / 2),
-                  borderRadius: 5,
-                  borderWidth: 2,
-                  borderColor: block.checked ? theme.accent : theme.border,
-                  backgroundColor: block.checked ? theme.accent : "transparent",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {block.checked && <Feather name="check" size={13} color={theme.onAccent} />}
-              </View>
-              <AppText
-                style={{
-                  flex: 1,
-                  color: block.checked ? theme.textMuted : theme.text,
-                  textDecorationLine: block.checked ? "line-through" : "none",
-                  fontSize,
-                  lineHeight,
-                }}
-              >
-                <InlineText segments={parseInline(block.text)} theme={theme} />
-              </AppText>
-            </TouchableOpacity>
+            />
           );
         }
         // paragraph
@@ -150,6 +125,74 @@ export default function MarkdownView({ body, onToggleChecklist, onEditTable, onE
         );
       })}
     </View>
+  );
+}
+
+// A checklist row with two small animated touches: the checkbox bounces
+// (scale up, spring back) when it's checked, and the strikethrough sweeps
+// across the text over 200ms instead of snapping on -- textDecorationLine
+// itself can't be interpolated, so this draws the "line" as a separate
+// overlay whose width is what actually animates.
+function ChecklistItem({ block, theme, fontSize, lineHeight, onPress }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const strike = useRef(new Animated.Value(block.checked ? 1 : 0)).current;
+  const mounted = useRef(false);
+
+  useEffect(() => {
+    if (!mounted.current) {
+      // Skip animating on first render -- only react to a real toggle.
+      mounted.current = true;
+      return;
+    }
+    Animated.timing(strike, { toValue: block.checked ? 1 : 0, duration: 200, useNativeDriver: false }).start();
+    if (block.checked) {
+      Animated.sequence([
+        Animated.spring(scale, { toValue: 1.25, useNativeDriver: true, speed: 30, bounciness: 12 }),
+        Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 8 }),
+      ]).start();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [block.checked]);
+
+  return (
+    <TouchableOpacity
+      style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, paddingVertical: 4 }}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <Animated.View
+        style={{
+          width: 20,
+          height: 20,
+          marginTop: Math.round((lineHeight - 20) / 2),
+          borderRadius: 5,
+          borderWidth: 2,
+          borderColor: block.checked ? theme.accent : theme.border,
+          backgroundColor: block.checked ? theme.accent : "transparent",
+          alignItems: "center",
+          justifyContent: "center",
+          transform: [{ scale }],
+        }}
+      >
+        {block.checked && <Feather name="check" size={13} color={theme.onAccent} />}
+      </Animated.View>
+      <View style={{ flex: 1 }}>
+        <AppText style={{ color: block.checked ? theme.textMuted : theme.text, fontSize, lineHeight }}>
+          <InlineText segments={parseInline(block.text)} theme={theme} />
+        </AppText>
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            left: 0,
+            top: lineHeight / 2,
+            height: 1.5,
+            backgroundColor: theme.textMuted,
+            width: strike.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
+          }}
+        />
+      </View>
+    </TouchableOpacity>
   );
 }
 

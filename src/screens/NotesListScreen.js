@@ -11,11 +11,14 @@ import * as Haptics from "expo-haptics";
 
 import { RADIUS, useTheme } from "../theme/ThemeContext";
 import { ARCHIVE_COLOR, noteColor } from "../lib/colors";
+import { extractLeadingEmoji } from "../lib/emoji";
 import { createNote, deleteNote, listNotes, saveNoteBody, setArchived, setPinned } from "../db/notesRepo";
 import { colorForRoot, tagRoot } from "../lib/tags";
 import { renderTemplate } from "../lib/templates";
 import TemplatePickerSheet from "../components/TemplatePickerSheet";
 import ExpandableFab from "../components/ExpandableFab";
+import EmptyState from "../components/EmptyState";
+import { SkeletonList } from "../components/Skeleton";
 
 function previewOf(body) {
   // Skip the first line — it's already shown as the card title — and
@@ -45,7 +48,7 @@ export default function NotesListScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const db = useSQLiteContext();
 
-  const [notes, setNotes] = useState([]);
+  const [notes, setNotes] = useState(null); // null = still loading (distinct from a genuinely empty [])
   const [queryInput, setQueryInput] = useState("");
   const [query, setQuery] = useState("");
   const [activeTag, setActiveTag] = useState(null);
@@ -215,27 +218,33 @@ export default function NotesListScreen({ navigation, route }) {
         </View>
       )}
 
-      <FlatList
-        data={notes}
-        keyExtractor={(n) => n.id}
-        contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 96 }}
-        renderItem={({ item }) => (
-          <NoteCard
-            note={item}
-            theme={theme}
-            styles={s}
-            onOpen={() => openNote(item.id)}
-            onTogglePin={() => onTogglePin(item)}
-            onDelete={() => onDelete(item.id)}
-            onArchive={() => onArchive(item.id)}
-          />
-        )}
-        ListEmptyComponent={
-          <AppText style={s.empty}>
-            {query || activeTag ? "No notes match." : "No notes yet. Tap + to write one (hold + for templates)."}
-          </AppText>
-        }
-      />
+      {notes === null ? (
+        <SkeletonList />
+      ) : (
+        <FlatList
+          data={notes}
+          keyExtractor={(n) => n.id}
+          contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 96 }}
+          renderItem={({ item }) => (
+            <NoteCard
+              note={item}
+              theme={theme}
+              styles={s}
+              onOpen={() => openNote(item.id)}
+              onTogglePin={() => onTogglePin(item)}
+              onDelete={() => onDelete(item.id)}
+              onArchive={() => onArchive(item.id)}
+            />
+          )}
+          ListEmptyComponent={
+            query || activeTag ? (
+              <EmptyState icon="search" title="No notes match" subtitle="Try a different search term or clear the tag filter." />
+            ) : (
+              <EmptyState icon="feather" title="It's quiet here" subtitle="Tap + to write your first note (hold it for templates)." />
+            )
+          }
+        />
+      )}
 
       <ExpandableFab bottom={insets.bottom + 24} onPick={onFabPick} />
 
@@ -246,6 +255,8 @@ export default function NotesListScreen({ navigation, route }) {
 
 function NoteCard({ note, theme, styles: s, onOpen, onTogglePin, onDelete, onArchive }) {
   const bg = noteColor(note.color, theme.scheme === "dark");
+  const leading = extractLeadingEmoji(note.title);
+  const displayTitle = (leading ? leading.rest : note.title) || "Untitled";
 
   const renderRightActions = () => (
     <View style={s.deleteAction}>
@@ -271,9 +282,14 @@ function NoteCard({ note, theme, styles: s, onOpen, onTogglePin, onDelete, onArc
     >
       <Pressable testID="note-card" style={[s.card, { backgroundColor: bg }]} onPress={onOpen} onLongPress={onTogglePin}>
         <View style={s.cardTop}>
+          {!!leading && (
+            <View testID="note-emoji-icon" style={s.emojiBadge}>
+              <AppText style={s.emojiBadgeText}>{leading.emoji}</AppText>
+            </View>
+          )}
           {note.pinned && <Feather name="bookmark" size={13} color={theme.accent} style={{ marginEnd: 6 }} />}
           <AppText style={[s.cardTitle, { color: theme.text }]} numberOfLines={1}>
-            {note.title || "Untitled"}
+            {displayTitle}
           </AppText>
         </View>
         <AppText style={[s.cardPreview, { color: theme.textMuted }]} numberOfLines={2}>
@@ -309,6 +325,16 @@ const styles = (t) =>
     filterText: { color: t.accent, fontWeight: "600", fontSize: 13 },
     card: { borderRadius: RADIUS.lg, padding: 16, marginBottom: 12, ...t.cardShadow },
     cardTop: { flexDirection: "row", alignItems: "center", marginBottom: 5 },
+    emojiBadge: {
+      width: 26,
+      height: 26,
+      borderRadius: 8,
+      backgroundColor: t.surfaceAlt,
+      alignItems: "center",
+      justifyContent: "center",
+      marginEnd: 8,
+    },
+    emojiBadgeText: { fontSize: 15, lineHeight: 18 },
     cardTitle: { flex: 1, fontSize: 16, fontWeight: "600" },
     cardPreview: { fontSize: 13.5, lineHeight: 19 },
     cardFoot: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6, marginTop: 9 },
@@ -317,5 +343,4 @@ const styles = (t) =>
     tagPillText: { fontSize: 11, fontWeight: "700" },
     deleteAction: { backgroundColor: t.danger, justifyContent: "center", alignItems: "center", width: 64, borderRadius: RADIUS.lg, marginBottom: 12 },
     archiveAction: { backgroundColor: ARCHIVE_COLOR, justifyContent: "center", alignItems: "center", width: 64, borderRadius: RADIUS.lg, marginBottom: 12 },
-    empty: { color: t.textMuted, textAlign: "center", marginTop: 60, fontSize: 14, paddingHorizontal: 30, lineHeight: 21 },
   });

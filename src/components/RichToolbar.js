@@ -47,6 +47,9 @@ export default function RichToolbar({ surfaceRef, theme }) {
       <Btn testID="rte-bullets" onPress={() => surfaceRef.current?.bullets()}>
         <Feather name="list" size={17} color={theme.text} />
       </Btn>
+      <Btn testID="rte-checklist" onPress={() => surfaceRef.current?.insertMarkdownAtCursor("- [ ] \n")}>
+        <Feather name="check-square" size={17} color={theme.text} />
+      </Btn>
       <View style={s.divider} />
       <Btn testID="rte-align-left" onPress={() => surfaceRef.current?.align("left")}>
         <Feather name="align-left" size={17} color={theme.text} />

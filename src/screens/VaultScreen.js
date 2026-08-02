@@ -13,6 +13,9 @@ import VaultPinModal from "../components/VaultPinModal";
 import { useVault } from "../vault/VaultContext";
 import { createVaultNote, deleteVaultNote, listVaultNotes } from "../db/vaultRepo";
 import { decryptText } from "../lib/crypto";
+import { extractLeadingEmoji } from "../lib/emoji";
+import EmptyState from "../components/EmptyState";
+import { SkeletonList } from "../components/Skeleton";
 
 // A locked category of notes: nothing here renders until the PIN is
 // entered, and everything shown afterwards was decrypted in memory, this
@@ -23,20 +26,21 @@ export default function VaultScreen({ navigation }) {
   const db = useSQLiteContext();
   const vault = useVault();
 
-  const [rows, setRows] = useState([]);
+  const [rows, setRows] = useState(null); // null = still loading/decrypting
   const [decrypted, setDecrypted] = useState({});
   const [pinVisible, setPinVisible] = useState(!vault.unlocked);
 
   useEffect(() => {
     setPinVisible(!vault.unlocked);
+    if (!vault.unlocked) setRows(null); // fresh skeleton the next time it unlocks
   }, [vault.unlocked]);
 
   const load = useCallback(async () => {
     if (!vault.unlocked) return;
     const list = await listVaultNotes(db);
-    setRows(list);
     const pairs = await Promise.all(list.map(async (n) => [n.id, await decryptText(n.body, n.iv, n.mac, vault.key)]));
     setDecrypted(Object.fromEntries(pairs));
+    setRows(list);
   }, [db, vault.key, vault.unlocked]);
 
   useFocusEffect(
@@ -85,22 +89,26 @@ export default function VaultScreen({ navigation }) {
 
       {vault.unlocked && (
         <>
-          <FlatList
-            data={rows}
-            keyExtractor={(n) => n.id}
-            contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 96 }}
-            renderItem={({ item }) => (
-              <VaultCard
-                note={item}
-                plain={decrypted[item.id]}
-                theme={theme}
-                styles={s}
-                onOpen={() => openNote(item.id)}
-                onDelete={() => onDelete(item.id)}
-              />
-            )}
-            ListEmptyComponent={<AppText style={s.empty}>No notes in the Vault yet. Tap + to add one.</AppText>}
-          />
+          {rows === null ? (
+            <SkeletonList rows={3} />
+          ) : (
+            <FlatList
+              data={rows}
+              keyExtractor={(n) => n.id}
+              contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 96 }}
+              renderItem={({ item }) => (
+                <VaultCard
+                  note={item}
+                  plain={decrypted[item.id]}
+                  theme={theme}
+                  styles={s}
+                  onOpen={() => openNote(item.id)}
+                  onDelete={() => onDelete(item.id)}
+                />
+              )}
+              ListEmptyComponent={<EmptyState icon="shield" title="Vault is empty" subtitle="Tap + to add your first private note." />}
+            />
+          )}
           <TouchableOpacity
             testID="new-vault-note"
             style={[s.fab, { bottom: insets.bottom + 24 }]}
@@ -134,15 +142,24 @@ function VaultCard({ plain, theme, styles: s, onOpen, onDelete }) {
     </View>
   );
   const lines = (plain || "").split("\n").filter((l) => l.trim());
-  const title = (lines[0] || "").replace(/^#{1,6}\s*/, "") || "Empty note";
+  const rawTitle = (lines[0] || "").replace(/^#{1,6}\s*/, "") || "Empty note";
+  const leading = extractLeadingEmoji(rawTitle);
+  const title = (leading ? leading.rest : rawTitle) || "Empty note";
   const preview = lines.slice(1).join(" · ").slice(0, 100);
 
   return (
     <Swipeable renderRightActions={renderRightActions} onSwipeableOpen={onDelete} overshootRight={false} rightThreshold={44}>
       <Pressable testID="vault-note-card" style={s.card} onPress={onOpen}>
-        <AppText style={s.cardTitle} numberOfLines={1}>
-          {title}
-        </AppText>
+        <View style={s.cardTop}>
+          {!!leading && (
+            <View style={s.emojiBadge}>
+              <AppText style={s.emojiBadgeText}>{leading.emoji}</AppText>
+            </View>
+          )}
+          <AppText style={s.cardTitle} numberOfLines={1}>
+            {title}
+          </AppText>
+        </View>
         {!!preview && (
           <AppText style={s.cardPreview} numberOfLines={2}>
             {preview}
@@ -159,10 +176,20 @@ const styles = (t) =>
     iconBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: t.surfaceAlt },
     topTitle: { fontSize: 17, fontWeight: "700", color: t.text },
     card: { backgroundColor: t.surface, borderRadius: RADIUS.lg, padding: 16, marginBottom: 12, ...t.cardShadow },
-    cardTitle: { fontSize: 15.5, fontWeight: "700", color: t.text, marginBottom: 4 },
+    cardTop: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
+    emojiBadge: {
+      width: 24,
+      height: 24,
+      borderRadius: 7,
+      backgroundColor: t.surfaceAlt,
+      alignItems: "center",
+      justifyContent: "center",
+      marginEnd: 8,
+    },
+    emojiBadgeText: { fontSize: 14, lineHeight: 17 },
+    cardTitle: { fontSize: 15.5, fontWeight: "700", color: t.text },
     cardPreview: { fontSize: 13, color: t.textMuted, lineHeight: 18 },
     deleteAction: { backgroundColor: t.danger, justifyContent: "center", alignItems: "center", width: 64, borderRadius: RADIUS.lg, marginBottom: 12 },
-    empty: { color: t.textMuted, textAlign: "center", marginTop: 60, fontSize: 14, paddingHorizontal: 30, lineHeight: 21 },
     fab: {
       position: "absolute",
       right: 20,

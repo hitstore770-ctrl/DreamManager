@@ -7,6 +7,7 @@ import { Feather } from "@expo/vector-icons";
 import { useTheme } from "../theme/ThemeContext";
 import { deleteTemplate, listTemplates } from "../db/templatesRepo";
 import BottomSheet from "./BottomSheet";
+import EmptyState from "./EmptyState";
 
 // "Create from Template": lists every saved template and hands the raw
 // (un-substituted) body back to the caller on pick -- variable rendering
@@ -58,9 +59,7 @@ export default function TemplatePickerSheet({ visible, onClose, onPick }) {
           </View>
         )}
         ListEmptyComponent={
-          <AppText style={s.empty}>
-            No templates yet. Open a note and tap the template icon to save its structure as one.
-          </AppText>
+          <EmptyState icon="layout" title="No templates yet" subtitle="Open a note and tap the template icon to save its structure as one." />
         }
       />
     </BottomSheet>
@@ -74,5 +73,4 @@ const styles = (t) =>
     row: { flexDirection: "row", alignItems: "center", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: t.border, gap: 8 },
     rowTitle: { fontSize: 15, fontWeight: "700", color: t.text },
     rowPreview: { fontSize: 12.5, color: t.textMuted, marginTop: 2 },
-    empty: { color: t.textMuted, fontSize: 13.5, lineHeight: 20, textAlign: "center", paddingVertical: 20 },
   });

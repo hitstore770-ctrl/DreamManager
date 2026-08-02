@@ -10,8 +10,11 @@ import * as Haptics from "expo-haptics";
 
 import { RADIUS, useTheme } from "../theme/ThemeContext";
 import { ARCHIVE_COLOR, noteColor } from "../lib/colors";
+import { extractLeadingEmoji } from "../lib/emoji";
 import { deleteNote, listArchivedNotes, setArchived } from "../db/notesRepo";
 import SwipeBack from "../navigation/SwipeBack";
+import EmptyState from "../components/EmptyState";
+import { SkeletonList } from "../components/Skeleton";
 
 function fmtUpdated(ts) {
   const d = new Date(ts);
@@ -29,7 +32,7 @@ export default function ArchivedScreen({ navigation }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const db = useSQLiteContext();
-  const [notes, setNotes] = useState([]);
+  const [notes, setNotes] = useState(null); // null = still loading
 
   const load = useCallback(async () => {
     setNotes(await listArchivedNotes(db));
@@ -67,28 +70,36 @@ export default function ArchivedScreen({ navigation }) {
         <View style={{ width: 36 }} />
       </View>
 
-      <FlatList
-        data={notes}
-        keyExtractor={(n) => n.id}
-        contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 24 }}
-        renderItem={({ item }) => (
-          <ArchivedCard
-            note={item}
-            theme={theme}
-            styles={s}
-            onOpen={() => navigation.navigate("Editor", { noteId: item.id })}
-            onRestore={() => onRestore(item.id)}
-            onDeleteForever={() => onDeleteForever(item.id)}
-          />
-        )}
-        ListEmptyComponent={<AppText style={s.empty}>No archived notes. Swipe a note right on the main list to archive it.</AppText>}
-      />
+      {notes === null ? (
+        <SkeletonList rows={3} />
+      ) : (
+        <FlatList
+          data={notes}
+          keyExtractor={(n) => n.id}
+          contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 24 }}
+          renderItem={({ item }) => (
+            <ArchivedCard
+              note={item}
+              theme={theme}
+              styles={s}
+              onOpen={() => navigation.navigate("Editor", { noteId: item.id })}
+              onRestore={() => onRestore(item.id)}
+              onDeleteForever={() => onDeleteForever(item.id)}
+            />
+          )}
+          ListEmptyComponent={
+            <EmptyState icon="archive" title="Nothing archived" subtitle="Swipe a note right on the main list to send it here." />
+          }
+        />
+      )}
     </SwipeBack>
   );
 }
 
 function ArchivedCard({ note, theme, styles: s, onOpen, onRestore, onDeleteForever }) {
   const bg = noteColor(note.color, theme.scheme === "dark");
+  const leading = extractLeadingEmoji(note.title);
+  const displayTitle = (leading ? leading.rest : note.title) || "Untitled";
 
   const renderRightActions = () => (
     <View style={s.deleteAction}>
@@ -113,9 +124,16 @@ function ArchivedCard({ note, theme, styles: s, onOpen, onRestore, onDeleteForev
       rightThreshold={44}
     >
       <Pressable testID="archived-card" style={[s.card, { backgroundColor: bg }]} onPress={onOpen}>
-        <AppText style={s.cardTitle} numberOfLines={1}>
-          {note.title || "Untitled"}
-        </AppText>
+        <View style={s.cardTop}>
+          {!!leading && (
+            <View style={s.emojiBadge}>
+              <AppText style={s.emojiBadgeText}>{leading.emoji}</AppText>
+            </View>
+          )}
+          <AppText style={s.cardTitle} numberOfLines={1}>
+            {displayTitle}
+          </AppText>
+        </View>
         <AppText style={s.cardMeta}>Archived · {fmtUpdated(note.updated_at)}</AppText>
       </Pressable>
     </Swipeable>
@@ -128,9 +146,19 @@ const styles = (t) =>
     iconBtn: { width: 36, height: 36, borderRadius: RADIUS.sm, alignItems: "center", justifyContent: "center", backgroundColor: t.surfaceAlt },
     title: { fontSize: 18, fontWeight: "700", color: t.text },
     card: { borderRadius: RADIUS.lg, padding: 16, marginBottom: 12, ...t.cardShadow },
+    cardTop: { flexDirection: "row", alignItems: "center" },
+    emojiBadge: {
+      width: 24,
+      height: 24,
+      borderRadius: 7,
+      backgroundColor: t.surfaceAlt,
+      alignItems: "center",
+      justifyContent: "center",
+      marginEnd: 8,
+    },
+    emojiBadgeText: { fontSize: 14, lineHeight: 17 },
     cardTitle: { fontSize: 15.5, fontWeight: "600", color: t.text },
     cardMeta: { fontSize: 11.5, color: t.textMuted, marginTop: 4 },
     deleteAction: { backgroundColor: t.danger, justifyContent: "center", alignItems: "center", width: 64, borderRadius: RADIUS.lg, marginBottom: 12 },
     restoreAction: { backgroundColor: ARCHIVE_COLOR, justifyContent: "center", alignItems: "center", width: 64, borderRadius: RADIUS.lg, marginBottom: 12 },
-    empty: { color: t.textMuted, textAlign: "center", marginTop: 60, fontSize: 14, paddingHorizontal: 30, lineHeight: 21 },
   });

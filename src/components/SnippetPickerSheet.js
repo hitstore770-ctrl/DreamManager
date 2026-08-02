@@ -8,6 +8,7 @@ import { useTheme } from "../theme/ThemeContext";
 import { createSnippet, deleteSnippet, listSnippets } from "../db/snippetsRepo";
 import SaveSnippetModal from "./SaveSnippetModal";
 import BottomSheet from "./BottomSheet";
+import EmptyState from "./EmptyState";
 
 // The Snippet Library: reusable text/code blocks you can save from any note
 // and inject back into the cursor position of any other note.
@@ -81,7 +82,7 @@ export default function SnippetPickerSheet({ visible, onClose, onInsert, saveTex
             </View>
           )}
           ListEmptyComponent={
-            <AppText style={s.empty}>No snippets yet. Select text in a note and save it here to reuse later.</AppText>
+            <EmptyState icon="code" title="No snippets yet" subtitle="Select text in a note and save it here to reuse later." />
           }
         />
       </BottomSheet>
@@ -100,5 +101,4 @@ const styles = (t) =>
     row: { flexDirection: "row", alignItems: "center", paddingVertical: 12, borderTopWidth: 1, borderTopColor: t.border, gap: 8 },
     rowTitle: { fontSize: 15, fontWeight: "700", color: t.text },
     rowPreview: { fontSize: 12.5, color: t.textMuted, marginTop: 2, fontFamily: "monospace" },
-    empty: { color: t.textMuted, fontSize: 13.5, lineHeight: 20, textAlign: "center", paddingVertical: 20 },
   });

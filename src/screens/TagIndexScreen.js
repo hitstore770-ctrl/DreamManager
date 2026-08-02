@@ -10,6 +10,7 @@ import { useTheme } from "../theme/ThemeContext";
 import SwipeBack from "../navigation/SwipeBack";
 import { listTagsWithCounts } from "../db/notesRepo";
 import { buildTagTree } from "../lib/tags";
+import EmptyState from "../components/EmptyState";
 
 // Nested tags rendered as virtual folders: root tags carry the automatic
 // color, children nest underneath in the same hue. Tapping any node filters
@@ -55,7 +56,7 @@ export default function TagIndexScreen({ navigation }) {
       </View>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 30 }}>
         {tree.length === 0 && (
-          <AppText style={s.empty}>No tags yet. Type #tag or #project/subtag in a note.</AppText>
+          <EmptyState icon="hash" title="No tags yet" subtitle="Type #tag or #project/subtag in a note to start organizing." />
         )}
         {tree.map((node) => (
           <TagBranch
@@ -126,5 +127,4 @@ const styles = (t) =>
     dot: { width: 10, height: 10, borderRadius: 5 },
     rowText: { flex: 1, fontSize: 15, color: t.text, fontWeight: "600" },
     count: { fontSize: 12, color: t.textMuted, fontWeight: "600" },
-    empty: { color: t.textMuted, fontSize: 14, lineHeight: 21, textAlign: "center", marginTop: 40 },
   });
