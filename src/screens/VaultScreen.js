@@ -14,6 +14,7 @@ import { useVault } from "../vault/VaultContext";
 import { createVaultNote, deleteVaultNote, listVaultNotes } from "../db/vaultRepo";
 import { decryptText } from "../lib/crypto";
 import { extractLeadingEmoji } from "../lib/emoji";
+import { isRTL } from "../lib/rtl";
 import EmptyState from "../components/EmptyState";
 import { SkeletonList } from "../components/Skeleton";
 
@@ -192,7 +193,7 @@ const styles = (t) =>
     deleteAction: { backgroundColor: t.danger, justifyContent: "center", alignItems: "center", width: 64, borderRadius: RADIUS.lg, marginBottom: 12 },
     fab: {
       position: "absolute",
-      right: 20,
+      [isRTL() ? "left" : "right"]: 20,
       width: 58,
       height: 58,
       borderRadius: 29,

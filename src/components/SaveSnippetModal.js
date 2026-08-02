@@ -4,6 +4,7 @@ import AppText from "./AppText";
 import AppTextInput from "./AppTextInput";
 
 import { useTheme } from "../theme/ThemeContext";
+import { t } from "../i18n/strings";
 import BottomSheet from "./BottomSheet";
 
 // Names a reusable chunk of text (usually the current selection) before it's
@@ -38,10 +39,10 @@ export default function SaveSnippetModal({ visible, onClose, preview, onSave }) 
       />
       <View style={{ flexDirection: "row", gap: 10 }}>
         <TouchableOpacity style={[s.btn, s.btnGhost]} onPress={onClose} activeOpacity={0.8}>
-          <AppText style={[s.btnText, { color: theme.textSecondary }]}>Cancel</AppText>
+          <AppText style={[s.btnText, { color: theme.textSecondary }]}>{t("cancel")}</AppText>
         </TouchableOpacity>
         <TouchableOpacity testID="snippet-save-submit" style={[s.btn, { backgroundColor: theme.accent }]} onPress={submit} activeOpacity={0.85}>
-          <AppText style={[s.btnText, { color: theme.onAccent }]}>Save</AppText>
+          <AppText style={[s.btnText, { color: theme.onAccent }]}>{t("save")}</AppText>
         </TouchableOpacity>
       </View>
     </BottomSheet>

@@ -37,7 +37,7 @@ function alignAttr(align) {
   return align && align !== "left" ? ` style="text-align:${align}"` : "";
 }
 
-const EMBED_LABEL = { table: "Table", drawing: "Drawing", code: "Code block" };
+const EMBED_LABEL = { table: "Table", drawing: "Drawing", code: "Code block", calc: "Pricing block" };
 
 // A fenced block (table/drawing/code) becomes a non-editable placeholder
 // card -- the WYSIWYG surface doesn't try to make these directly editable
@@ -52,13 +52,38 @@ function embedHtml(block) {
   return `<div class="md-embed" contenteditable="false" data-embed="${encodeURIComponent(raw)}">${EMBED_LABEL[block.type]} — edit from Preview</div>`;
 }
 
+// Turns a flat run of {text, indent} bullets (indent = raw leading
+// whitespace length from parseBlocks) into a nested tree, the same
+// stack-popping approach src/lib/mindmap.js uses on raw lines -- here it's
+// needed so *reopening* a note with a hand- or Mind-Map-typed nested list
+// seeds the editor with real nested <ul><li> HTML instead of flattening it,
+// which would otherwise silently destroy the nesting on the next autosave.
+function buildBulletTree(items) {
+  const roots = [];
+  const stack = [];
+  for (const item of items) {
+    const node = { text: item.text, children: [] };
+    while (stack.length && stack[stack.length - 1].indent >= item.indent) stack.pop();
+    if (stack.length === 0) roots.push(node);
+    else stack[stack.length - 1].node.children.push(node);
+    stack.push({ indent: item.indent, node });
+  }
+  return roots;
+}
+
+function bulletTreeToHtml(nodes) {
+  return `<ul>${nodes
+    .map((n) => `<li>${segsToHtml(parseInline(n.text))}${n.children.length ? bulletTreeToHtml(n.children) : ""}</li>`)
+    .join("")}</ul>`;
+}
+
 export function markdownToHtml(md) {
   const blocks = parseBlocks(md || "");
   let html = "";
   let bulletBuffer = [];
   const flushBullets = () => {
     if (bulletBuffer.length) {
-      html += `<ul>${bulletBuffer.map((t) => `<li>${segsToHtml(parseInline(t))}</li>`).join("")}</ul>`;
+      html += bulletTreeToHtml(buildBulletTree(bulletBuffer));
       bulletBuffer = [];
     }
   };
@@ -72,8 +97,8 @@ export function markdownToHtml(md) {
     } else if (b.type === "checklist") {
       html += `<p class="checklist-line"${alignAttr(b.align)}>${b.checked ? "☑" : "☐"} ${segsToHtml(parseInline(b.text))}</p>`;
     } else if (b.type === "bullet") {
-      bulletBuffer.push(b.text);
-    } else if (b.type === "table" || b.type === "drawing" || b.type === "code") {
+      bulletBuffer.push({ text: b.text, indent: b.indent || 0 });
+    } else if (b.type === "table" || b.type === "drawing" || b.type === "code" || b.type === "calc") {
       html += embedHtml(b);
     } else if (b.type === "paragraph") {
       html += `<p${alignAttr(b.align)}>${segsToHtml(parseInline(b.text))}</p>`;
@@ -151,6 +176,52 @@ function blockInlineToMarkdown(node) {
   return merged.map((r) => wrapRun(r.text, r)).join("");
 }
 
+// Depth-aware list serialization for Tab/Shift+Tab (see RichEditorSurface).
+// Handles two different nested-list DOM shapes, because Chrome's actual
+// execCommand("indent") output does NOT match the spec-compliant shape:
+//   (a) spec-compliant: <li>Parent<ul><li>Child</li></ul></li> -- nested
+//       list is a CHILD of the <li> it belongs under. This is what our own
+//       markdownToHtml emits when a note is (re)opened.
+//   (b) Chrome's actual indent output: <ul><li>Parent</li><ul><li>Child</li>
+//       </ul></ul> -- the nested list is a SIBLING immediately following
+//       the <li>, both wrapped in a stray <p> around the whole outer <ul>.
+// Both shapes are walked here so indenting live in the editor and reopening
+// an already-nested note both round-trip to the same "  "-per-depth
+// markdown lines src/lib/mindmap.js and src/lib/markdown.js expect.
+function listLinesFromNode(listNode, depth) {
+  const lines = [];
+  const children = Array.from(listNode.children);
+  let i = 0;
+  while (i < children.length) {
+    const child = children[i];
+    const tag = (child.tagName || "").toLowerCase();
+    if (tag === "li") {
+      const childNestedList = Array.from(child.children).find((c) => /^(ul|ol)$/i.test(c.tagName));
+      const clone = child.cloneNode(true);
+      if (childNestedList) {
+        const cloneNested = Array.from(clone.children).find((c) => /^(ul|ol)$/i.test(c.tagName));
+        cloneNested?.remove();
+      }
+      const text = blockInlineToMarkdown(clone).trim();
+      lines.push(`${"  ".repeat(depth)}- ${text}`);
+      if (childNestedList) lines.push(...listLinesFromNode(childNestedList, depth + 1));
+      i++;
+      // Shape (b): a <ul>/<ol> immediately following this <li> at the same
+      // level belongs to it, not to the outer list.
+      while (i < children.length && /^(ul|ol)$/i.test(children[i].tagName || "")) {
+        lines.push(...listLinesFromNode(children[i], depth + 1));
+        i++;
+      }
+    } else if (tag === "ul" || tag === "ol") {
+      lines.push(...listLinesFromNode(child, depth + 1));
+      i++;
+    } else {
+      i++;
+    }
+  }
+  return lines;
+}
+
 function blockAlign(el) {
   const align = el.style && el.style.textAlign;
   return align === "center" || align === "right" ? align : null;
@@ -193,14 +264,23 @@ export function domToMarkdown(root) {
       return;
     }
     if (tag === "ul" || tag === "ol") {
-      Array.from(node.children).forEach((li) => {
-        const text = blockInlineToMarkdown(li).trim();
-        lines.push(`- ${text}`);
-      });
+      lines.push(...listLinesFromNode(node, 0));
       lines.push("");
       return;
     }
     if (tag === "p" || tag === "div") {
+      // A list can end up stray-nested inside a <p>/<div> instead of sitting
+      // at the root -- Chrome's execCommand("indent") wraps its whole
+      // output this way, and toggling the bullets button off with the caret
+      // in one item of an existing list can too. Either way, if this
+      // block's only real content is a <ul>/<ol>, treat it as that list
+      // rather than flattening it via blockInlineToMarkdown.
+      const directList = Array.from(node.children).find((c) => /^(ul|ol)$/i.test(c.tagName));
+      if (directList && node.textContent.trim() === directList.textContent.trim()) {
+        lines.push(...listLinesFromNode(directList, 0));
+        lines.push("");
+        return;
+      }
       const raw = blockInlineToMarkdown(node);
       // A checklist line round-trips its leading glyph back into "- [ ]"/"- [x]".
       const checklist = raw.match(/^\s*[☐☑] ?(.*)$/s);

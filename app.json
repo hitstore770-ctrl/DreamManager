@@ -31,6 +31,12 @@
         {
           "enableFileSharing": true
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Second Brain uses the camera to scan documents into your notes."
+        }
       ]
     ]
   }

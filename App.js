@@ -1,7 +1,7 @@
 import "react-native-gesture-handler";
 
 import { useCallback, useEffect, useState } from "react";
-import { View } from "react-native";
+import { I18nManager, Platform, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { DarkTheme, DefaultTheme, NavigationContainer } from "@react-navigation/native";
@@ -19,6 +19,7 @@ import { Rubik_600SemiBold } from "@expo-google-fonts/rubik/600SemiBold";
 import { Rubik_700Bold } from "@expo-google-fonts/rubik/700Bold";
 
 import { ThemeProvider, useTheme } from "./src/theme/ThemeContext";
+import { SettingsProvider } from "./src/settings/SettingsContext";
 import { VaultProvider } from "./src/vault/VaultContext";
 import { DATABASE_NAME, migrate } from "./src/db/schema";
 import RootNavigator from "./src/navigation/RootNavigator";
@@ -27,9 +28,32 @@ SplashScreen.preventAutoHideAsync().catch(() => {
   // Already hidden, or no splash on this platform (web). Not a failure.
 });
 
-// Inner shell: needs ThemeContext to color the nav container and status bar,
-// and sits above the SQLiteProvider only so its background paints instantly
-// (SQLiteProvider itself renders nothing while the database opens).
+// Hebrew is RTL. On native, RN's I18nManager.forceRTL genuinely mirrors
+// every flex layout in the app (marginStart/End, flexDirection, etc.) --
+// but only from the *next* full app launch, which is exactly why this call
+// sits here at module scope, before anything renders, rather than behind a
+// runtime toggle: there's no in-app moment where flipping it would
+// visually apply anyway.
+//
+// react-native-web's I18nManager is a permanent no-op stub (isRTL always
+// reads false, forceRTL does nothing) -- RN-web was never wired for RTL by
+// its maintainers, so on web this sets `dir="rtl"` on the document
+// directly instead, which is the mechanism RN-web's own layout primitives
+// actually key off of for logical properties.
+if (Platform.OS === "web") {
+  if (typeof document !== "undefined") document.documentElement.dir = "rtl";
+} else if (!I18nManager.isRTL) {
+  I18nManager.allowRTL(true);
+  I18nManager.forceRTL(true);
+}
+
+// Inner shell: needs ThemeContext to color the nav container and status
+// bar. ThemeContext now layers Settings' DB-backed overrides (theme mode,
+// accent color) on top of the system signal, so it -- and everything else
+// here -- has to sit *inside* SQLiteProvider rather than above it as
+// before; the native splash screen (still up until onReady fires) covers
+// the brief window where SQLiteProvider itself renders nothing while the
+// database opens, so there's no blank-screen gap in practice.
 function Shell() {
   const theme = useTheme();
 
@@ -55,11 +79,9 @@ function Shell() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.bg }}>
-      <SQLiteProvider databaseName={DATABASE_NAME} onInit={migrate}>
-        <NavigationContainer theme={navTheme} onReady={onReady}>
-          <RootNavigator />
-        </NavigationContainer>
-      </SQLiteProvider>
+      <NavigationContainer theme={navTheme} onReady={onReady}>
+        <RootNavigator />
+      </NavigationContainer>
       <StatusBar style={theme.scheme === "dark" ? "light" : "dark"} />
     </View>
   );
@@ -102,11 +124,15 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <ThemeProvider>
-          <VaultProvider>
-            <Shell />
-          </VaultProvider>
-        </ThemeProvider>
+        <SQLiteProvider databaseName={DATABASE_NAME} onInit={migrate}>
+          <SettingsProvider>
+            <ThemeProvider>
+              <VaultProvider>
+                <Shell />
+              </VaultProvider>
+            </ThemeProvider>
+          </SettingsProvider>
+        </SQLiteProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

@@ -30,6 +30,12 @@ function buildDocument(theme, initialHtml, placeholder) {
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: type, payload: payload }));
     }
     editor.addEventListener("input", function () { post("change", editor.innerHTML); });
+    editor.addEventListener("keydown", function (e) {
+      if (e.key !== "Tab") return;
+      e.preventDefault();
+      document.execCommand(e.shiftKey ? "outdent" : "indent");
+      post("change", editor.innerHTML);
+    });
     true;
   </script>
 </body>

@@ -10,6 +10,11 @@ import GraphScreen from "../screens/GraphScreen";
 import WhiteboardScreen from "../screens/WhiteboardScreen";
 import PrintPreviewScreen from "../screens/PrintPreviewScreen";
 import CompileScreen from "../screens/CompileScreen";
+import SettingsScreen from "../screens/SettingsScreen";
+import InboxScreen from "../screens/InboxScreen";
+import ScannerScreen from "../screens/ScannerScreen";
+import ExamScreen from "../screens/ExamScreen";
+import MindMapScreen from "../screens/MindMapScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -36,6 +41,11 @@ export default function RootNavigator() {
       <Stack.Screen name="Whiteboard" component={WhiteboardScreen} options={{ animation: "slide_from_bottom" }} />
       <Stack.Screen name="Print" component={PrintPreviewScreen} />
       <Stack.Screen name="Compile" component={CompileScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="Inbox" component={InboxScreen} />
+      <Stack.Screen name="Scanner" component={ScannerScreen} />
+      <Stack.Screen name="Exam" component={ExamScreen} />
+      <Stack.Screen name="MindMap" component={MindMapScreen} />
     </Stack.Navigator>
   );
 }

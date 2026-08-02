@@ -18,6 +18,7 @@ import { renderTemplate } from "../lib/templates";
 import TemplatePickerSheet from "../components/TemplatePickerSheet";
 import ExpandableFab from "../components/ExpandableFab";
 import EmptyState from "../components/EmptyState";
+import { t } from "../i18n/strings";
 import { SkeletonList } from "../components/Skeleton";
 
 function previewOf(body) {
@@ -164,7 +165,7 @@ export default function NotesListScreen({ navigation, route }) {
   return (
     <View style={[s.screen, { paddingTop: insets.top }]}>
       <View style={s.header}>
-        <AppText style={s.title}>Second Brain</AppText>
+        <AppText style={s.title}>{t("appTitle")}</AppText>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={s.headerActions}>
           <TouchableOpacity testID="open-compile" style={s.iconBtn} onPress={() => navigation.navigate("Compile")} activeOpacity={0.7}>
             <Feather name="layers" size={19} color={theme.text} />
@@ -184,6 +185,15 @@ export default function NotesListScreen({ navigation, route }) {
           <TouchableOpacity testID="open-archived" style={s.iconBtn} onPress={() => navigation.navigate("Archived")} activeOpacity={0.7}>
             <Feather name="archive" size={19} color={theme.text} />
           </TouchableOpacity>
+          <TouchableOpacity testID="open-inbox" style={s.iconBtn} onPress={() => navigation.navigate("Inbox")} activeOpacity={0.7}>
+            <Feather name="check-square" size={19} color={theme.text} />
+          </TouchableOpacity>
+          <TouchableOpacity testID="open-exam" style={s.iconBtn} onPress={() => navigation.navigate("Exam")} activeOpacity={0.7}>
+            <Feather name="award" size={19} color={theme.text} />
+          </TouchableOpacity>
+          <TouchableOpacity testID="open-settings" style={s.iconBtn} onPress={() => navigation.navigate("Settings")} activeOpacity={0.7}>
+            <Feather name="settings" size={19} color={theme.text} />
+          </TouchableOpacity>
         </ScrollView>
       </View>
 
@@ -194,7 +204,7 @@ export default function NotesListScreen({ navigation, route }) {
             style={s.searchInput}
             value={queryInput}
             onChangeText={setQueryInput}
-            placeholder={regexMode ? "Regex pattern..." : "Search notes..."}
+            placeholder={regexMode ? t("regexPlaceholder") : t("searchPlaceholder")}
             placeholderTextColor={theme.textMuted}
           />
         </View>
@@ -207,7 +217,7 @@ export default function NotesListScreen({ navigation, route }) {
           <AppText style={[s.regexBtnText, { color: regexMode ? theme.onAccent : theme.textSecondary }]}>.*</AppText>
         </TouchableOpacity>
       </View>
-      {regexMode && regexError && <AppText style={s.regexError}>Invalid pattern — showing all notes.</AppText>}
+      {regexMode && regexError && <AppText style={s.regexError}>{t("invalidRegex")}</AppText>}
 
       {!!activeTag && (
         <View style={s.filterRow}>
@@ -238,9 +248,9 @@ export default function NotesListScreen({ navigation, route }) {
           )}
           ListEmptyComponent={
             query || activeTag ? (
-              <EmptyState icon="search" title="No notes match" subtitle="Try a different search term or clear the tag filter." />
+              <EmptyState icon="search" title={t("emptySearchTitle")} subtitle={t("emptySearchSubtitle")} />
             ) : (
-              <EmptyState icon="feather" title="It's quiet here" subtitle="Tap + to write your first note (hold it for templates)." />
+              <EmptyState icon="feather" title={t("emptyListTitle")} subtitle={t("emptyListSubtitle")} />
             )
           }
         />

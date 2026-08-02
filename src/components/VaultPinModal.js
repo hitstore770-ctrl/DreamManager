@@ -6,6 +6,7 @@ import { useSQLiteContext } from "expo-sqlite";
 import { Feather } from "@expo/vector-icons";
 
 import { useTheme } from "../theme/ThemeContext";
+import { t } from "../i18n/strings";
 import { getVerifier, setVerifier } from "../db/vaultRepo";
 import { decryptText, deriveVaultKey, VAULT_VERIFIER_PLAINTEXT } from "../lib/crypto";
 import BottomSheet from "./BottomSheet";
@@ -109,7 +110,7 @@ export default function VaultPinModal({ visible, onClose, onUnlocked }) {
           {!!error && <AppText style={s.error}>{error}</AppText>}
           <View style={{ flexDirection: "row", gap: 10, marginTop: 6 }}>
             <TouchableOpacity style={[s.btn, s.btnGhost]} onPress={onClose} activeOpacity={0.8}>
-              <AppText style={[s.btnText, { color: theme.textSecondary }]}>Cancel</AppText>
+              <AppText style={[s.btnText, { color: theme.textSecondary }]}>{t("cancel")}</AppText>
             </TouchableOpacity>
             <TouchableOpacity
               testID="vault-submit"

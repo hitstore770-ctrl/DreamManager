@@ -61,6 +61,14 @@ CREATE TABLE IF NOT EXISTS vault_meta (
   mac TEXT NOT NULL
 );
 
+-- Simple key/value store for app preferences (theme override, accent
+-- color, font scale) -- kept in SQLite rather than adding an AsyncStorage
+-- dependency, since this app already has exactly one local store.
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY NOT NULL,
+  value TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_notes_updated ON notes(updated_at);
 CREATE INDEX IF NOT EXISTS idx_versions_note ON versions(note_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_note_tags_tag ON note_tags(tag_id);

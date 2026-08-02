@@ -72,6 +72,17 @@ const RichEditorSurface = forwardRef(function RichEditorSurface(
     onChangeMarkdown?.(domToMarkdown(divRef.current));
   };
 
+  // Tab/Shift+Tab nests or un-nests the current list item -- the browser's
+  // default Tab behavior is to move focus away, so without this a bullet
+  // list (the Mind Map generator's input) could never actually gain a
+  // second level from inside the editor itself.
+  const onKeyDown = (e) => {
+    if (e.key !== "Tab") return;
+    e.preventDefault();
+    document.execCommand(e.shiftKey ? "outdent" : "indent");
+    emitChange();
+  };
+
   const exec = (cmd, value) => {
     divRef.current?.focus();
     restoreSelection();
@@ -111,6 +122,7 @@ const RichEditorSurface = forwardRef(function RichEditorSurface(
       suppressContentEditableWarning
       data-placeholder={placeholder}
       onInput={emitChange}
+      onKeyDown={onKeyDown}
       onScroll={onScrollY ? (e) => onScrollY(e.target.scrollTop) : undefined}
       style={{ flex: 1, minHeight: 260, outline: "none", overflowY: "auto" }}
     />

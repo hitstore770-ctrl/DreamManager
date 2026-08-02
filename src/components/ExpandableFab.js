@@ -4,11 +4,13 @@ import AppText from "./AppText";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { RADIUS, useTheme } from "../theme/ThemeContext";
+import { t } from "../i18n/strings";
+import { isRTL } from "../lib/rtl";
 
 const OPTIONS = [
-  { key: "note", icon: "file-text", label: "New Note" },
-  { key: "drawing", icon: "edit-3", label: "New Drawing" },
-  { key: "template", icon: "layout", label: "From Template" },
+  { key: "note", icon: "file-text", label: t("newNote") },
+  { key: "drawing", icon: "edit-3", label: t("newDrawing") },
+  { key: "template", icon: "layout", label: t("fromTemplate") },
 ];
 
 const MINI_SPACING = 62;
@@ -77,7 +79,7 @@ export default function ExpandableFab({ bottom, onPick }) {
 
 const styles = (t) =>
   StyleSheet.create({
-    wrap: { position: "absolute", right: 20, alignItems: "flex-end" },
+    wrap: { position: "absolute", [isRTL() ? "left" : "right"]: 20, alignItems: "flex-end" },
     fab: {
       width: 58,
       height: 58,
@@ -91,7 +93,14 @@ const styles = (t) =>
       shadowRadius: 10,
       elevation: 6,
     },
-    miniRow: { position: "absolute", right: 7, bottom: 7, flexDirection: "row", alignItems: "center", gap: 10 },
+    miniRow: {
+      position: "absolute",
+      [isRTL() ? "left" : "right"]: 7,
+      bottom: 7,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
     miniLabel: { backgroundColor: t.surface, borderRadius: RADIUS.sm, paddingHorizontal: 10, paddingVertical: 6, ...t.cardShadow },
     miniLabelText: { fontSize: 12.5, fontWeight: "600", color: t.text },
     miniBtn: {

@@ -4,7 +4,7 @@
 // vault row (or vice versa).
 import { uid, deriveTitle } from "./notesRepo";
 import { extractTags, tagRoot } from "../lib/tags";
-import { encryptText, VAULT_VERIFIER_PLAINTEXT } from "../lib/crypto";
+import { decryptText, deriveVaultKey, encryptText, VAULT_VERIFIER_PLAINTEXT } from "../lib/crypto";
 import { serialTransaction } from "./txQueue";
 
 const LOCKED_TITLE = "🔒 Locked note";
@@ -97,4 +97,35 @@ export async function moveIntoVault(db, id, plainBody, keyBytes) {
 
 export async function deleteVaultNote(db, id) {
   await db.runAsync(`DELETE FROM notes WHERE id = ?`, [id]);
+}
+
+// Re-keys the whole Vault: verifies `oldPin`, then decrypts every vault
+// note with the old derived key and re-encrypts it with the new one, plus
+// the verifier row itself. Returns the new key so the caller can hand it
+// straight to VaultContext without asking the user to re-enter the PIN.
+// Throws if `oldPin` is wrong, before touching any row.
+export async function changeVaultPin(db, oldPin, newPin) {
+  const oldKey = await deriveVaultKey(oldPin);
+  const verifier = await getVerifier(db);
+  const check = verifier ? await decryptText(verifier.cipher, verifier.iv, verifier.mac, oldKey) : null;
+  if (check !== VAULT_VERIFIER_PLAINTEXT) {
+    throw new Error("Incorrect current PIN.");
+  }
+
+  const newKey = await deriveVaultKey(newPin);
+  const notes = await db.getAllAsync(`SELECT id, body, iv, mac FROM notes WHERE vault = 1`);
+  const rekeyed = [];
+  for (const n of notes) {
+    const plain = (await decryptText(n.body, n.iv, n.mac, oldKey)) ?? "";
+    rekeyed.push({ id: n.id, ...(await encryptText(plain, newKey)) });
+  }
+
+  await serialTransaction(db, async () => {
+    for (const r of rekeyed) {
+      await db.runAsync(`UPDATE notes SET body = ?, iv = ?, mac = ? WHERE id = ?`, [r.cipherHex, r.ivHex, r.mac, r.id]);
+    }
+    await setVerifier(db, newKey);
+  });
+
+  return newKey;
 }

@@ -9,6 +9,8 @@ const ITEMS = [
   { key: "snippet", icon: "code", label: "Snippet" },
   { key: "table", icon: "grid", label: "Table" },
   { key: "drawing", icon: "edit-3", label: "Drawing" },
+  { key: "scan", icon: "camera", label: "Scan" },
+  { key: "calc", icon: "hash", label: "Pricing" },
 ];
 
 // One small sheet for the editor's three "insert something structured at

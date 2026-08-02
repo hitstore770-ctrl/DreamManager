@@ -46,6 +46,7 @@ export function parseBlocks(raw) {
       const content = codeLines.join("\n");
       if (lang === "table") push({ type: "table", content, startLine, endLine });
       else if (lang === "drawing") push({ type: "drawing", content, startLine, endLine });
+      else if (lang === "calc") push({ type: "calc", content, startLine, endLine });
       else push({ type: "code", lang, code: content, startLine, endLine });
       continue;
     }
@@ -66,7 +67,7 @@ export function parseBlocks(raw) {
     // check above, since a checklist line also starts with "- "/"* ".
     const bulletMatch = line.match(/^(\s*)[-*]\s+(.*)$/);
     if (bulletMatch) {
-      push({ type: "bullet", text: bulletMatch[2] });
+      push({ type: "bullet", text: bulletMatch[2], indent: bulletMatch[1].length });
       i++;
       continue;
     }

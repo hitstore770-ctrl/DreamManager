@@ -1,6 +1,8 @@
 // All reads/writes go through here — screens never write raw SQL. Every
 // function takes the `db` handle from useSQLiteContext() as its first arg.
 import { extractTags, tagRoot } from "../lib/tags";
+import { parseBlocks, toggleChecklistLine } from "../lib/markdown";
+import { extractQuestions } from "../lib/exam";
 import { serialTransaction } from "./txQueue";
 
 export const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -102,6 +104,54 @@ export async function saveNoteBody(db, id, body) {
     await db.runAsync(`UPDATE notes SET title = ?, body = ?, updated_at = ? WHERE id = ?`, [title, body, now, id]);
     await syncTags(db, id, extractTags(body));
   });
+}
+
+// The Global Inbox: every unchecked "- [ ]" line across every regular
+// note, newest-note-first. Vault notes are skipped (their body is
+// ciphertext -- reading it here would need the key, which isn't always
+// unlocked) and archived notes are skipped too, matching listNotes'
+// default view -- archiving a note is "get it out of my way," and that
+// should include its open tasks.
+export async function listUncheckedTasks(db) {
+  const rows = await db.getAllAsync(`SELECT id, title, body FROM notes WHERE vault = 0 AND archived = 0 ORDER BY updated_at DESC`);
+  const tasks = [];
+  for (const row of rows) {
+    for (const block of parseBlocks(row.body)) {
+      if (block.type === "checklist" && !block.checked) {
+        tasks.push({ noteId: row.id, noteTitle: row.title || "Untitled", lineIndex: block.lineIndex, text: block.text });
+      }
+    }
+  }
+  return tasks;
+}
+
+// Flips one checklist line by re-reading the note's *current* body first --
+// the Inbox's list is a snapshot, and the note may have been edited
+// elsewhere since it was taken.
+export async function toggleTaskInNote(db, noteId, lineIndex) {
+  const row = await db.getFirstAsync(`SELECT body FROM notes WHERE id = ?`, [noteId]);
+  if (!row) return;
+  await saveNoteBody(db, noteId, toggleChecklistLine(row.body, lineIndex));
+}
+
+// The Exam Simulator's question bank: every #questions-tagged note's
+// checklist groups, flattened across notes. See src/lib/exam.js for how a
+// group of checklist lines becomes one question.
+export async function listExamQuestions(db) {
+  const rows = await db.getAllAsync(
+    `SELECT DISTINCT n.id, n.title, n.body
+       FROM notes n
+       JOIN note_tags nt ON nt.note_id = n.id
+       JOIN tags t ON t.id = nt.tag_id
+      WHERE n.vault = 0 AND n.archived = 0 AND (t.path = 'questions' OR t.path LIKE 'questions/%')`
+  );
+  const questions = [];
+  for (const row of rows) {
+    for (const q of extractQuestions(row.body)) {
+      questions.push({ ...q, noteId: row.id, noteTitle: row.title || "Untitled" });
+    }
+  }
+  return questions;
 }
 
 export async function setPinned(db, id, pinned) {

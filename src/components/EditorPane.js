@@ -8,6 +8,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { useTheme } from "../theme/ThemeContext";
+import { t } from "../i18n/strings";
 import { deriveTitle, getNote, saveNoteBody } from "../db/notesRepo";
 import { saveVaultNoteBody, moveIntoVault, moveOutOfVault } from "../db/vaultRepo";
 import { createTemplate } from "../db/templatesRepo";
@@ -15,6 +16,7 @@ import { useDebouncedAutosave } from "../hooks/useDebouncedAutosave";
 import { useAutoVersion } from "../hooks/useAutoVersion";
 import { extractTags, colorForRoot, tagRoot } from "../lib/tags";
 import { countWords, replaceFence, toggleChecklistLine } from "../lib/markdown";
+import { DEFAULT_CALC_CONTENT } from "../lib/calc";
 import { isKanbanBoard } from "../lib/kanban";
 import { decryptText } from "../lib/crypto";
 import { useVault } from "../vault/VaultContext";
@@ -228,6 +230,18 @@ export default function EditorPane({ noteId, onBack, headerExtra, flushRef }) {
     }
   };
 
+  // Whiteboard/Scanner's onSave fires *after* navigating back from a
+  // separate screen -- at that point the rich editor's contentEditable div
+  // isn't reliably focusable yet (the stack transition hasn't settled), so
+  // document.execCommand("insertHTML") silently no-ops. Going through
+  // React state instead (the same applyExternalBody path table/drawing
+  // *edits* already use) works regardless of DOM focus, at the cost of
+  // appending at the end of the note rather than at the cursor.
+  const appendFragment = (md) => {
+    const current = bodyRef.current || "";
+    applyExternalBody(`${current}${current && !current.endsWith("\n") ? "\n" : ""}${md}`);
+  };
+
   const selectedText = selection.end > selection.start ? body.slice(selection.start, selection.end) : "";
 
   const onInsertSnippet = (snippet) => {
@@ -243,8 +257,14 @@ export default function EditorPane({ noteId, onBack, headerExtra, flushRef }) {
       setTableEditor({ block: null });
     } else if (key === "drawing") {
       navigation.navigate("Whiteboard", {
-        onSave: (base64) => insertFragment(`\`\`\`drawing\n${base64}\n\`\`\`\n`),
+        onSave: (base64) => appendFragment(`\`\`\`drawing\n${base64}\n\`\`\`\n`),
       });
+    } else if (key === "scan") {
+      navigation.navigate("Scanner", {
+        onSave: (base64) => appendFragment(`\`\`\`drawing\n${base64}\n\`\`\`\n`),
+      });
+    } else if (key === "calc") {
+      insertFragment(`\`\`\`calc\n${DEFAULT_CALC_CONTENT}\n\`\`\`\n`);
     }
   };
 
@@ -267,11 +287,22 @@ export default function EditorPane({ noteId, onBack, headerExtra, flushRef }) {
     });
   };
 
+  // The pricing block edits itself inline (see CalcBlock) -- every field
+  // change lands here as a fresh fence body to splice back in, the same
+  // "replace this block's line range" primitive Table/Drawing edits use.
+  const onCalcChange = (block, content) => {
+    setBody((b) => replaceFence(b, block.startLine, block.endLine, "calc", content));
+  };
+
   const onOpenPrint = () => {
     // note.title reflects the last *saved* title, which can lag behind an
     // edit still sitting in the debounce window — derive fresh from the
     // in-memory body instead so Print never shows a stale/blank title.
     navigation.navigate("Print", { title: deriveTitle(bodyRef.current) || "Untitled", body: bodyRef.current });
+  };
+
+  const onOpenMindMap = () => {
+    navigation.navigate("MindMap", { title: deriveTitle(bodyRef.current) || "Untitled", body: bodyRef.current });
   };
 
   // Typewriter scrolling: keep the line the cursor is on vertically
@@ -345,6 +376,11 @@ export default function EditorPane({ noteId, onBack, headerExtra, flushRef }) {
               {!lockedNoKey && !note?.vault && (
                 <TouchableOpacity testID="open-print" style={s.iconBtn} onPress={onOpenPrint} hitSlop={4}>
                   <Feather name="printer" size={17} color={theme.text} />
+                </TouchableOpacity>
+              )}
+              {!lockedNoKey && !note?.vault && (
+                <TouchableOpacity testID="open-mindmap" style={s.iconBtn} onPress={onOpenMindMap} hitSlop={4}>
+                  <Feather name="git-branch" size={17} color={theme.text} />
                 </TouchableOpacity>
               )}
               {!lockedNoKey && (
@@ -426,6 +462,7 @@ export default function EditorPane({ noteId, onBack, headerExtra, flushRef }) {
               onToggleChecklist={onToggleChecklist}
               onEditTable={onEditTable}
               onEditDrawing={onEditDrawing}
+              onCalcChange={onCalcChange}
             />
           </ScrollView>
         ) : (
@@ -448,7 +485,7 @@ export default function EditorPane({ noteId, onBack, headerExtra, flushRef }) {
       </KeyboardAvoidingView>
 
       <View style={[s.footer, zen && s.zenFooter]}>
-        {!zen && <AppText style={s.footerText}>{savedAt ? "Saved" : "Autosaving…"}</AppText>}
+        {!zen && <AppText style={s.footerText}>{savedAt ? t("saved") : t("autosaving")}</AppText>}
         <AppText style={[s.footerText, zen && s.zenCounter]}>
           {counts.words} words · {counts.chars} chars
         </AppText>

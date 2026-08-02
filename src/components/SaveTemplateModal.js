@@ -4,6 +4,7 @@ import AppText from "./AppText";
 import AppTextInput from "./AppTextInput";
 
 import { useTheme } from "../theme/ThemeContext";
+import { t } from "../i18n/strings";
 import BottomSheet from "./BottomSheet";
 
 // "Save as Template": names the current note's raw text (variables and
@@ -38,10 +39,10 @@ export default function SaveTemplateModal({ visible, onClose, onSave }) {
       </AppText>
       <View style={{ flexDirection: "row", gap: 10 }}>
         <TouchableOpacity style={[s.btn, s.btnGhost]} onPress={onClose} activeOpacity={0.8}>
-          <AppText style={[s.btnText, { color: theme.textSecondary }]}>Cancel</AppText>
+          <AppText style={[s.btnText, { color: theme.textSecondary }]}>{t("cancel")}</AppText>
         </TouchableOpacity>
         <TouchableOpacity testID="template-save-submit" style={[s.btn, { backgroundColor: theme.accent }]} onPress={submit} activeOpacity={0.85}>
-          <AppText style={[s.btnText, { color: theme.onAccent }]}>Save</AppText>
+          <AppText style={[s.btnText, { color: theme.onAccent }]}>{t("save")}</AppText>
         </TouchableOpacity>
       </View>
     </BottomSheet>

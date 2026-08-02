@@ -8,6 +8,7 @@ import * as Haptics from "expo-haptics";
 import { parseBlocks, parseInline } from "../lib/markdown";
 import { tokenizeCodeLines } from "../lib/syntaxHighlight";
 import TableView from "./TableView";
+import CalcBlock from "./CalcBlock";
 
 // Deliberately non-linear: H1 vs. H2 needs to read as a real step down, not
 // a 2px nudge, for headings to actually carry hierarchy at a glance.
@@ -27,7 +28,7 @@ const CODE_TONE = {
 // Rendered view of a note's markdown: headings, blockquotes, fenced code
 // (syntax-highlighted, with a copy button), tables, drawings, and
 // checklists you can tap to toggle.
-export default function MarkdownView({ body, onToggleChecklist, onEditTable, onEditDrawing, theme, fontSize = 16 }) {
+export default function MarkdownView({ body, onToggleChecklist, onEditTable, onEditDrawing, onCalcChange, theme, fontSize = 16 }) {
   const blocks = parseBlocks(body);
   const lineHeight = Math.round(fontSize * 1.5);
 
@@ -59,9 +60,13 @@ export default function MarkdownView({ body, onToggleChecklist, onEditTable, onE
           );
         }
         if (block.type === "bullet") {
+          const depth = Math.floor((block.indent || 0) / 2);
           return (
-            <View key={idx} style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, paddingVertical: 2 }}>
-              <AppText style={{ color: theme.textMuted, fontSize, lineHeight }}>{"•"}</AppText>
+            <View
+              key={idx}
+              style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, paddingVertical: 2, paddingStart: depth * 18 }}
+            >
+              <AppText style={{ color: theme.textMuted, fontSize, lineHeight }}>{depth % 2 ? "◦" : "•"}</AppText>
               <AppText style={{ flex: 1, color: theme.text, fontSize, lineHeight, textAlign: block.align || "left" }}>
                 <InlineText segments={parseInline(block.text)} theme={theme} />
               </AppText>
@@ -102,6 +107,16 @@ export default function MarkdownView({ body, onToggleChecklist, onEditTable, onE
         if (block.type === "drawing") {
           return (
             <DrawingBlock key={idx} content={block.content} theme={theme} onEdit={onEditDrawing ? () => onEditDrawing(block) : null} />
+          );
+        }
+        if (block.type === "calc") {
+          return (
+            <CalcBlock
+              key={idx}
+              content={block.content}
+              theme={theme}
+              onChange={onCalcChange ? (next) => onCalcChange(block, next) : null}
+            />
           );
         }
         if (block.type === "checklist") {

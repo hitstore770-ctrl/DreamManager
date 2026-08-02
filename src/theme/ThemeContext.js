@@ -4,6 +4,7 @@
 // 19:00 to 07:00 — so the app is never stuck in the wrong mode.
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { Appearance } from "react-native";
+import { useSettings } from "../settings/SettingsContext";
 
 // A small, shared corner-radius scale so cards/sheets/controls read as one
 // consistent system instead of every screen picking its own number.
@@ -77,6 +78,7 @@ function currentScheme() {
 const ThemeContext = createContext(null);
 
 export function ThemeProvider({ children }) {
+  const { themeMode, accentColor } = useSettings();
   const [scheme, setScheme] = useState(currentScheme);
 
   useEffect(() => {
@@ -94,7 +96,15 @@ export function ThemeProvider({ children }) {
     };
   }, []);
 
-  const theme = useMemo(() => (scheme === "dark" ? DARK : LIGHT), [scheme]);
+  // Settings' explicit Light/Dark override wins over the system signal;
+  // "system" (the default) falls back to the existing Appearance/clock logic.
+  const effectiveScheme = themeMode === "light" || themeMode === "dark" ? themeMode : scheme;
+
+  const theme = useMemo(() => {
+    const base = effectiveScheme === "dark" ? DARK : LIGHT;
+    return accentColor ? { ...base, accent: accentColor } : base;
+  }, [effectiveScheme, accentColor]);
+
   return <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>;
 }
 
