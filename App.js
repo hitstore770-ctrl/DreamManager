@@ -23,6 +23,7 @@ import { SettingsProvider } from "./src/settings/SettingsContext";
 import { VaultProvider } from "./src/vault/VaultContext";
 import { DATABASE_NAME, migrate } from "./src/db/schema";
 import RootNavigator from "./src/navigation/RootNavigator";
+import ErrorBoundary from "./src/components/ErrorBoundary";
 
 SplashScreen.preventAutoHideAsync().catch(() => {
   // Already hidden, or no splash on this platform (web). Not a failure.
@@ -40,11 +41,20 @@ SplashScreen.preventAutoHideAsync().catch(() => {
 // its maintainers, so on web this sets `dir="rtl"` on the document
 // directly instead, which is the mechanism RN-web's own layout primitives
 // actually key off of for logical properties.
-if (Platform.OS === "web") {
-  if (typeof document !== "undefined") document.documentElement.dir = "rtl";
-} else if (!I18nManager.isRTL) {
-  I18nManager.allowRTL(true);
-  I18nManager.forceRTL(true);
+// Wrapped defensively: this runs at module scope, before ErrorBoundary (or
+// anything else) exists to catch a throw -- on some Android devices/RN
+// versions I18nManager's native module isn't available the instant the JS
+// bundle starts evaluating, and an uncaught throw here would take the whole
+// app down before a single frame renders, with no error screen possible.
+try {
+  if (Platform.OS === "web") {
+    if (typeof document !== "undefined") document.documentElement.dir = "rtl";
+  } else if (!I18nManager.isRTL) {
+    I18nManager.allowRTL(true);
+    I18nManager.forceRTL(true);
+  }
+} catch (e) {
+  console.warn("RTL init failed, continuing in LTR:", e);
 }
 
 // Inner shell: needs ThemeContext to color the nav container and status
@@ -122,18 +132,32 @@ export default function App() {
   if (!ready) return null;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <SQLiteProvider databaseName={DATABASE_NAME} onInit={migrate}>
-          <SettingsProvider>
-            <ThemeProvider>
-              <VaultProvider>
-                <Shell />
-              </VaultProvider>
-            </ThemeProvider>
-          </SettingsProvider>
-        </SQLiteProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <ErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <SQLiteProvider
+            databaseName={DATABASE_NAME}
+            onInit={migrate}
+            onError={(e) => {
+              // Without this, a failed open/migration throws during render
+              // with no handler -- SQLiteProvider's own default is to
+              // re-throw synchronously, which ErrorBoundary above still
+              // catches, but naming the real cause here beats a generic
+              // "Something went wrong" for what's almost always a corrupt
+              // or mid-migration database file.
+              throw new Error(`Local database failed to open: ${e?.message || e}`);
+            }}
+          >
+            <SettingsProvider>
+              <ThemeProvider>
+                <VaultProvider>
+                  <Shell />
+                </VaultProvider>
+              </ThemeProvider>
+            </SettingsProvider>
+          </SQLiteProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }
