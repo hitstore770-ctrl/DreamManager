@@ -155,6 +155,12 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (__DEV__ && !authLoading) {
+      console.log("[startup] 3/3 auth settled", offlineFallback.current ? "(offline session)" : "(live session)");
+    }
+  }, [authLoading]);
+
   // Mirror the coin balance up to Firestore whenever it changes.
   useEffect(() => {
     if (user && coinsHydrated.current) {

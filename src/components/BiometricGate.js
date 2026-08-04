@@ -42,7 +42,17 @@ export default function BiometricGate({ children }) {
   const { biometricLock, loaded: settingsLoaded } = useSettings();
   const enabled = settingsLoaded && biometricLock === true;
 
-  const [state, setState] = useState("checking"); // checking | locked | open
+  // Whether this gate can ever apply, decided synchronously at first render.
+  //
+  // On web there is no biometric API to call and no prompt to show, and with
+  // the native module absent there is nothing to ask either. Both cases used
+  // to start in "checking" and only open once the effect below had run, which
+  // painted the full lock screen for one frame first — a "נעול" flash on every
+  // single launch, on the one platform that can never be locked. Deciding it
+  // here means that frame never exists.
+  const inert = Platform.OS === "web" || !LocalAuth;
+
+  const [state, setState] = useState(inert ? "open" : "checking"); // checking | locked | open
   const [reason, setReason] = useState(null);
 
   const attempt = useCallback(async () => {
@@ -93,9 +103,11 @@ export default function BiometricGate({ children }) {
   // not disable is a lockout, not a feature.
   const opened = useRef(false);
   useEffect(() => {
-    if (opened.current) return;
+    // Nothing to check, and `state` already started open — running attempt()
+    // here would only schedule a redundant setState on the first frame.
+    if (inert || opened.current) return;
     attempt();
-  }, [attempt]);
+  }, [attempt, inert]);
 
   // If the capability check never answers at all — a wedged native module,
   // rather than a refusal — open instead of sitting on the lock screen. This
@@ -104,7 +116,7 @@ export default function BiometricGate({ children }) {
   // security. Only "checking" is covered; once the OS prompt is actually up
   // the state is "locked" and this does not fire.
   useEffect(() => {
-    if (state !== "checking") return undefined;
+    if (inert || state !== "checking") return undefined;
     const t = setTimeout(() => {
       setState((prev) => {
         if (prev !== "checking") return prev;
@@ -116,7 +128,7 @@ export default function BiometricGate({ children }) {
   }, [state]);
   useEffect(() => {
     if (state === "open") opened.current = true;
-  }, [state]);
+  }, [state, inert]);
 
   if (state === "open") return children;
 

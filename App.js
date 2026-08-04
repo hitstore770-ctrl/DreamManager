@@ -80,6 +80,10 @@ function Shell() {
   // motion is not overridden by an app default.
   const reduceMotion = animations === false ? ReduceMotion.Always : ReduceMotion.System;
 
+  useEffect(() => {
+    if (__DEV__ && loaded) console.log("[startup] 2/3 settings loaded");
+  }, [loaded]);
+
   if (!loaded) {
     return (
       <View style={{ flex: 1, backgroundColor: UI.bg, alignItems: "center", justifyContent: "center" }}>
@@ -159,6 +163,13 @@ export default function App() {
   // full eight seconds above — indistinguishable from a crash, and the exact
   // thing people report as "it hangs on a white screen". The gate still holds
   // the tree back for the reason described above; it just says so now.
+  // Startup breadcrumbs. The launch path runs three gates in series and a dev
+  // server that reloads faster than their timeouts leaves no trace at all —
+  // these say how far a launch actually got before it restarted.
+  useEffect(() => {
+    if (__DEV__ && ready) console.log("[startup] 1/3 fonts ready");
+  }, [ready]);
+
   if (!ready) {
     return (
       <View style={{ flex: 1, backgroundColor: UI.bg, alignItems: "center", justifyContent: "center" }}>
