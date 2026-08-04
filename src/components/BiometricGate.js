@@ -96,6 +96,24 @@ export default function BiometricGate({ children }) {
     if (opened.current) return;
     attempt();
   }, [attempt]);
+
+  // If the capability check never answers at all — a wedged native module,
+  // rather than a refusal — open instead of sitting on the lock screen. This
+  // is the same call the catch in attempt() already makes for a thrown check,
+  // for the same reason: a gate that cannot be satisfied is a lockout, not
+  // security. Only "checking" is covered; once the OS prompt is actually up
+  // the state is "locked" and this does not fire.
+  useEffect(() => {
+    if (state !== "checking") return undefined;
+    const t = setTimeout(() => {
+      setState((prev) => {
+        if (prev !== "checking") return prev;
+        console.warn("[biometrics] capability check timed out — opening");
+        return "open";
+      });
+    }, 5000);
+    return () => clearTimeout(t);
+  }, [state]);
   useEffect(() => {
     if (state === "open") opened.current = true;
   }, [state]);

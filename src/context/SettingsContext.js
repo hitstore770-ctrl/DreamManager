@@ -77,16 +77,40 @@ export function SettingsProvider({ children }) {
   const [unlocked, setUnlocked] = useState(false);
 
   useEffect(() => {
+    let alive = true;
+
+    // AsyncStorage normally settles in milliseconds, but a wedged native
+    // bridge can leave getItem() pending forever — never resolving and never
+    // throwing, so the finally below never runs. `loaded` gates the entire app
+    // in App.js, which turns that into a permanent spinner on launch. Defaults
+    // are a perfectly good place to start; nothing in here is worth a dead app.
+    const watchdog = setTimeout(() => {
+      if (!alive) return;
+      console.warn("[settings] hydration timed out — starting on defaults");
+      setLoaded(true);
+    }, 3000);
+
     (async () => {
       try {
         const raw = await AsyncStorage.getItem(SETTINGS_KEY);
-        if (raw) setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(raw) });
+        // Applied even if the watchdog already fired: arriving late just means
+        // the real preferences replace the defaults a moment after launch,
+        // which is strictly better than not launching.
+        if (alive && raw) setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(raw) });
       } catch {
         // ignore — fall back to defaults
       } finally {
-        setLoaded(true);
+        if (alive) {
+          clearTimeout(watchdog);
+          setLoaded(true);
+        }
       }
     })();
+
+    return () => {
+      alive = false;
+      clearTimeout(watchdog);
+    };
   }, []);
 
   const persist = useCallback((next) => {

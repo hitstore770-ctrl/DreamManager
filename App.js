@@ -148,11 +148,24 @@ export default function App() {
 
   useEffect(() => {
     if (fontsLoaded || fontError) return undefined;
-    const t = setTimeout(() => setGaveUp(true), 8000);
+    const t = setTimeout(() => {
+      console.warn("[fonts] load timed out — rendering in the platform face");
+      setGaveUp(true);
+    }, 8000);
     return () => clearTimeout(t);
   }, [fontsLoaded, fontError]);
 
-  if (!ready) return null;
+  // Returning null here used to mean a genuinely blank screen for up to the
+  // full eight seconds above — indistinguishable from a crash, and the exact
+  // thing people report as "it hangs on a white screen". The gate still holds
+  // the tree back for the reason described above; it just says so now.
+  if (!ready) {
+    return (
+      <View style={{ flex: 1, backgroundColor: UI.bg, alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator color={UI.violet} />
+      </View>
+    );
+  }
 
   return (
     <ErrorBoundary>
