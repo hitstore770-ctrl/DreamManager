@@ -1,12 +1,14 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Linking, Modal, Pressable, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import Animated, { FadeIn, FadeInDown, FadeOut, Layout } from "react-native-reanimated";
+import QRCode from "react-native-qrcode-svg";
 
 import Icon from "../Icon";
 import CustomText from "../CustomText";
 import ScanCamera from "./ScanCamera";
 import VoiceOrderButton from "./VoiceOrderButton";
+import { useAgents } from "../../context/AgentsContext";
 import { useAuth } from "../../context/AuthContext";
 import { useBusiness } from "../../context/BusinessContext";
 import { useNotes } from "../../context/NotesContext";
@@ -17,6 +19,7 @@ import { hapticLight, hapticSuccess, hapticWarning } from "../../utils/haptics";
 import { DECKS, DEFAULT_DECK_ITEMS, marginOf } from "../../utils/posCatalog";
 import { crossSellSuggestion, monthKey, shekel, suggestRetailPrice, todayKey, uid } from "../../utils/posStore";
 import { STORAGE_KEYS } from "../../utils/storageKeys";
+import { evaluateRouteConditions, findNode, useTerritoryTree } from "../../utils/TerritoryEngine";
 import { usePersistentState } from "../../utils/usePersistentState";
 import { NOTES_FONTS as FONTS } from "../../utils/notesTheme";
 import { BEVEL, CARD_SHADOW, UI, tint } from "../../utils/ui";
@@ -66,6 +69,70 @@ function isLateNightNow() {
   return h >= 23 || h < 4;
 }
 
+// PayBox QR — a hardcoded personal payment link so a customer can scan the
+// agent's screen directly at checkout instead of the agent handling cash.
+// Replace with the real PayBox personal link before shipping.
+const PAYBOX_LINK = "https://links.payboxapp.com/DreamManagerAgent";
+
+// Stealth Mode: a strict dark palette for night deliveries, applied only to
+// the sub-agent's own register surfaces (backpack grid + docked cart) — the
+// Main Admin's register never goes dark, it has no glare problem to solve.
+const STEALTH = {
+  bg: "#000000",
+  surface: "#1C1C1E",
+  surfaceHi: "#2C2C2E",
+  ink: "#FFFFFF",
+  inkSoft: "#A0A0A5",
+  inkMuted: "#6E6E73",
+  hairline: "#2C2C2E",
+  accent: "#3A3A3C",
+};
+
+// Live Commission Bar — falls back to this when an agent was created before
+// commissionGoal existed, or left the field blank.
+const DEFAULT_COMMISSION_GOAL = 100;
+
+// Debt Ceiling — an agent's own outstanding "Put on Tab" balance, summed
+// across their debtors. At or past this, the tab option locks until the
+// agent collects (or the Admin settles it from DebtsScreen).
+const DEBT_CEILING = 50;
+
+const debtBalance = (d) => Math.max(0, (Number(d?.owed) || 0) - (Number(d?.paid) || 0));
+
+// Tactical routing: group same-building stops together, then work down the
+// corridor floor by floor and room by room. No map SDK is wired into this
+// app, so this is an honest Building→Floor→Room grouping rather than a
+// distance estimate it can't actually back up.
+function sortAgentOrders(orders) {
+  return [...orders].sort((a, b) => {
+    const byBuilding = String(a.building || "").localeCompare(String(b.building || ""), "he", { numeric: true });
+    if (byBuilding !== 0) return byBuilding;
+    const byFloor = (parseFloat(a.floor) || 0) - (parseFloat(b.floor) || 0);
+    if (byFloor !== 0) return byFloor;
+    return (parseFloat(a.room) || 0) - (parseFloat(b.room) || 0);
+  });
+}
+
+function composeOrderAddress(o) {
+  const parts = [];
+  if (o.building) parts.push(`בניין ${o.building}`);
+  if (o.floor) parts.push(`קומה ${o.floor}`);
+  if (o.room) parts.push(`חדר ${o.room}`);
+  return parts.join(" · ") || "ללא כתובת";
+}
+
+// Shared by the live estimate shown while the cart is still open and by the
+// number actually swept into the agent's balance at completeSale — one
+// formula, so the two can never drift apart.
+function computeCommission(agent, totals) {
+  if (!agent) return 0;
+  if (agent.commissionType === "flat") {
+    return Math.round((Number(agent.commissionValue) || 0) * totals.units * 100) / 100;
+  }
+  const pct = Number(agent.commissionValue) || 0;
+  return totals.profit > 0 && pct > 0 ? Math.round(totals.profit * (pct / 100) * 100) / 100 : 0;
+}
+
 export default function PosRegisterTab({ bottomInset = 0 }) {
   const { sales, setSales, inventory, setInventory, debts, setDebts } = useBusiness();
   const { user } = useAuth();
@@ -74,8 +141,148 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
   // point: a register that can invent items cannot be reconciled against the
   // deck, and some days the owner wants exactly that discipline.
   const { allowManualItems, droneAllocPct } = useSettings();
-  const manualAllowed = allowManualItems !== false;
   const allocPct = Math.max(0, parseFloat(droneAllocPct) || 0);
+
+  // Franchise layer: which sub-agent (if any) is currently operating the
+  // register. A sub-agent's cart draws from their own backpack, not the
+  // shared deck — this is the single switch every gate below reads.
+  const {
+    agents,
+    setAgents,
+    agentInventory,
+    setAgentInventory,
+    auditLog,
+    setAuditLog,
+    agentOrders,
+    setAgentOrders,
+    activeAgentId,
+    setActiveAgentId,
+  } = useAgents() || {};
+  const activeAgent = (agents || []).find((a) => a.id === activeAgentId) || null;
+  const myBackpack = useMemo(
+    () => (activeAgent ? (agentInventory || []).filter((r) => r.agentId === activeAgent.id) : []),
+    [agentInventory, activeAgent]
+  );
+  // A sub-agent cannot invent an off-menu line — the whole point of the
+  // backpack is that they can only sell what's actually in it.
+  const manualAllowed = !activeAgent && allowManualItems !== false;
+
+  const logAudit = (action, detail) => {
+    if (!activeAgent) return;
+    setAuditLog((prev) => [
+      { id: uid(), ts: Date.now(), agentId: activeAgent.id, agentName: activeAgent.name, action, detail },
+      ...(prev || []),
+    ]);
+  };
+
+  // Stealth Mode — a night-delivery dark theme + suppressed tap feedback,
+  // scoped to whichever sub-agent is on the register right now. Persisted so
+  // a shift spanning an app restart doesn't need re-toggling, and force-off
+  // the instant nobody is signed in as an agent — the Main Admin's register
+  // never goes dark and never mutes.
+  const [stealthMode, setStealthMode] = usePersistentState("@dreammanager/pos-stealth-mode", false);
+  useEffect(() => {
+    if (!activeAgent && stealthMode) setStealthMode(false);
+  }, [activeAgent, stealthMode]);
+  const muted = !!(activeAgent && stealthMode);
+  const feedback = {
+    light: () => { if (!muted) hapticLight(); },
+    success: () => { if (!muted) hapticSuccess(); },
+    warning: () => { if (!muted) hapticWarning(); },
+  };
+
+  // Damage Control — a backpack item long-pressed and confirmed as broken or
+  // lost never reaches the register: it's deducted straight from the
+  // backpack and written to the audit log as a sunk cost, with no sale line
+  // and no cash involved.
+  const [damageRow, setDamageRow] = useState(null);
+  const reportDamage = (row, qty) => {
+    if (!activeAgent || !row) return;
+    const amount = Math.max(1, Math.min(qty, row.qty));
+    feedback.warning();
+    setAgentInventory((prev) =>
+      (prev || []).map((r) => (r.id === row.id ? { ...r, qty: Math.max(0, r.qty - amount) } : r))
+    );
+    logAudit(
+      "פריט פגום בתיק",
+      `${row.name} × ${amount} — ${shekel((row.cost || 0) * amount)} עלות שקועה, לא נכנס לקופה`
+    );
+    setDamageRow(null);
+  };
+
+  // Live Commission Bar — this-shift commission only, never the lifetime
+  // total: the gap between the running counter and the snapshot taken at the
+  // agent's last handover, the same subtraction AgentsScreen.js's Close Shift
+  // math uses, so the two screens can never disagree about what a shift paid.
+  const shiftCommission = activeAgent
+    ? Math.max(0, (Number(activeAgent.commissionEarned) || 0) - (Number(activeAgent.commissionAtLastHandover) || 0))
+    : 0;
+  const commissionGoal = Math.max(1, Number(activeAgent?.commissionGoal) || DEFAULT_COMMISSION_GOAL);
+  const commissionProgress = Math.min(1, shiftCommission / commissionGoal);
+
+  // Tactical Delivery & Routing — this agent's remote-order queue, sorted
+  // Building → Floor → Room (not a distance guess: grouping the exact same
+  // building together, then working down the corridor floor by floor, is the
+  // one thing about a stop's location this data can say for certain).
+  const [ordersOpen, setOrdersOpen] = useState(false);
+  const myOrders = useMemo(
+    () =>
+      activeAgent
+        ? sortAgentOrders((agentOrders || []).filter((o) => o.agentId === activeAgent.id && o.status !== "done"))
+        : [],
+    [agentOrders, activeAgent]
+  );
+  const notifyImHere = async (order) => {
+    feedback.light();
+    const text = "היי, אני עם ההזמנה שלך מחוץ לחדר, אפשר לצאת.";
+    const url = `whatsapp://send?text=${encodeURIComponent(text)}`;
+    try {
+      const ok = await Linking.canOpenURL(url);
+      if (ok) {
+        await Linking.openURL(url);
+      } else {
+        await Linking.openURL(`https://wa.me/?text=${encodeURIComponent(text)}`);
+      }
+    } catch {
+      /* no WhatsApp reachable — the agent still sees the order in the queue */
+    }
+    setAgentOrders((prev) =>
+      (prev || []).map((o) => (o.id === order.id ? { ...o, status: "notified", notifiedAt: Date.now() } : o))
+    );
+  };
+  const markOrderDelivered = (order) => {
+    feedback.success();
+    setAgentOrders((prev) =>
+      (prev || []).map((o) => (o.id === order.id ? { ...o, status: "done", deliveredAt: Date.now() } : o))
+    );
+  };
+
+  // Debt Ceiling — an agent's own "Put on Tab" customers, scoped to debts
+  // this agent personally created (agentId stamped at checkout below), never
+  // the shop-wide הקפות ledger the Main Admin runs from DebtsScreen.
+  const myDebtors = useMemo(
+    () => (activeAgent ? (debts || []).filter((d) => d.agentId === activeAgent.id && debtBalance(d) > 0) : []),
+    [debts, activeAgent]
+  );
+  const agentOutstandingDebt = useMemo(() => myDebtors.reduce((sum, d) => sum + debtBalance(d), 0), [myDebtors]);
+  const tabLocked = !!activeAgent && agentOutstandingDebt >= DEBT_CEILING;
+  const [debtorsOpen, setDebtorsOpen] = useState(false);
+  const sendDebtReminder = async (debtor) => {
+    feedback.light();
+    const amount = shekel(debtBalance(debtor)).replace(/[^\d.,]/g, "");
+    const text = `היי, יתרת החוב שלך אצלי היא ${amount} ש״ח. אפשר להסדיר בקלות דרך PayBox: ${PAYBOX_LINK}`;
+    const url = `whatsapp://send?text=${encodeURIComponent(text)}`;
+    try {
+      const ok = await Linking.canOpenURL(url);
+      if (ok) {
+        await Linking.openURL(url);
+        return;
+      }
+    } catch {
+      /* fall through */
+    }
+    Linking.openURL(`https://wa.me/?text=${encodeURIComponent(text)}`).catch(() => {});
+  };
 
   // The drone fund — same two keys MoneyDashboardScreen.js reads, so every
   // sale's automatic sweep shows up there live via usePersistentState's
@@ -129,6 +336,12 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
   // to a customer's running balance in DebtsScreen instead of collecting now.
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [tabCustomerName, setTabCustomerName] = useState("");
+  // Debt Ceiling — a tab already selected before the agent's debt crossed
+  // the line doesn't stay silently selected; it drops back to cash the
+  // moment the ceiling is hit, same as any other payment method going away.
+  useEffect(() => {
+    if (tabLocked && paymentMethod === "tab") setPaymentMethod("cash");
+  }, [tabLocked, paymentMethod]);
 
   const items = decks?.[deckKey] || DEFAULT_DECK_ITEMS[deckKey] || [];
   const isImport = deckKey === "import";
@@ -174,8 +387,37 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
     return { gross, cost, profit, units, unknown, comboCount, comboDiscount, lateNightSurcharge, amountDue };
   }, [cart, costs]);
 
+  // Territory surge — priced against whatever is in the cart right now, the
+  // same "amount actually being charged" every other adjustment line here
+  // (combo discount, late-night surcharge) already reads from `totals`. An
+  // empty cart has nothing to tax yet, so the button is a no-op warning
+  // rather than a silent zero-amount line.
+  const { tree: territoryTree } = useTerritoryTree();
+  const addTerritorySurcharge = (order) => {
+    const node = order.territoryNodeId ? findNode(territoryTree, order.territoryNodeId) : null;
+    const evaluation = evaluateRouteConditions(node, totals.gross);
+    if (evaluation.surgeAmount <= 0) {
+      feedback.warning();
+      return;
+    }
+    feedback.light();
+    setCart((prev) => [
+      ...prev,
+      {
+        id: uid(),
+        sku: `surge-${order.id}`,
+        name: evaluation.surgeLabel || "תוספת מרחק/קושי",
+        price: evaluation.surgeAmount,
+        cost: 0,
+        qty: 1,
+        territorySurcharge: true,
+      },
+    ]);
+    setAgentOrders((prev) => (prev || []).map((o) => (o.id === order.id ? { ...o, surgeCharged: true } : o)));
+  };
+
   const add = (item, qty = 1) => {
-    hapticLight();
+    feedback.light();
     setCart((prev) => {
       const found = prev.find((l) => l.sku === item.sku);
       if (found) return prev.map((l) => (l.sku === item.sku ? { ...l, qty: l.qty + qty } : l));
@@ -189,6 +431,11 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
           cost: item.cost,
           category: item.category || null,
           itemId: item.itemId || null,
+          // Set only for a line pulled from a sub-agent's backpack — the id
+          // of the agentInventory row completeSale decrements, distinct from
+          // itemId (which still points at the original warehouse row, kept
+          // for reporting).
+          backpackId: item.backpackId || null,
           qty,
         },
       ];
@@ -198,6 +445,25 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
     // the sale" and never includes the line just added.
     const hint = crossSellSuggestion(item.name, cart.map((l) => l.name));
     if (hint) showCrossSell(item.name, hint);
+  };
+
+  // A tap on a backpack tile — capped at what's actually left in the
+  // backpack, since going over would sell stock the agent doesn't hold.
+  const addFromBackpack = (row) => {
+    const inCartQty = cart.find((l) => l.backpackId === row.id)?.qty || 0;
+    if (inCartQty >= row.qty) {
+      feedback.warning();
+      return;
+    }
+    add({
+      sku: `bp-${row.id}`,
+      name: row.name,
+      price: row.price,
+      cost: row.cost,
+      category: row.category || null,
+      itemId: row.itemId || null,
+      backpackId: row.id,
+    });
   };
 
   const addManual = (name, price) => {
@@ -261,14 +527,36 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
   };
 
   const bump = (sku, delta) => {
-    if (delta < 0) hapticWarning();
-    else hapticLight();
-    setCart((prev) => prev.map((l) => (l.sku === sku ? { ...l, qty: l.qty + delta } : l)).filter((l) => l.qty > 0));
+    if (delta < 0) feedback.warning();
+    else feedback.light();
+    setCart((prev) => {
+      const line = prev.find((l) => l.sku === sku);
+      if (!line) return prev;
+      const nextQty = line.qty + delta;
+      // Backpack lines can't grow past what the agent actually has left.
+      if (delta > 0 && line.backpackId) {
+        const row = myBackpack.find((r) => r.id === line.backpackId);
+        if (nextQty > (row?.qty || 0)) {
+          feedback.warning();
+          return prev;
+        }
+      }
+      // Removing a line entirely — a sensitive action worth a paper trail
+      // when it's a sub-agent doing it, since it's exactly how a rung-up
+      // item quietly disappears from a shift's takings.
+      if (delta < 0 && nextQty <= 0 && activeAgent) {
+        logAudit("הסרת פריט מהעגלה", `${line.name} × ${line.qty}`);
+      }
+      return prev.map((l) => (l.sku === sku ? { ...l, qty: l.qty + delta } : l)).filter((l) => l.qty > 0);
+    });
   };
 
   const clear = () => {
     if (!cart.length) return;
-    hapticWarning();
+    feedback.warning();
+    if (activeAgent) {
+      logAudit("ביטול עסקה", `${cart.length} שורות נוקו מהעגלה, סה"כ ${shekel(totals.amountDue)}`);
+    }
     setCart([]);
     setExpanded(false);
   };
@@ -278,16 +566,17 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
   // it is still a decision.
   const openSummary = () => {
     if (!cart.length) return;
-    hapticLight();
+    feedback.light();
     setSummaryOpen(true);
   };
 
   const completeSale = () => {
     if (!cart.length) return;
-    // A tab sale needs someone to put it on — the button below is already
-    // disabled in this state, so reaching here means a stray call.
-    if (paymentMethod === "tab" && !tabCustomerName.trim()) return;
-    hapticSuccess();
+    // A tab sale needs someone to put it on, and an agent already at the
+    // debt ceiling can't open a new one — the button below is already
+    // disabled in both states, so reaching here means a stray call.
+    if (paymentMethod === "tab" && (!tabCustomerName.trim() || tabLocked)) return;
+    feedback.success();
     const txId = uid();
     const ts = Date.now();
 
@@ -304,7 +593,7 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
         month: monthKey(),
         itemId: l.itemId,
         name: l.name,
-        category: deckKey === "food" ? "snacks" : "electronics",
+        category: l.category || (deckKey === "food" ? "snacks" : "electronics"),
         qty: l.qty,
         price: l.price,
         cost: unit,
@@ -314,6 +603,10 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
         eventId: txId,
         sku: l.sku,
         paymentMethod,
+        // null for a Main Admin sale — the leaderboard and every per-agent
+        // report key off this field being absent rather than a sentinel.
+        agentId: activeAgent?.id || null,
+        agentName: activeAgent?.name || null,
       };
     });
 
@@ -380,14 +673,21 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
     // added to the customer's running balance in DebtsScreen for collection.
     if (paymentMethod === "tab") {
       const name = tabCustomerName.trim();
+      // Stamped with the agent who ran the sale, so the Debt Ceiling and the
+      // "My Debtors" collection list read this agent's own book — not the
+      // shop-wide הקפות ledger — and never merge into an Admin-run tab for a
+      // customer of the same name.
+      const debtAgentId = activeAgent?.id || null;
       setDebts((prev) => {
-        const existing = (prev || []).find((d) => d.name.trim().toLowerCase() === name.toLowerCase());
+        const existing = (prev || []).find(
+          (d) => d.name.trim().toLowerCase() === name.toLowerCase() && (d.agentId || null) === debtAgentId
+        );
         if (existing) {
           return prev.map((d) =>
             d.id === existing.id ? { ...d, owed: (Number(d.owed) || 0) + totals.amountDue } : d
           );
         }
-        return [...(prev || []), { id: uid(), name, owed: totals.amountDue, paid: 0 }];
+        return [...(prev || []), { id: uid(), name, owed: totals.amountDue, paid: 0, agentId: debtAgentId }];
       });
     }
 
@@ -405,17 +705,48 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
       });
     }
 
-    // Deck lines only touch stock when explicitly linked to a warehouse item.
-    // Matching on name would be a guess, and a guess that silently decrements
-    // the wrong row is worse than not decrementing.
-    const linked = cart.filter((l) => l.itemId);
-    if (linked.length && setInventory) {
-      setInventory((prev) =>
-        (prev || []).map((inv) => {
-          const line = linked.find((l) => l.itemId === inv.id);
-          if (!line) return inv;
-          return { ...inv, qty: Math.max(0, inv.qty - line.qty), sold: (inv.sold || 0) + line.qty };
-        })
+    if (activeAgent) {
+      // A sub-agent's stock lives in their backpack, already deducted from
+      // the main warehouse at transfer time — this sale only draws it down
+      // further, the main inventory is untouched.
+      const linkedBackpack = cart.filter((l) => l.backpackId);
+      if (linkedBackpack.length) {
+        setAgentInventory((prev) =>
+          (prev || []).map((row) => {
+            const line = linkedBackpack.find((l) => l.backpackId === row.id);
+            if (!line) return row;
+            return { ...row, qty: Math.max(0, row.qty - line.qty) };
+          })
+        );
+      }
+    } else {
+      // Deck lines only touch stock when explicitly linked to a warehouse
+      // item. Matching on name would be a guess, and a guess that silently
+      // decrements the wrong row is worse than not decrementing.
+      const linked = cart.filter((l) => l.itemId);
+      if (linked.length && setInventory) {
+        setInventory((prev) =>
+          (prev || []).map((inv) => {
+            const line = linked.find((l) => l.itemId === inv.id);
+            if (!line) return inv;
+            return { ...inv, qty: Math.max(0, inv.qty - line.qty), sold: (inv.sold || 0) + line.qty };
+          })
+        );
+      }
+    }
+
+    // Commission — a slice of this sale credited to the sub-agent who rang
+    // it up, live the instant the sale closes (same immediacy as the drone
+    // sweep below, and for the same reason: waiting for a manual tally is
+    // how a shift's earnings quietly go unpaid).
+    const commissionAmount = computeCommission(activeAgent, totals);
+    if (activeAgent && commissionAmount > 0) {
+      setAgents((prev) =>
+        (prev || []).map((a) =>
+          a.id === activeAgent.id
+            ? { ...a, commissionEarned: Math.round(((Number(a.commissionEarned) || 0) + commissionAmount) * 100) / 100 }
+            : a
+        )
       );
     }
 
@@ -439,6 +770,8 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
 
     setReceipt({
       droneAlloc: autoAllocAmount,
+      commission: commissionAmount,
+      agentName: activeAgent?.name || null,
       lines: cart,
       totals,
       ts,
@@ -457,8 +790,18 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
     return (sales || []).filter((r) => r.day === day && r.kind === "sale").reduce((n, r) => n + (r.total || 0), 0);
   }, [sales]);
 
+  const agentTodayGross = useMemo(() => {
+    if (!activeAgent) return 0;
+    const day = todayKey();
+    return (sales || [])
+      .filter((r) => r.day === day && r.kind === "sale" && r.agentId === activeAgent.id)
+      .reduce((n, r) => n + (r.total || 0), 0);
+  }, [sales, activeAgent]);
+
+  const liveCommission = computeCommission(activeAgent, totals);
+
   const cartHeight = expanded ? 300 : cart.length ? 132 : 74;
-  const canComplete = paymentMethod !== "tab" || tabCustomerName.trim().length > 0;
+  const canComplete = paymentMethod !== "tab" || (tabCustomerName.trim().length > 0 && !tabLocked);
   const debtorNames = useMemo(
     () => [...new Set((debts || []).map((d) => d.name.trim()).filter(Boolean))],
     [debts]
@@ -473,7 +816,7 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
   const [loyaltyCustomers, setLoyaltyCustomers] = usePersistentState(STORAGE_KEYS.loyaltyCustomers, []);
 
   return (
-    <View style={st.wrap}>
+    <View style={[st.wrap, muted && st.wrapStealth]}>
       {/* Notes pinned to the register — a compact banner, titles only. The
           note's content is one tap away in the Notes tab; this exists to be
           glanced at, not read. */}
@@ -506,37 +849,167 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
         </Animated.View>
       )}
 
-      {/* Mode switch + today's takings */}
-      <View style={st.topRow}>
-        <View style={st.deckSwitch}>
-          {DECKS.map((d) => {
-            const on = d.key === deckKey;
+      {/* Active operator — who's holding the register right now. Only shown
+          once at least one sub-agent exists, so a solo operator never sees a
+          selector with nothing to select. */}
+      {(agents || []).length > 0 && (
+        <View style={st.operatorRow}>
+          <TouchableOpacity
+            testID="operator-main"
+            style={[st.operatorChip, !activeAgent && st.operatorChipOn]}
+            onPress={() => {
+              hapticLight();
+              setActiveAgentId(null);
+            }}
+          >
+            <Icon name="shield" size={13} color={!activeAgent ? "#FFFFFF" : UI.inkSoft} />
+            <CustomText style={[st.operatorChipText, !activeAgent && { color: "#FFFFFF" }]}>מנהל ראשי</CustomText>
+          </TouchableOpacity>
+          {(agents || []).map((a) => {
+            const on = a.id === activeAgentId;
             return (
               <TouchableOpacity
-                key={d.key}
-                testID={`deck-${d.key}`}
-                style={[st.deckBtn, on && { backgroundColor: d.color }]}
+                key={a.id}
+                testID={`operator-${a.id}`}
+                style={[st.operatorChip, on && st.operatorChipOn]}
                 onPress={() => {
                   hapticLight();
-                  setDeckKey(d.key);
+                  setActiveAgentId(a.id);
                 }}
               >
-                <Icon name={d.icon} size={15} color={on ? "#FFFFFF" : UI.inkSoft} />
-                <CustomText style={[st.deckText, on && { color: "#FFFFFF" }]}>{d.label}</CustomText>
+                <Icon name="user" size={13} color={on ? "#FFFFFF" : UI.inkSoft} />
+                <CustomText style={[st.operatorChipText, on && { color: "#FFFFFF" }]} numberOfLines={1}>
+                  {a.name}
+                </CustomText>
               </TouchableOpacity>
             );
           })}
         </View>
+      )}
+
+      {/* Mode switch + today's takings */}
+      <View style={st.topRow}>
+        {activeAgent ? (
+          <>
+            <View style={[st.agentModeBadge, muted && st.agentModeBadgeStealth]}>
+              <Icon name="briefcase" size={15} color={muted ? STEALTH.ink : UI.violet} />
+              <CustomText style={[st.agentModeBadgeText, muted && { color: STEALTH.ink }]}>
+                מוכר מתוך התיק של {activeAgent.name}
+              </CustomText>
+            </View>
+            <TouchableOpacity
+              testID="stealth-toggle"
+              style={[st.stealthToggle, stealthMode && st.stealthToggleOn]}
+              activeOpacity={0.8}
+              onPress={() => {
+                hapticLight();
+                setStealthMode((v) => !v);
+              }}
+            >
+              <Icon name="moon" size={16} color={stealthMode ? "#FFFFFF" : UI.inkSoft} />
+            </TouchableOpacity>
+          </>
+        ) : (
+          <View style={st.deckSwitch}>
+            {DECKS.map((d) => {
+              const on = d.key === deckKey;
+              return (
+                <TouchableOpacity
+                  key={d.key}
+                  testID={`deck-${d.key}`}
+                  style={[st.deckBtn, on && { backgroundColor: d.color }]}
+                  onPress={() => {
+                    hapticLight();
+                    setDeckKey(d.key);
+                  }}
+                >
+                  <Icon name={d.icon} size={15} color={on ? "#FFFFFF" : UI.inkSoft} />
+                  <CustomText style={[st.deckText, on && { color: "#FFFFFF" }]}>{d.label}</CustomText>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
         <View style={st.todayBox}>
-          <CustomText style={st.todayLabel}>היום</CustomText>
+          <CustomText style={st.todayLabel}>{activeAgent ? "המכירות שלי" : "היום"}</CustomText>
           <CustomText testID="pos-today" style={st.todayValue}>
-            {shekel(todayGross)}
+            {shekel(activeAgent ? agentTodayGross : todayGross)}
           </CustomText>
         </View>
       </View>
 
+      {/* Live Commission Bar + tactical shortcuts — agent-only, and the one
+          place in the register that keeps working the same in Stealth Mode
+          (a bar and two chips have nothing to glare at night). */}
+      {activeAgent && (
+        <View style={st.agentToolsRow}>
+          <View style={st.commissionBar}>
+            <View style={st.commissionBarHead}>
+              <CustomText testID="pos-commission-earned" style={[st.commissionBarLabel, muted && { color: STEALTH.ink }]}>
+                עמלת משמרת: {shekel(shiftCommission)} / {shekel(commissionGoal)}
+              </CustomText>
+              <Icon name="trending-up" size={13} color={muted ? STEALTH.inkMuted : UI.green} />
+            </View>
+            <View style={[st.commissionTrack, muted && { backgroundColor: STEALTH.surfaceHi }]}>
+              <View
+                style={[
+                  st.commissionFill,
+                  { width: `${Math.round(commissionProgress * 100)}%` },
+                  commissionProgress >= 1 && { backgroundColor: UI.gold },
+                ]}
+              />
+            </View>
+          </View>
+          <TouchableOpacity
+            testID="orders-open"
+            style={[st.toolChip, muted && { backgroundColor: STEALTH.surface }]}
+            activeOpacity={0.8}
+            onPress={() => {
+              feedback.light();
+              setOrdersOpen(true);
+            }}
+          >
+            <Icon name="map-pin" size={16} color={muted ? STEALTH.ink : UI.violet} />
+            {myOrders.length > 0 && (
+              <View style={st.toolChipBadge}>
+                <CustomText style={st.toolChipBadgeText}>{myOrders.length}</CustomText>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            testID="debtors-open"
+            style={[st.toolChip, muted && { backgroundColor: STEALTH.surface }]}
+            activeOpacity={0.8}
+            onPress={() => {
+              feedback.light();
+              setDebtorsOpen(true);
+            }}
+          >
+            <Icon name="book-open" size={16} color={muted ? STEALTH.ink : UI.amber} />
+            {myDebtors.length > 0 && (
+              <View style={[st.toolChipBadge, { backgroundColor: UI.red }]}>
+                <CustomText style={st.toolChipBadgeText}>{myDebtors.length}</CustomText>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
+
       <View style={{ flex: 1 }}>
-        {isImport ? (
+        {activeAgent ? (
+          <BackpackMode
+            agent={activeAgent}
+            rows={myBackpack}
+            cart={cart}
+            onAdd={addFromBackpack}
+            onLongPressItem={(row) => {
+              feedback.light();
+              setDamageRow(row);
+            }}
+            stealth={muted}
+            bottomPad={cartHeight + bottomInset}
+          />
+        ) : isImport ? (
           <ScanMode onScan={() => setScanOpen(true)} bottomPad={cartHeight + bottomInset} />
         ) : (
           <>
@@ -634,22 +1107,25 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
       </View>
 
       {/* The cart, docked */}
-      <Animated.View layout={Layout.springify().damping(18)} style={[st.cart, { height: cartHeight, paddingBottom: bottomInset }]}>
+      <Animated.View
+        layout={Layout.springify().damping(18)}
+        style={[st.cart, { height: cartHeight, paddingBottom: bottomInset }, muted && st.cartStealth]}
+      >
         <TouchableOpacity
           testID="cart-toggle"
           activeOpacity={0.9}
           style={st.cartHead}
           onPress={() => {
             if (!cart.length) return;
-            hapticLight();
+            feedback.light();
             setExpanded((e) => !e);
           }}
         >
-          <View style={st.cartCount}>
-            <CustomText style={st.cartCountText}>{totals.units}</CustomText>
+          <View style={[st.cartCount, muted && { backgroundColor: STEALTH.surfaceHi }]}>
+            <CustomText style={[st.cartCountText, muted && { color: STEALTH.ink }]}>{totals.units}</CustomText>
           </View>
           <View style={{ flex: 1 }}>
-            <CustomText style={st.cartTitle}>
+            <CustomText style={[st.cartTitle, muted && { color: STEALTH.ink }]}>
               {cart.length
                 ? `${cart.length} שורות בעגלה`
                 : lastTotal != null
@@ -657,17 +1133,20 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
                   : "העגלה ריקה"}
             </CustomText>
             {cart.length > 0 && (
-              <CustomText testID="cart-profit" style={st.cartSub}>
+              <CustomText testID="cart-profit" style={[st.cartSub, muted && { color: STEALTH.inkSoft }]}>
                 רווח צפוי {shekel(totals.profit)} · עלות {shekel(totals.cost)}
                 {totals.comboDiscount > 0 ? ` · 🎉 קומבו -${shekel(totals.comboDiscount)}` : ""}
                 {totals.lateNightSurcharge > 0 ? ` · תוספת לילה +${shekel(totals.lateNightSurcharge)}` : ""}
+                {activeAgent && liveCommission > 0 ? ` · עמלה צפויה ${shekel(liveCommission)}` : ""}
               </CustomText>
             )}
           </View>
-          <CustomText testID="cart-total" style={st.cartTotal}>
+          <CustomText testID="cart-total" style={[st.cartTotal, muted && { color: STEALTH.ink }]}>
             {shekel(totals.amountDue)}
           </CustomText>
-          {cart.length > 0 && <Icon name={expanded ? "chevron-down" : "chevron-up"} size={18} color={UI.inkMuted} />}
+          {cart.length > 0 && (
+            <Icon name={expanded ? "chevron-down" : "chevron-up"} size={18} color={muted ? STEALTH.inkMuted : UI.inkMuted} />
+          )}
         </TouchableOpacity>
 
         {expanded && (
@@ -678,19 +1157,19 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
               showsVerticalScrollIndicator={false}
               renderItem={({ item: l }) => (
                 <Animated.View entering={FadeInDown.duration(160)} style={st.line}>
-                  <View style={st.qtyGroup}>
-                    <TouchableOpacity style={st.qtyBtn} onPress={() => bump(l.sku, -1)}>
-                      <Icon name="minus" size={14} color={UI.inkSoft} />
+                  <View style={[st.qtyGroup, muted && { backgroundColor: STEALTH.surfaceHi }]}>
+                    <TouchableOpacity style={[st.qtyBtn, muted && { backgroundColor: STEALTH.surface }]} onPress={() => bump(l.sku, -1)}>
+                      <Icon name="minus" size={14} color={muted ? STEALTH.inkSoft : UI.inkSoft} />
                     </TouchableOpacity>
-                    <CustomText style={st.qtyText}>{l.qty}</CustomText>
-                    <TouchableOpacity style={st.qtyBtn} onPress={() => bump(l.sku, 1)}>
-                      <Icon name="plus" size={14} color={UI.inkSoft} />
+                    <CustomText style={[st.qtyText, muted && { color: STEALTH.ink }]}>{l.qty}</CustomText>
+                    <TouchableOpacity style={[st.qtyBtn, muted && { backgroundColor: STEALTH.surface }]} onPress={() => bump(l.sku, 1)}>
+                      <Icon name="plus" size={14} color={muted ? STEALTH.inkSoft : UI.inkSoft} />
                     </TouchableOpacity>
                   </View>
-                  <CustomText style={st.lineName} numberOfLines={1}>
+                  <CustomText style={[st.lineName, muted && { color: STEALTH.ink }]} numberOfLines={1}>
                     {l.name}
                   </CustomText>
-                  <CustomText style={st.lineTotal}>{shekel(l.price * l.qty)}</CustomText>
+                  <CustomText style={[st.lineTotal, muted && { color: STEALTH.ink }]}>{shekel(l.price * l.qty)}</CustomText>
                 </Animated.View>
               )}
             />
@@ -703,7 +1182,7 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
               <Icon name="check" size={18} color="#FFFFFF" />
               <CustomText style={st.chargeText}>חייב {shekel(totals.amountDue)}</CustomText>
             </TouchableOpacity>
-            <TouchableOpacity testID="cart-clear" style={st.clear} onPress={clear}>
+            <TouchableOpacity testID="cart-clear" style={[st.clear, muted && { backgroundColor: "#3A1416" }]} onPress={clear}>
               <Icon name="trash-2" size={17} color={UI.red} />
             </TouchableOpacity>
           </View>
@@ -716,6 +1195,12 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
         onAdd={addManual}
       />
       <ScanCamera visible={scanOpen} onScanned={addScanned} onClose={() => setScanOpen(false)} />
+      <DamageReportModal
+        visible={!!damageRow}
+        row={damageRow}
+        onClose={() => setDamageRow(null)}
+        onConfirm={reportDamage}
+      />
       <AddNewProductModal
         visible={newProductOpen}
         barcode={pendingBarcode}
@@ -738,13 +1223,298 @@ export default function PosRegisterTab({ bottomInset = 0 }) {
         debtorNames={debtorNames}
         loyaltyCustomers={loyaltyCustomers}
         canComplete={canComplete}
+        activeAgent={activeAgent}
+        tabLocked={tabLocked}
         onClose={() => {
           setSummaryOpen(false);
           setReceipt(null);
         }}
         onComplete={completeSale}
       />
+      <OrderQueueModal
+        visible={ordersOpen}
+        orders={myOrders}
+        onClose={() => setOrdersOpen(false)}
+        onImHere={notifyImHere}
+        onDelivered={markOrderDelivered}
+        onAddSurcharge={addTerritorySurcharge}
+      />
+      <AgentDebtorsModal
+        visible={debtorsOpen}
+        debtors={myDebtors}
+        onClose={() => setDebtorsOpen(false)}
+        onSend={sendDebtReminder}
+      />
     </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tactical Delivery & Routing — this agent's queue, already sorted
+// Building → Floor → Room. "I'm here" fires the WhatsApp template and flags
+// the stop as notified without removing it; "נמסר" is the only action that
+// actually closes it out.
+
+function OrderQueueModal({ visible, orders, onClose, onImHere, onDelivered, onAddSurcharge }) {
+  // Reactivity to Step 3 of the territory directive: any pending stop
+  // flagged cellularDeadZone gets one aggregate banner rather than a native
+  // Alert.alert() per stop — this app deliberately doesn't use blocking
+  // native alerts for anything short of a destructive confirm (see
+  // crossSellToast / resultBanner elsewhere), and a banner reads the same
+  // "heads up" without stopping the agent mid-round. Every sale already
+  // writes to local storage first regardless of connectivity (see
+  // completeSale), so there is no separate cache to warm here — the banner
+  // is the honest part of "offline-caching on entry."
+  const hasDeadZoneStop = orders.some((o) => o.cellularDeadZone);
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={st.backdrop} onPress={onClose}>
+        <Pressable style={st.sheet} onPress={(e) => e.stopPropagation()}>
+          <View style={st.sheetHead}>
+            <TouchableOpacity testID="orders-close" style={st.sheetBtn} onPress={onClose}>
+              <Icon name="x" size={18} color={UI.ink} />
+            </TouchableOpacity>
+            <CustomText style={st.sheetTitle}>משימות הפצה</CustomText>
+          </View>
+
+          {hasDeadZoneStop && (
+            <View testID="deadzone-banner" style={st.deadZoneBanner}>
+              <Icon name="wifi-off" size={15} color={UI.amber} />
+              <CustomText style={st.deadZoneBannerText}>
+                יש עצירות באזור ללא כיסוי סלולרי — המכירות נשמרות מקומית ומסתנכרנות כשהחיבור חוזר
+              </CustomText>
+            </View>
+          )}
+
+          {orders.length === 0 ? (
+            <CustomText style={st.ordersEmpty}>אין משימות פתוחות — הכל נמסר.</CustomText>
+          ) : (
+            <>
+              <CustomText style={st.ordersHint}>ממוין אוטומטית לפי בניין וקומה, למינימום הליכה</CustomText>
+              {orders.map((o, index) => (
+                <View key={o.id} style={st.orderRow}>
+                  <View style={st.orderRowNum}>
+                    <CustomText style={st.orderRowNumText}>{index + 1}</CustomText>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <CustomText style={st.orderAddress}>{composeOrderAddress(o)}</CustomText>
+                    <View style={st.orderTagRow}>
+                      {o.status === "notified" && <CustomText style={st.orderNotified}>הודעה נשלחה</CustomText>}
+                      {o.cellularDeadZone && <CustomText style={st.orderTagAmber}>ללא כיסוי</CustomText>}
+                      {!!o.gateCodes && <CustomText style={st.orderTagInfo}>קוד שער: {o.gateCodes}</CustomText>}
+                    </View>
+                    {o.surgeLabel && !o.surgeCharged && (
+                      <TouchableOpacity
+                        testID={`order-surge-${o.id}`}
+                        style={st.orderSurgeBtn}
+                        activeOpacity={0.8}
+                        onPress={() => onAddSurcharge(o)}
+                      >
+                        <Icon name="trending-up" size={12} color={UI.amber} />
+                        <CustomText style={st.orderSurgeBtnText}>{o.surgeLabel} — הוסף לעגלה</CustomText>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  <TouchableOpacity
+                    testID={`order-here-${o.id}`}
+                    style={st.orderHereBtn}
+                    activeOpacity={0.8}
+                    onPress={() => onImHere(o)}
+                  >
+                    <Icon name="message-circle" size={16} color="#FFFFFF" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    testID={`order-done-${o.id}`}
+                    style={st.orderDoneBtn}
+                    activeOpacity={0.8}
+                    onPress={() => onDelivered(o)}
+                  >
+                    <Icon name="check" size={16} color={UI.green} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </>
+          )}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Risk management, agent-side — this agent's own debtors, with a one-tap
+// WhatsApp nudge quoting the exact balance and the PayBox link to settle it.
+
+function AgentDebtorsModal({ visible, debtors, onClose, onSend }) {
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={st.backdrop} onPress={onClose}>
+        <Pressable style={st.sheet} onPress={(e) => e.stopPropagation()}>
+          <View style={st.sheetHead}>
+            <TouchableOpacity testID="debtors-close" style={st.sheetBtn} onPress={onClose}>
+              <Icon name="x" size={18} color={UI.ink} />
+            </TouchableOpacity>
+            <CustomText style={st.sheetTitle}>החייבים שלי</CustomText>
+          </View>
+
+          {debtors.length === 0 ? (
+            <CustomText style={st.ordersEmpty}>אין חובות פתוחים על שמכם.</CustomText>
+          ) : (
+            debtors.map((d) => (
+              <View key={d.id} style={st.orderRow}>
+                <View style={{ flex: 1 }}>
+                  <CustomText style={st.orderAddress}>{d.name}</CustomText>
+                  <CustomText style={st.debtorBalance}>{shekel(debtBalance(d))} חוב פתוח</CustomText>
+                </View>
+                <TouchableOpacity
+                  testID={`debtor-whatsapp-${d.id}`}
+                  style={st.orderHereBtn}
+                  activeOpacity={0.8}
+                  onPress={() => onSend(d)}
+                >
+                  <Icon name="message-circle" size={16} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+            ))
+          )}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// A sub-agent's grid — every tile is a row from their own backpack, capped at
+// whatever quantity is still unsold in it. No manual line and no scanner:
+// the whole point of the backpack is that they can't sell outside it.
+
+function BackpackMode({ agent, rows, cart, onAdd, onLongPressItem, stealth, bottomPad }) {
+  const inStock = rows.filter((r) => r.qty > 0);
+  if (inStock.length === 0) {
+    return (
+      <View style={[st.scanWrap, { paddingBottom: bottomPad }, stealth && { backgroundColor: STEALTH.bg }]}>
+        <Icon name="briefcase" size={34} color={stealth ? STEALTH.inkMuted : UI.inkMuted} />
+        <CustomText style={[st.scanTitle, stealth && { color: STEALTH.ink }]}>התיק ריק</CustomText>
+        <CustomText style={[st.scanNote, stealth && { color: STEALTH.inkSoft }]}>
+          בקשו מהמנהל להעביר מלאי לתיק שלכם דרך "סוכנים".
+        </CustomText>
+      </View>
+    );
+  }
+  return (
+    <FlashList
+      testID="backpack-grid"
+      data={inStock}
+      numColumns={NUM_COLUMNS}
+      keyExtractor={(row) => row.id}
+      extraData={cart}
+      style={stealth ? { backgroundColor: STEALTH.bg } : null}
+      contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: bottomPad + 16, paddingTop: 8 }}
+      showsVerticalScrollIndicator={false}
+      ListHeaderComponent={
+        <View style={[st.damageHint, stealth && { backgroundColor: STEALTH.surface }]}>
+          <Icon name="alert-triangle" size={13} color={stealth ? STEALTH.inkSoft : UI.amber} />
+          <CustomText style={[st.damageHintText, stealth && { color: STEALTH.inkSoft }]}>
+            לחיצה ארוכה על פריט מדווחת עליו כפגום ומורידה אותו מהתיק, בלי לעבור בקופה
+          </CustomText>
+        </View>
+      }
+      renderItem={({ item: row, index }) => {
+        const inCart = cart.find((l) => l.backpackId === row.id);
+        return (
+          <Animated.View entering={FadeIn.delay(Math.min(index, 11) * 22)} style={st.cell}>
+            <TouchableOpacity
+              testID={`backpack-item-${row.id}`}
+              activeOpacity={0.8}
+              delayLongPress={420}
+              style={[
+                st.tile,
+                stealth && { backgroundColor: STEALTH.surface, borderColor: STEALTH.hairline },
+                inCart && { borderColor: UI.violet, backgroundColor: tint(UI.violet, 0.05) },
+                inCart && stealth && { borderColor: STEALTH.accent, backgroundColor: STEALTH.surfaceHi },
+              ]}
+              onPress={() => onAdd(row)}
+              onLongPress={() => onLongPressItem?.(row)}
+            >
+              {!!inCart && (
+                <View style={[st.tileBadge, stealth && { backgroundColor: STEALTH.accent }]}>
+                  <CustomText style={st.tileBadgeText}>{inCart.qty}</CustomText>
+                </View>
+              )}
+              <View style={[st.tileIconWrap, { backgroundColor: stealth ? STEALTH.surfaceHi : tint(UI.violet, 0.14) }]}>
+                <Icon name="package" size={22} color={stealth ? STEALTH.ink : UI.violet} />
+              </View>
+              <CustomText style={[st.tileName, stealth && { color: STEALTH.ink }]} numberOfLines={2}>
+                {row.name}
+              </CustomText>
+              <CustomText style={[st.tilePrice, stealth && { color: STEALTH.ink }]}>{shekel(row.price)}</CustomText>
+              <CustomText style={[st.tileMargin, stealth && { color: STEALTH.inkMuted }]}>
+                {row.qty - (inCart?.qty || 0)} נותרו בתיק
+              </CustomText>
+            </TouchableOpacity>
+          </Animated.View>
+        );
+      }}
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Damage Control — confirms a long-pressed backpack item as broken or lost.
+// Deducts straight from the backpack and writes the audit log; no cart line,
+// no sale, no cash register involvement at all.
+
+function DamageReportModal({ visible, row, onClose, onConfirm }) {
+  const [qty, setQty] = useState(1);
+  useEffect(() => {
+    if (row) setQty(1);
+  }, [row]);
+
+  if (!row) return null;
+  const max = row.qty;
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={st.backdrop} onPress={onClose}>
+        <Pressable style={st.sheet} onPress={(e) => e.stopPropagation()}>
+          <View style={st.sheetHead}>
+            <TouchableOpacity testID="damage-close" style={st.sheetBtn} onPress={onClose}>
+              <Icon name="x" size={18} color={UI.ink} />
+            </TouchableOpacity>
+            <CustomText style={st.sheetTitle}>דיווח פריט פגום</CustomText>
+          </View>
+
+          <View style={st.damageWarnBox}>
+            <Icon name="alert-triangle" size={18} color={UI.red} />
+            <CustomText style={st.damageWarnText}>
+              {row.name} ירד מהתיק כפחת — ללא מכירה וללא כניסה לקופה.
+            </CustomText>
+          </View>
+
+          <CustomText style={st.fieldLabel}>כמות פגומה</CustomText>
+          <View style={[st.qtyGroup, { alignSelf: "center", marginTop: 6 }]}>
+            <TouchableOpacity testID="damage-qty-minus" style={st.qtyBtn} onPress={() => setQty((q) => Math.max(1, q - 1))}>
+              <Icon name="minus" size={16} color={UI.inkSoft} />
+            </TouchableOpacity>
+            <CustomText style={st.qtyText}>{qty}</CustomText>
+            <TouchableOpacity testID="damage-qty-plus" style={st.qtyBtn} onPress={() => setQty((q) => Math.min(max, q + 1))}>
+              <Icon name="plus" size={16} color={UI.inkSoft} />
+            </TouchableOpacity>
+          </View>
+          <CustomText style={st.damageMax}>מתוך {max} יח׳ שנותרו בתיק</CustomText>
+
+          <TouchableOpacity
+            testID="damage-confirm"
+            style={[st.primaryBtn, { backgroundColor: UI.red }]}
+            onPress={() => onConfirm(row, qty)}
+          >
+            <Icon name="alert-triangle" size={17} color="#FFFFFF" />
+            <CustomText style={st.primaryText}>אישור דיווח נזק</CustomText>
+          </TouchableOpacity>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -993,6 +1763,7 @@ function formatReceiptText(receipt) {
 const PAYMENT_METHODS = [
   { key: "cash", label: "מזומן", icon: "dollar-sign" },
   { key: "card", label: "אשראי", icon: "credit-card" },
+  { key: "paybox", label: "PayBox QR", icon: "maximize" },
   { key: "tab", label: "הקפה", icon: "book-open" },
 ];
 
@@ -1009,10 +1780,13 @@ function CheckoutSummary({
   debtorNames,
   loyaltyCustomers,
   canComplete,
+  activeAgent,
+  tabLocked,
   onClose,
   onComplete,
 }) {
   const margin = totals.gross > 0 ? totals.profit / totals.gross : null;
+  const commissionPreview = computeCommission(activeAgent, totals);
 
   // Loyalty milestone check, live as the name is typed — every 5th purchase
   // (5th, 10th, 15th…) for whoever this name matches in the loyalty ledger.
@@ -1072,6 +1846,14 @@ function CheckoutSummary({
                   <Icon name="target" size={13} color={UI.violet} />
                   <CustomText style={st.droneAllocChipText}>
                     {shekel(receipt.droneAlloc)} נשלחו אוטומטית לקרן הרחפן
+                  </CustomText>
+                </View>
+              )}
+              {receipt.commission > 0 && (
+                <View style={st.commissionChip}>
+                  <Icon name="briefcase" size={13} color={UI.green} />
+                  <CustomText style={st.commissionChipText}>
+                    {shekel(receipt.commission)} עמלה נזקפה ל{receipt.agentName}
                   </CustomText>
                 </View>
               )}
@@ -1166,6 +1948,15 @@ function CheckoutSummary({
             </View>
           )}
 
+          {activeAgent && (
+            <View style={st.sumRow}>
+              <CustomText testID="sum-commission" style={[st.sumValue, { color: UI.green }]}>
+                {shekel(commissionPreview)}
+              </CustomText>
+              <CustomText style={st.sumLabel}>עמלה ל{activeAgent.name}</CustomText>
+            </View>
+          )}
+
           {/* Which lines had no cost behind them. Without this the profit reads
               as precise on a cart where half the costs are simply unknown —
               and an unknown cost inflates profit rather than shrinking it, so
@@ -1199,22 +1990,49 @@ function CheckoutSummary({
           <View style={st.paymentRow}>
             {PAYMENT_METHODS.map((m) => {
               const on = m.key === paymentMethod;
+              // Debt Ceiling — this agent's own tab is locked once their
+              // outstanding customer debt hits DEBT_CEILING; every other
+              // payment method stays open regardless.
+              const locked = m.key === "tab" && tabLocked;
               return (
                 <TouchableOpacity
                   key={m.key}
                   testID={`payment-${m.key}`}
-                  style={[st.paymentChip, on && st.paymentChipOn]}
+                  style={[st.paymentChip, on && st.paymentChipOn, locked && st.paymentChipLocked]}
+                  disabled={locked}
                   onPress={() => {
+                    if (locked) {
+                      hapticWarning();
+                      return;
+                    }
                     hapticLight();
                     setPaymentMethod(m.key);
                   }}
                 >
-                  <Icon name={m.icon} size={15} color={on ? "#FFFFFF" : UI.inkSoft} />
+                  <Icon name={locked ? "lock" : m.icon} size={15} color={on ? "#FFFFFF" : UI.inkSoft} />
                   <CustomText style={[st.paymentChipText, on && { color: "#FFFFFF" }]}>{m.label}</CustomText>
                 </TouchableOpacity>
               );
             })}
           </View>
+          {tabLocked && (
+            <View style={st.debtCeilingNote}>
+              <Icon name="alert-triangle" size={13} color={UI.red} />
+              <CustomText style={st.debtCeilingNoteText}>
+                תקרת חוב סוכן ({shekel(DEBT_CEILING)}) הושגה — הקפה חסומה עד שהחייבים יסולקו
+              </CustomText>
+            </View>
+          )}
+
+          {/* PayBox QR — the customer scans this straight off the agent's
+              screen; nothing here is a real payment confirmation, the agent
+              still taps "close sale" once the scan/transfer went through. */}
+          {paymentMethod === "paybox" && (
+            <View style={st.payboxBox}>
+              <QRCode value={PAYBOX_LINK} size={190} color={UI.ink} backgroundColor="#FFFFFF" ecl="M" />
+              <CustomText style={st.payboxHint}>הראו את הקוד ללקוח לסריקה ותשלום ב-PayBox</CustomText>
+            </View>
+          )}
 
           {/* Customer name — required to complete a "tab" sale, optional
               (but tracked toward the loyalty club) for every other method. */}
@@ -1274,6 +2092,7 @@ function CheckoutSummary({
 
 const st = StyleSheet.create({
   wrap: { flex: 1 },
+  wrapStealth: { backgroundColor: "#000000" },
 
   pinnedBanner: {
     flexDirection: "row-reverse",
@@ -1315,6 +2134,25 @@ const st = StyleSheet.create({
   },
   crossSellText: { flex: 1, fontFamily: FONTS.medium, fontSize: 12.5, color: UI.ink, textAlign: "right" },
 
+  operatorRow: {
+    flexDirection: "row-reverse",
+    flexWrap: "wrap",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingBottom: 8,
+  },
+  operatorChip: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 11,
+    minHeight: 32,
+    borderRadius: 16,
+    backgroundColor: UI.surfaceHi,
+  },
+  operatorChipOn: { backgroundColor: UI.violet },
+  operatorChipText: { fontFamily: FONTS.semibold, fontSize: 11.5, color: UI.inkSoft, maxWidth: 100 },
+
   topRow: { flexDirection: "row-reverse", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingBottom: 10 },
   deckSwitch: { flex: 1, flexDirection: "row-reverse", gap: 6, backgroundColor: UI.surfaceHi, borderRadius: 14, padding: 4 },
   deckBtn: {
@@ -1327,9 +2165,142 @@ const st = StyleSheet.create({
     borderRadius: 11,
   },
   deckText: { fontFamily: FONTS.semibold, fontSize: 12.5, color: UI.inkSoft },
+  agentModeBadge: {
+    flex: 1,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: tint(UI.violet, 0.08),
+    borderRadius: 14,
+    minHeight: 40,
+    paddingHorizontal: 12,
+  },
+  agentModeBadgeText: { flex: 1, fontFamily: FONTS.semibold, fontSize: 12.5, color: UI.violet, textAlign: "right" },
+  agentModeBadgeStealth: { backgroundColor: "#2C2C2E" },
+  stealthToggle: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: UI.surfaceHi,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stealthToggleOn: { backgroundColor: "#000000" },
   todayBox: { alignItems: "flex-end" },
   todayLabel: { fontFamily: FONTS.regular, fontSize: 10.5, color: UI.inkMuted },
   todayValue: { fontFamily: FONTS.bold, fontSize: 16, color: UI.green },
+
+  agentToolsRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingBottom: 10,
+  },
+  commissionBar: { flex: 1 },
+  commissionBarHead: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  commissionBarLabel: { fontFamily: FONTS.semibold, fontSize: 11.5, color: UI.ink },
+  commissionTrack: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: UI.surfaceHi,
+    overflow: "hidden",
+  },
+  commissionFill: { height: 8, borderRadius: 4, backgroundColor: UI.green },
+  toolChip: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: UI.surfaceHi,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  toolChipBadge: {
+    position: "absolute",
+    top: -4,
+    left: -4,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: 9,
+    backgroundColor: UI.violet,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  toolChipBadgeText: { fontFamily: FONTS.bold, fontSize: 10, color: "#FFFFFF" },
+
+  deadZoneBanner: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: tint(UI.amber, 0.1),
+  },
+  deadZoneBannerText: { flex: 1, fontFamily: FONTS.medium, fontSize: 12, color: UI.amber, textAlign: "right", lineHeight: 17 },
+
+  ordersEmpty: { fontFamily: FONTS.regular, fontSize: 13, color: UI.inkMuted, textAlign: "center", paddingVertical: 20 },
+  ordersHint: { fontFamily: FONTS.regular, fontSize: 11.5, color: UI.inkMuted, textAlign: "right", marginBottom: 8 },
+  orderTagRow: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 6, marginTop: 2 },
+  orderTagAmber: { fontFamily: FONTS.semibold, fontSize: 10, color: UI.amber },
+  orderTagInfo: { fontFamily: FONTS.semibold, fontSize: 10, color: UI.inkSoft },
+  orderSurgeBtn: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-end",
+    marginTop: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: tint(UI.amber, 0.12),
+  },
+  orderSurgeBtnText: { fontFamily: FONTS.semibold, fontSize: 10.5, color: UI.amber },
+  orderRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: UI.surfaceAlt,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    minHeight: 58,
+    marginBottom: 8,
+  },
+  orderRowNum: {
+    width: 26,
+    height: 26,
+    borderRadius: 9,
+    backgroundColor: UI.surfaceHi,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  orderRowNumText: { fontFamily: FONTS.bold, fontSize: 12, color: UI.inkSoft },
+  orderAddress: { fontFamily: FONTS.semibold, fontSize: 13.5, color: UI.ink, textAlign: "right" },
+  orderNotified: { fontFamily: FONTS.medium, fontSize: 10.5, color: UI.green, textAlign: "right", marginTop: 2 },
+  orderHereBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: "#25D366",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  orderDoneBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: tint(UI.green, 0.12),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  debtorBalance: { fontFamily: FONTS.semibold, fontSize: 12.5, color: UI.red, textAlign: "right", marginTop: 2 },
 
   manualBtn: {
     flexDirection: "row-reverse",
@@ -1401,6 +2372,29 @@ const st = StyleSheet.create({
   tilePrice: { fontFamily: FONTS.bold, fontSize: 16, color: UI.ink },
   tileMargin: { fontFamily: FONTS.medium, fontSize: 9.5 },
 
+  damageHint: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 6,
+    marginHorizontal: 5,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: tint(UI.amber, 0.08),
+  },
+  damageHintText: { flex: 1, fontFamily: FONTS.regular, fontSize: 11, color: UI.amber, textAlign: "right" },
+  damageWarnBox: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: tint(UI.red, 0.08),
+    borderRadius: 14,
+    padding: 12,
+  },
+  damageWarnText: { flex: 1, fontFamily: FONTS.medium, fontSize: 12.5, color: UI.red, textAlign: "right", lineHeight: 18 },
+  damageMax: { fontFamily: FONTS.regular, fontSize: 11, color: UI.inkMuted, textAlign: "center", marginTop: 2 },
+
   scanWrap: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 26, gap: 20 },
   scanBtn: {
     width: "100%",
@@ -1438,6 +2432,7 @@ const st = StyleSheet.create({
     elevation: 12,
     overflow: "hidden",
   },
+  cartStealth: { backgroundColor: "#1C1C1E", borderColor: "#2C2C2E" },
   cartHead: { flexDirection: "row-reverse", alignItems: "center", gap: 10, paddingHorizontal: 16, height: 62 },
   cartCount: {
     minWidth: 34,
@@ -1542,6 +2537,27 @@ const st = StyleSheet.create({
   },
   paymentChipOn: { backgroundColor: UI.ink },
   paymentChipText: { fontFamily: FONTS.semibold, fontSize: 12.5, color: UI.inkSoft },
+  paymentChipLocked: { opacity: 0.4 },
+  debtCeilingNote: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: tint(UI.red, 0.08),
+  },
+  debtCeilingNoteText: { flex: 1, fontFamily: FONTS.medium, fontSize: 11.5, color: UI.red, textAlign: "right" },
+  payboxBox: {
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: UI.surfaceAlt,
+    borderRadius: 16,
+    paddingVertical: 16,
+    marginTop: 8,
+  },
+  payboxHint: { fontFamily: FONTS.medium, fontSize: 12, color: UI.inkSoft, textAlign: "center" },
   tabBox: { marginTop: 8, gap: 8 },
   tabSuggestRow: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 6 },
   tabSuggestChip: {
@@ -1591,6 +2607,17 @@ const st = StyleSheet.create({
     backgroundColor: tint(UI.violet, 0.1),
   },
   droneAllocChipText: { fontFamily: FONTS.semibold, fontSize: 12.5, color: UI.violet },
+  commissionChip: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: tint(UI.green, 0.1),
+  },
+  commissionChipText: { fontFamily: FONTS.semibold, fontSize: 12.5, color: UI.green },
   receiptDoneSub: { fontFamily: FONTS.medium, fontSize: 13.5, color: UI.inkMuted },
   whatsappBtn: {
     flexDirection: "row-reverse",

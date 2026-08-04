@@ -36,4 +36,14 @@ export const STORAGE_KEYS = {
   // double-counting. Resets on day change, same convention as dailyAlloc.
   droneAutoDaily: "@dreammanager/drone-auto-daily",
   loyaltyCustomers: "@dreammanager/loyalty-customers",
+  // Sub-agent franchise ecosystem: profiles, their isolated "virtual backpack"
+  // inventory subset, the immutable sensitive-action log, and which agent (if
+  // any) is currently operating the register.
+  agents: "@dreammanager/agents",
+  agentInventory: "@dreammanager/agent-inventory",
+  agentAuditLog: "@dreammanager/agent-audit-log",
+  activeAgentId: "@dreammanager/active-agent-id",
+  // Remote delivery tasks the Admin hands an agent — Building/Floor/Room, not
+  // a street address, same micro-local unit DeliveryScreen.js uses.
+  agentOrders: "@dreammanager/agent-orders",
 };

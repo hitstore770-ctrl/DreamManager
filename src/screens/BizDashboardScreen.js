@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from "react-native-reanimated";
 
 import Icon from "../components/Icon";
+import { useAgents } from "../context/AgentsContext";
 import { useBusiness } from "../context/BusinessContext";
 import { monthKey, shekel, todayKey } from "../utils/posStore";
 import { NOTES_FONTS as FONTS } from "../utils/notesTheme";
@@ -41,6 +42,7 @@ function Bar({ heightPx, delay, isToday }) {
 
 export default function BizDashboardScreen() {
   const { sales } = useBusiness();
+  const { agents } = useAgents() || {};
 
   // Last 7 days revenue (oldest → newest so "today" is the rightmost bar
   // visually in RTL reading it's the first; layout uses row so newest last).
@@ -95,6 +97,27 @@ export default function BizDashboardScreen() {
 
   const cashPct = monthly.tracked ? Math.round((monthly.cash / monthly.tracked) * 100) : null;
 
+  // Franchise leaderboard — today's takings, Main POS vs each sub-agent, so
+  // whoever's ringing up the register can see where they stand live rather
+  // than finding out at the end-of-day Z-report.
+  const leaderboard = useMemo(() => {
+    if (!agents || agents.length === 0) return [];
+    const day = todayKey();
+    const todaySales = sales.filter((r) => r.day === day && r.kind !== "damage");
+    const mainTotal = todaySales.filter((r) => !r.agentId).reduce((sum, r) => sum + (r.total || 0), 0);
+    const byAgent = new Map();
+    for (const r of todaySales) {
+      if (!r.agentId) continue;
+      byAgent.set(r.agentId, (byAgent.get(r.agentId) || 0) + (r.total || 0));
+    }
+    const rows = [
+      { id: "main", name: "מנהל ראשי (קופה)", total: mainTotal, isMain: true },
+      ...agents.map((a) => ({ id: a.id, name: a.name, total: byAgent.get(a.id) || 0, isMain: false })),
+    ];
+    return rows.sort((a, b) => b.total - a.total);
+  }, [sales, agents]);
+  const leaderboardMax = Math.max(1, ...leaderboard.map((r) => r.total));
+
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: WHITE }}
@@ -144,6 +167,34 @@ export default function BizDashboardScreen() {
           ))}
         </View>
       </View>
+
+      {leaderboard.length > 0 && (
+        <View style={s.leaderCard}>
+          <CustomText style={s.chartTitle}>לוח מובילים — פדיון היום</CustomText>
+          {leaderboard.map((row, i) => (
+            <View key={row.id} style={s.leaderRow}>
+              <CustomText style={s.leaderRank}>{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`}</CustomText>
+              <View style={{ flex: 1 }}>
+                <View style={s.leaderNameRow}>
+                  <CustomText style={s.leaderValue}>{shekel(row.total)}</CustomText>
+                  <CustomText style={s.leaderName} numberOfLines={1}>
+                    {row.name}
+                  </CustomText>
+                </View>
+                <View style={s.leaderTrack}>
+                  <View
+                    style={[
+                      s.leaderFill,
+                      { width: `${Math.max(row.total > 0 ? 4 : 0, (row.total / leaderboardMax) * 100)}%` },
+                      row.isMain && { backgroundColor: INK_SOFT },
+                    ]}
+                  />
+                </View>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -191,4 +242,13 @@ const s = StyleSheet.create({
   bar: { width: 20, borderRadius: 7 },
   barDay: { fontFamily: FONTS.medium, fontSize: 12, color: INK_SOFT, marginTop: 6 },
   barDate: { fontFamily: FONTS.regular, fontSize: 9, color: INK_MUTED, marginTop: 1 },
+
+  leaderCard: { backgroundColor: CARD, borderRadius: 24, padding: 16, marginTop: 10, ...SHADOW },
+  leaderRow: { flexDirection: "row-reverse", alignItems: "center", gap: 10, marginTop: 10 },
+  leaderRank: { width: 26, fontFamily: FONTS.bold, fontSize: 14, color: INK_SOFT, textAlign: "center" },
+  leaderNameRow: { flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "center" },
+  leaderName: { fontFamily: FONTS.semibold, fontSize: 13, color: INK, flexShrink: 1, textAlign: "right" },
+  leaderValue: { fontFamily: FONTS.bold, fontSize: 13, color: BLUE },
+  leaderTrack: { height: 6, borderRadius: 3, backgroundColor: "#EEF0F3", marginTop: 5, overflow: "hidden" },
+  leaderFill: { height: 6, borderRadius: 3, backgroundColor: BLUE },
 });
